@@ -8,7 +8,7 @@
  * 1. 前端收集设备信息（deviceId、computerName 等）
  * 2. 调用此 API 进行验证
  * 3. 后端根据设备信息和 Windows 用户身份判断是否有权访问
- * 4. 返回用户信息（userId、displayName、permissions 等）
+ * 4. 返回用户信息（username、displayName、permissions 等）
  * 
  * ## 请求数据
  * 需要提交客户端信息供服务端验证：
@@ -48,7 +48,7 @@ export interface ClientInfo {
  * 该接口会检查设备 ID 和 Windows 用户是否在白名单中。
  * 
  * @param clientInfo - 客户端设备及用户信息
- * @returns Promise 后端返回的用户信息（userId、displayName、permissions 等）
+ * @returns Promise 后端返回的用户信息（username、displayName、permissions 等）
  * @throws 网络错误、超时（10秒）或服务端返回错误时抛出异常
  * 
  * @example

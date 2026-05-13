@@ -164,7 +164,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // TODO: 实际应从 response.data 中获取用户信息
       set({
         currentUser: {
-          userId: 10001,
+          username: 'evan.zhao',
           employeeNo: "E10001",
           displayName: "Evan Zhao",
           departmentName: "IT Department",
