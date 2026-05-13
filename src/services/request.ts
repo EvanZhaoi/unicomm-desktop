@@ -1,17 +1,68 @@
+/**
+ * HTTP 请求封装模块
+ * 
+ * 基于 Axios 封装的 HTTP 客户端，为 UniComm Desktop 提供统一的 API 请求能力。
+ * 
+ * ## 核心功能
+ * - **请求拦截器**: 自动为每个请求添加 `Authorization: Bearer <token>` 头
+ * - **响应拦截器**: 统一处理 401/403 错误，自动清除本地会话状态
+ * - **基础配置**: 预配置 baseURL、超时时间等默认参数
+ * 
+ * ## 认证流程
+ * 1. 组件通过 `useAuthStore()` 获取当前用户的 `accessToken`
+ * 2. 请求拦截器在发送请求前自动注入 Authorization 头
+ * 3. 若响应返回 401/403，拦截器调用 `clearSession()` 重置认证状态
+ * 4. 组件检测到认证状态变更后，可展示登录界面或重新验证
+ * 
+ * ## 使用示例
+ * ```typescript
+ * import request from '@/services/request';
+ * 
+ * // 发送需要认证的请求
+ * const response = await request.get('/user/profile');
+ * 
+ * // 请求会自动携带 Authorization 头
+ * // 若 token 过期，响应拦截器会清除会话并抛出错误
+ * ```
+ * 
+ * @module services/request
+ */
+
 import axios, { type AxiosInstance, type AxiosError } from "axios";
 import { useAuthStore } from "@/stores/auth.store";
 
+/** API 服务的基础地址，指向本地开发服务器 */
 const BASE_URL = "http://localhost:28080/api/v1";
 
+/**
+ * Axios 实例，预配置了拦截器和默认参数
+ * 
+ * 配置项:
+ * - baseURL: API 基础路径
+ * - timeout: 15秒请求超时
+ * - 请求拦截器: 自动注入 Bearer Token
+ * - 响应拦截器: 处理 401/403 认证错误
+ */
 const request: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   timeout: 15000,
 });
 
+/**
+ * 请求拦截器
+ * 
+ * 在每个请求发送前执行，从 authStore 获取 accessToken 并注入到 Authorization 头。
+ * 若无 token（用户未登录或会话已过期），请求会以匿名身份发送。
+ * 
+ * @param config - Axios 请求配置对象
+ * @returns 修改后的配置（添加了 Authorization 头）
+ */
 request.interceptors.request.use(
   (config) => {
+    // 从 Zustand store 获取当前 token
     const token = useAuthStore.getState().accessToken;
     if (token) {
+      // 注入 Bearer Token 供后端验证
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -19,10 +70,24 @@ request.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+/**
+ * 响应拦截器
+ * 
+ * 统一处理所有 API 响应错误：
+ * - **401 Unauthorized**: token 无效或已过期
+ * - **403 Forbidden**: 当前用户无权访问该资源
+ * 
+ * 检测到这两种状态时，调用 `clearSession()` 清除本地会话数据，
+ * 触发 UI 从受保护状态降级到认证界面。
+ * 
+ * @param error - Axios 错误对象，包含 response 状态码
+ * @returns 始终抛出错误，允许调用方通过 catch 处理
+ */
 request.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
+      // 认证失败，清除本地会话，下一次渲染时将显示登录界面
       useAuthStore.getState().clearSession();
     }
     return Promise.reject(error);

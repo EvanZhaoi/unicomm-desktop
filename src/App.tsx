@@ -1,21 +1,91 @@
-import { useEffect } from "react";
-import { useAuthStore } from "./stores/auth.store";
-import { useSettingsStore } from "./stores/settings.store";
-import { getDeviceInfo } from "./desktop/device";
-import { AppLayout } from "./components/layout";
-import { AuthStatusView } from "./features/auth/components/AuthStatusView";
-import { Card, CardContent, CardHeader, CardTitle } from "./components/ui";
-import { getCurrentWindowsUser } from "./desktop/user";
+/**
+ * 应用根组件
+ * 
+ * UniComm Desktop 应用的根组件，负责：
+ * 1. **初始化认证**: 启动时调用 `verifyDesktopUser()` 验证用户身份
+ * 2. **权限控制**: 根据认证状态决定显示内容
+ * 3. **渲染主界面**: 认证成功后显示应用主界面
+ * 
+ * ## 组件结构
+ * 
+ * ```
+ * App
+ * └── AppContent (子组件，用于使用 hooks)
+ *     ├── 未认证 → AuthStatusView（显示认证状态/错误）
+ *     └── 已认证 → AppLayout
+ *         ├── Sidebar
+ *         ├── Header
+ *         └── main content
+ *             └── 欢迎卡片
+ * ```
+ * 
+ * ## 初始化流程
+ * 
+ * 1. **组件挂载** (useEffect)
+ * 2. **获取设备信息** → `getDeviceInfo()`
+ * 3. **获取 Windows 用户** → `getCurrentWindowsUser()`
+ * 4. **调用认证接口** → `verifyDesktopUser(clientInfo)`
+ * 5. **更新认证状态** (authStore)
+ *    - 成功 → `authStatus = "verified"`，渲染主界面
+ *    - 失败 → `authStatus = "rejected/offline"`，显示错误
+ * 
+ * ## 降级策略
+ * 
+ * 若 Tauri 后端不可用（开发环境无 Tauri 支持）：
+ * - `getDeviceInfo()` / `getCurrentWindowsUser()` 抛出异常
+ * - `catch` 块捕获异常，使用空对象调用 `verifyDesktopUser({})`
+ * - 模拟认证流程继续（mock-token）
+ * 
+ * @module App
+ */
 
+import { useEffect } from "react";
+// 认证状态管理
+import { useAuthStore } from "./stores/auth.store";
+// 应用设置（侧边栏折叠状态）
+import { useSettingsStore } from "./stores/settings.store";
+// Tauri 命令：获取设备信息
+import { getDeviceInfo } from "./desktop/device";
+// Tauri 命令：获取 Windows 用户信息
+import { getCurrentWindowsUser } from "./desktop/user";
+// 布局组件
+import { AppLayout } from "./components/layout";
+// 认证状态视图（未认证时显示）
+import { AuthStatusView } from "./features/auth/components/AuthStatusView";
+// UI 组件
+import { Card, CardContent, CardHeader, CardTitle } from "./components/ui";
+
+/**
+ * 应用内容组件
+ * 
+ * 包含所有业务逻辑的子组件。
+ * 需要使用 hooks（如 useAuthStore、useEffect），所以单独拆分。
+ */
 function AppContent() {
+  // 从 authStore 获取认证相关状态和方法
   const { currentUser, authStatus, verifyDesktopUser } = useAuthStore();
+  
+  // 从 settingsStore 获取侧边栏状态和方法
   const { sidebarCollapsed, toggleSidebar } = useSettingsStore();
 
+  /**
+   * 初始化认证流程
+   * 
+   * 组件挂载时执行一次，完成以下步骤：
+   * 1. 获取设备信息（deviceId、computerName 等）
+   * 2. 获取 Windows 用户信息（username 等）
+   * 3. 调用 verifyDesktopUser 进行认证
+   * 
+   * 若 Tauri 命令失败（开发环境），使用空对象作为降级方案。
+   */
   useEffect(() => {
     const init = async () => {
       try {
+        // 尝试获取设备信息（需要 Tauri 后端）
         const deviceInfo = await getDeviceInfo();
+        // 尝试获取 Windows 用户信息（需要 Tauri 后端）
         const userInfo = await getCurrentWindowsUser();
+        // 调用认证接口验证用户身份
         await verifyDesktopUser({
           deviceId: deviceInfo.deviceId,
           username: userInfo.username,
@@ -23,26 +93,46 @@ function AppContent() {
           os: deviceInfo.os,
         });
       } catch {
-        // Tauri not available, use mock
+        // Tauri 后端不可用（开发环境），使用 mock 数据继续
         await verifyDesktopUser({});
       }
     };
+    // 执行初始化
     init();
   }, [verifyDesktopUser]);
 
+  /**
+   * 权限控制
+   * 
+   * 根据认证状态决定渲染内容：
+   * - `checking` → AuthStatusView 显示加载状态
+   * - `rejected` → AuthStatusView 显示错误信息
+   * - `offline` → AuthStatusView 显示网络错误
+   * - `verified` 且有 currentUser → 渲染主界面
+   */
   if (authStatus !== "verified" || !currentUser) {
     return <AuthStatusView />;
   }
 
+  /**
+   * 认证成功：渲染主界面
+   * 
+   * 包含：
+   * - AppLayout 布局容器
+   * - 欢迎信息卡片
+   * - 快捷操作入口（备忘录功能开发中）
+   */
   return (
     <AppLayout sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar}>
       <div className="space-y-6">
+        {/* 欢迎信息 */}
         <div>
           <h2 className="text-2xl font-bold">欢迎回来，{currentUser.displayName}</h2>
           <p className="text-muted-foreground">
             {currentUser.departmentName} · {currentUser.employeeNo}
           </p>
         </div>
+        {/* 快捷操作卡片 */}
         <Card>
           <CardHeader>
             <CardTitle>快捷操作</CardTitle>
@@ -58,6 +148,12 @@ function AppContent() {
   );
 }
 
+/**
+ * 应用根组件
+ * 
+ * 导出 AppContent 组件作为默认导出。
+ * 无需接收任何 props，认证流程在内部自动触发。
+ */
 export default function App() {
   return <AppContent />;
 }
