@@ -39,7 +39,7 @@ export type AuthStatus = "checking" | "verified" | "rejected" | "offline";
 
 export interface DesktopUserInfo {
   /** 用户在 UniComm 系统中的唯一 ID */
-  userId: number;
+  username: string;
   /** 员工工号（如 "E10001"） */
   employeeNo: string;
   /** 显示名称，用于 UI 展示（如 "Evan Zhao"） */
