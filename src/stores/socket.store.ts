@@ -35,6 +35,8 @@
  * @requires zustand
  */
 
+import { create } from 'zustand';
+
 /**
  * WebSocket Store 的状态接口
  */

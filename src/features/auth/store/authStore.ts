@@ -32,32 +32,6 @@
  *     └─── 服务错误 ──→ [authStatus = 'rejected', errorCode = 'SERVICE_UNAVAILABLE']
  * ```
  *
- * ## 认证流程说明
- *
- * ### 1. 应用启动
- * - `App.tsx` 初始化时调用 `verifyDesktopUser()`
- * - 状态立即设为 `"checking"` 开始验证
- *
- * ### 2. 获取客户端信息
- * - 通过 Tauri 命令获取设备信息 (`getDeviceInfo`)
- * - 通过 Tauri 命令获取 Windows 用户信息 (`getCurrentWindowsUser`)
- *
- * ### 3. 验证请求
- * - 调用后端 `/auth/desktop/verify` 接口
- * - 携带 deviceId、username、computerName、os
- *
- * ### 4. 验证结果
- * - **成功**: 设置 `currentUser` + `accessToken`，状态设为 `"verified"`
- * - **用户不存在**: 状态设为 `"rejected"`, errorCode = `'USER_NOT_FOUND'`
- * - **用户停用**: 状态设为 `"rejected"`, errorCode = `'USER_DISABLED'`
- * - **网络错误**: 状态设为 `"offline"`
- * - **服务错误**: 状态设为 `"rejected"`, errorCode = `'SERVICE_UNAVAILABLE'`
- *
- * ### 5. 后续请求
- * - `services/request.ts` 的请求拦截器会读取 `accessToken`
- * - 自动为每个请求添加 `Authorization: Bearer <token>` 头
- * - 若收到 401/403 响应，拦截器调用 `clearSession()` 清除会话
- *
  * ## 使用示例
  * ```typescript
  * import { useAuthStore } from '@/features/auth/store/authStore';
@@ -89,7 +63,8 @@ import { create } from 'zustand';
 import type { AuthStatus, DesktopUserInfo, AuthError } from '../types/auth.types';
 import { getDeviceInfo } from '@/desktop/device/DeviceService';
 import { getCurrentWindowsUser } from '@/desktop/user/getCurrentWindowsUser';
-import { verifyDesktopApi } from '../api/verifyDesktopApi';
+import { verifyDesktopApi, type DesktopVerifyResponse } from '../api/verifyDesktopApi';
+import { AuthError as HttpAuthError, NetworkError } from '@/core/http';
 
 /**
  * 认证状态存储的接口定义
@@ -146,17 +121,26 @@ export enum AuthErrorCode {
 }
 
 /**
- * 根据 HTTP 错误状态码获取错误代码
+ * 根据错误类型获取错误代码
  */
-function getErrorCodeFromHttpStatus(status: number): AuthErrorCode {
-  switch (status) {
-    case 401:
-      return AuthErrorCode.USER_NOT_FOUND;
-    case 403:
-      return AuthErrorCode.USER_DISABLED;
-    default:
-      return AuthErrorCode.SERVICE_UNAVAILABLE;
+function getErrorCodeFromError(error: unknown): AuthErrorCode {
+  if (error instanceof HttpAuthError) {
+    return error.statusCode === 401 ? AuthErrorCode.USER_NOT_FOUND : AuthErrorCode.USER_DISABLED;
   }
+  if (error instanceof NetworkError) {
+    return AuthErrorCode.NETWORK_ERROR;
+  }
+  return AuthErrorCode.SERVICE_UNAVAILABLE;
+}
+
+/**
+ * 获取错误消息
+ */
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return '认证服务异常';
 }
 
 /**
@@ -189,7 +173,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       // ---- Step 1: 获取设备信息 ----
-      const deviceInfo = getDeviceInfo();
+      const deviceInfo = await getDeviceInfo();
 
       // ---- Step 2: 获取 Windows 用户信息 ----
       const userInfo = await getCurrentWindowsUser();
@@ -206,60 +190,28 @@ export const useAuthStore = create<AuthState>((set) => ({
       };
 
       // ---- Step 4: 调用后端 verify 接口 ----
-      const response = await verifyDesktopApi(requestData);
+      // 拦截器已处理 HTTP 错误，成功时直接返回 DesktopVerifyResponse
+      const response: DesktopVerifyResponse = await verifyDesktopApi(requestData);
 
       // ---- Step 5: 处理响应 ----
-      if (response.code === 200 && response.data) {
-        // 认证成功，保存用户信息和 token
-        set({
-          currentUser: {
-            username: response.data.username,
-            employeeNo: response.data.employeeNo,
-            displayName: response.data.displayName,
-            departmentName: response.data.departmentName,
-            permissions: response.data.permissions || [],
-          },
-          accessToken: response.data.accessToken,
-          authStatus: 'verified',
-          authError: null,
-        });
-        return true;
-      } else {
-        // 认证失败（业务错误）
-        set({
-          authStatus: 'rejected',
-          authError: {
-            code: 'AUTH_FAILED',
-            message: response.message || '认证失败',
-          },
-        });
-        return false;
-      }
+      // 认证成功，保存用户信息和 token
+      set({
+        currentUser: {
+          username: response.username,
+          employeeNo: response.employeeNo,
+          displayName: response.displayName,
+          departmentName: response.departmentName,
+          permissions: response.permissions || [],
+        },
+        accessToken: response.accessToken,
+        authStatus: 'verified',
+        authError: null,
+      });
+      return true;
     } catch (error: unknown) {
       // ---- 处理异常情况 ----
-      let errorCode: AuthErrorCode;
-      let errorMessage: string;
-
-      if (error && typeof error === 'object' && 'response' in error) {
-        // axios 错误响应
-        const axiosError = error as { response?: { status?: number }; message?: string };
-        const httpStatus = axiosError.response?.status;
-        errorCode = httpStatus ? getErrorCodeFromHttpStatus(httpStatus) : AuthErrorCode.SERVICE_UNAVAILABLE;
-        errorMessage = axiosError.message || '认证服务异常';
-      } else if (error && typeof error === 'object' && 'code' in error) {
-        // 网络错误或超时
-        const err = error as { code?: string; message?: string };
-        if (err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK') {
-          errorCode = AuthErrorCode.NETWORK_ERROR;
-          errorMessage = '网络连接失败，请检查网络';
-        } else {
-          errorCode = AuthErrorCode.SERVICE_UNAVAILABLE;
-          errorMessage = err.message || '认证服务异常';
-        }
-      } else {
-        errorCode = AuthErrorCode.SERVICE_UNAVAILABLE;
-        errorMessage = '认证服务异常';
-      }
+      const errorCode = getErrorCodeFromError(error);
+      const errorMessage = getErrorMessage(error);
 
       // 根据错误类型设置状态
       const authStatus: AuthStatus =
@@ -286,7 +238,7 @@ export const useAuthStore = create<AuthState>((set) => ({
    * - 重置 authStatus 为 "checking"（触发 UI 显示认证界面）
    *
    * 调用场景：
-   * - `services/request.ts` 响应拦截器检测到 401/403
+   * - `core/http/interceptors/response.ts` 响应拦截器检测到 401/403
    * - 用户主动点击"退出登录"
    * - 需要强制重新认证的情况
    */

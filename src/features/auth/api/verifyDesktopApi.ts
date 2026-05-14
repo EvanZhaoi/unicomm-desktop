@@ -10,35 +10,34 @@
  * 3. 后端根据设备信息和 Windows 用户身份判断是否有权访问
  * 4. 返回用户信息（username、displayName、permissions 等）
  * 
- * ## 请求数据
- * 需要提交客户端信息供服务端验证：
- * - deviceId: 设备唯一标识
- * - username: Windows 用户名
- * - computerName: 计算机名称
- * - os: 操作系统信息
- * 
  * @module features/auth/api
  */
 
-import axios from "axios";
-
-/** 后端 API 基础地址（开发环境） */
-const BASE_URL = "http://localhost:28080/api/v1";
+import { client } from '@/core/http';
 
 /**
- * 客户端信息接口
- * 
- * 包含用于认证的设备信息和用户信息。
+ * 桌面认证请求参数
  */
-export interface ClientInfo {
-  /** 设备唯一标识符 */
-  deviceId: string;
-  /** Windows 用户名 */
+export interface DesktopVerifyRequest {
   username: string;
-  /** 计算机名称 */
+  domain?: string;
   computerName: string;
-  /** 操作系统信息 */
+  deviceId: string;
   os: string;
+  osVersion?: string;
+  appVersion?: string;
+}
+
+/**
+ * 桌面认证响应数据
+ */
+export interface DesktopVerifyResponse {
+  username: string;
+  employeeNo: string;
+  displayName: string;
+  departmentName: string;
+  permissions: string[];
+  accessToken: string;
 }
 
 /**
@@ -47,18 +46,21 @@ export interface ClientInfo {
  * 调用后端 `/auth/desktop/verify` 接口进行桌面认证。
  * 该接口会检查设备 ID 和 Windows 用户是否在白名单中。
  * 
- * @param clientInfo - 客户端设备及用户信息
+ * @param request - 客户端设备及用户信息
  * @returns Promise 后端返回的用户信息（username、displayName、permissions 等）
- * @throws 网络错误、超时（10秒）或服务端返回错误时抛出异常
+ * @throws 网络错误、超时或服务端返回错误时抛出异常
  * 
  * @example
  * ```typescript
  * try {
  *   const userInfo = await verifyDesktopApi({
- *     deviceId: 'DVC-12345678',
  *     username: 'zhao.evan',
+ *     domain: 'COMPANY',
  *     computerName: 'EVAN-PC',
- *     os: 'Windows 11'
+ *     deviceId: 'DVC-12345678',
+ *     os: 'Windows',
+ *     osVersion: 'Windows 11',
+ *     appVersion: '0.1.0'
  *   });
  *   console.log(`欢迎 ${userInfo.displayName}`);
  * } catch (error) {
@@ -66,9 +68,11 @@ export interface ClientInfo {
  * }
  * ```
  */
-export const verifyDesktopApi = async (clientInfo: ClientInfo) => {
-  const response = await axios.post(`${BASE_URL}/auth/desktop/verify`, clientInfo, {
-    timeout: 10000, // 10 秒超时
-  });
+export async function verifyDesktopApi(request: DesktopVerifyRequest): Promise<DesktopVerifyResponse> {
+  const response = await client.post<DesktopVerifyResponse>(
+    '/auth/desktop/verify',
+    request
+  );
+  // 拦截器已处理错误，成功时直接返回响应数据
   return response.data;
-};
+}

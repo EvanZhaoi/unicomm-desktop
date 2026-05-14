@@ -31,6 +31,8 @@
  * @requires zustand
  */
 
+import { create } from 'zustand';
+
 /** 支持的主题模式 */
 type Theme = "light" | "dark" | "system";
 

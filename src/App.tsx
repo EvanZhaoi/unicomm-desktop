@@ -41,13 +41,10 @@
 
 import { useEffect } from "react";
 // 认证状态管理
-import { useAuthStore } from "./stores/auth.store";
+import { useAuthStore } from "./features/auth/store/authStore";
 // 应用设置（侧边栏折叠状态）
 import { useSettingsStore } from "./stores/settings.store";
-// Tauri 命令：获取设备信息
-import { getDeviceInfo } from "./desktop/device";
-// Tauri 命令：获取 Windows 用户信息
-import { getCurrentWindowsUser } from "./desktop/user";
+
 // 布局组件
 import { AppLayout } from "./components/layout";
 // 认证状态视图（未认证时显示）
@@ -79,26 +76,8 @@ function AppContent() {
    * 若 Tauri 命令失败（开发环境），使用空对象作为降级方案。
    */
   useEffect(() => {
-    const init = async () => {
-      try {
-        // 尝试获取设备信息（需要 Tauri 后端）
-        const deviceInfo = await getDeviceInfo();
-        // 尝试获取 Windows 用户信息（需要 Tauri 后端）
-        const userInfo = await getCurrentWindowsUser();
-        // 调用认证接口验证用户身份
-        await verifyDesktopUser({
-          deviceId: deviceInfo.deviceId,
-          username: userInfo.username,
-          computerName: deviceInfo.computerName,
-          os: deviceInfo.os,
-        });
-      } catch {
-        // Tauri 后端不可用（开发环境），使用 mock 数据继续
-        await verifyDesktopUser({});
-      }
-    };
-    // 执行初始化
-    init();
+    // verifyDesktopUser() 获取设备信息和用户信息，自动调用后端 verify
+    verifyDesktopUser();
   }, [verifyDesktopUser]);
 
   /**
