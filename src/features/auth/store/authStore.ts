@@ -6,6 +6,7 @@
  * - 访问令牌（accessToken）
  * - 认证状态（AuthStatus）
  * - 错误详情（AuthError）
+ * - Session 持久化
  *
  * ## 认证状态机
  *
@@ -13,6 +14,13 @@
  * [App Start]
  *     │
  *     ▼
+ * loadSession() → 检查是否已有有效 Session
+ *     │
+ *     ├─── 有有效 Session ──→ [authStatus = 'verified', 恢复用户]
+ *     │
+ *     └─── 无有效 Session ──↓
+ *             │
+ *             ▼
  * [authStatus = 'checking']
  *     │
  *     ▼
@@ -30,7 +38,19 @@
  *     ├─── 网络错误 ──→ [authStatus = 'offline', errorCode = 'NETWORK_ERROR']
  *     │
  *     └─── 服务错误 ──→ [authStatus = 'rejected', errorCode = 'SERVICE_UNAVAILABLE']
- * ```
+ *
+ * ## 401 Recovery Flow
+ *
+ * Token 失效 (401/403)
+ *     │
+ *     ▼
+ * clearSession() → 清除本地 Session
+ *     │
+ *     ▼
+ * verifyDesktopUser() → 重新认证
+ *     │
+ *     ▼
+ * 重新建立 Session
  *
  * ## 使用示例
  * ```typescript
@@ -65,6 +85,7 @@ import { getDeviceInfo } from '@/desktop/device/DeviceService';
 import { getCurrentWindowsUser } from '@/desktop/user/getCurrentWindowsUser';
 import { verifyDesktopApi, type DesktopVerifyResponse } from '../api/verifyDesktopApi';
 import { AuthError as HttpAuthError, NetworkError } from '@/core/http';
+import { sessionStorageService } from '@/services/sessionStorageService';
 
 /**
  * 认证状态存储的接口定义
@@ -78,6 +99,13 @@ interface AuthState {
   authStatus: AuthStatus;
   /** 认证错误详情，用于 UI 展示错误信息 */
   authError: AuthError | null;
+
+  /**
+   * 初始化认证
+   * 应用启动时调用，尝试恢复之前保存的 Session
+   */
+  initAuth: () => Promise<void>;
+
   /**
    * 验证桌面用户身份
    *
@@ -87,19 +115,27 @@ interface AuthState {
    * 3. 组合 DesktopVerifyRequest
    * 4. 调用后端 /auth/desktop/verify 接口
    * 5. 根据结果更新状态
+   * 6. 成功后保存 Session 到持久化存储
    *
    * @returns Promise<boolean> 验证是否成功
    */
   verifyDesktopUser: () => Promise<boolean>;
+
   /**
    * 清除当前会话
    *
    * 重置所有认证相关状态，用于：
-   * - 响应拦截器检测到 401/403 时自动调用
+   * - 响应拦截器检测到 401/403 时自动调用（触发 401 Recovery）
    * - 用户主动退出登录时调用
    * - 清除后 authStatus 将重置为 "checking"
    */
-  clearSession: () => void;
+  clearSession: () => Promise<void>;
+
+  /**
+   * 恢复会话
+   * 401/403 时调用，从头开始重新认证流程
+   */
+  recoverSession: () => Promise<void>;
 }
 
 /**
@@ -118,6 +154,8 @@ export enum AuthErrorCode {
   NETWORK_ERROR = 'NETWORK_ERROR',
   /** Token 无效 */
   TOKEN_INVALID = 'TOKEN_INVALID',
+  /** Session 已过期 */
+  SESSION_EXPIRED = 'SESSION_EXPIRED',
 }
 
 /**
@@ -149,7 +187,7 @@ function getErrorMessage(error: unknown): string {
  * 使用 Zustand 管理的全局认证状态。
  * 整个应用应使用同一个 store 实例以保证状态同步。
  */
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   // 初始状态
   currentUser: null,
   accessToken: null,
@@ -157,15 +195,41 @@ export const useAuthStore = create<AuthState>((set) => ({
   authError: null,
 
   /**
-   * 验证桌面用户身份
+   * 初始化认证
    *
-   * 完整的验证流程：
-   * 1. 设置状态为 "checking"（正在验证）
-   * 2. 获取设备信息 (getDeviceInfo)
-   * 3. 获取 Windows 用户信息 (getCurrentWindowsUser)
-   * 4. 组合 DesktopVerifyRequest
-   * 5. 调用后端 /auth/desktop/verify 接口
-   * 6. 根据结果更新状态
+   * 应用启动时调用此方法：
+   * 1. 尝试从持久化存储加载之前保存的 Session
+   * 2. 如果 Session 有效，恢复认证状态
+   * 3. 如果 Session 无效或不存在，执行完整的认证流程
+   */
+  initAuth: async () => {
+    console.log('[AuthStore] Initializing auth...');
+
+    // 尝试加载保存的 Session
+    const savedSession = await sessionStorageService.loadSession();
+
+    if (savedSession) {
+      console.log('[AuthStore] Found saved session, restoring...');
+
+      // 恢复保存的 Session
+      set({
+        currentUser: savedSession.currentUser,
+        accessToken: savedSession.accessToken,
+        authStatus: 'verified',
+        authError: null,
+      });
+
+      console.log('[AuthStore] Session restored for:', savedSession.currentUser.username);
+      return;
+    }
+
+    // 没有保存的 Session，执行完整认证流程
+    console.log('[AuthStore] No saved session, performing full auth...');
+    await get().verifyDesktopUser();
+  },
+
+  /**
+   * 验证桌面用户身份
    */
   verifyDesktopUser: async () => {
     // 开始验证，先将状态设为 checking
@@ -190,23 +254,39 @@ export const useAuthStore = create<AuthState>((set) => ({
       };
 
       // ---- Step 4: 调用后端 verify 接口 ----
-      // 拦截器已处理 HTTP 错误，成功时直接返回 DesktopVerifyResponse
       const response: DesktopVerifyResponse = await verifyDesktopApi(requestData);
 
       // ---- Step 5: 处理响应 ----
-      // 认证成功，保存用户信息和 token
+      const userData: DesktopUserInfo = {
+        username: response.username,
+        employeeNo: response.employeeNo,
+        displayName: response.displayName,
+        departmentName: response.departmentName,
+        permissions: response.permissions || [],
+      };
+
+      // ---- Step 6: 保存到状态 ----
       set({
-        currentUser: {
-          username: response.username,
-          employeeNo: response.employeeNo,
-          displayName: response.displayName,
-          departmentName: response.departmentName,
-          permissions: response.permissions || [],
-        },
+        currentUser: userData,
         accessToken: response.accessToken,
         authStatus: 'verified',
         authError: null,
       });
+
+      // ---- Step 7: 持久化 Session ----
+      // 计算 Token 过期时间（24 小时）
+      const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+
+      await sessionStorageService.saveSession({
+        accessToken: response.accessToken,
+        currentUser: userData,
+        deviceInfo,
+        authStatus: 'verified',
+        authTime: Date.now(),
+        expiresAt,
+      });
+
+      console.log('[AuthStore] Auth successful:', response.username);
       return true;
     } catch (error: unknown) {
       // ---- 处理异常情况 ----
@@ -225,28 +305,42 @@ export const useAuthStore = create<AuthState>((set) => ({
         },
       });
 
+      console.log('[AuthStore] Auth failed:', errorCode, errorMessage);
       return false;
     }
   },
 
   /**
    * 清除当前会话
-   *
-   * 重置所有认证状态，包括：
-   * - 清除 currentUser（下次访问需要重新认证）
-   * - 清除 accessToken（需要重新获取）
-   * - 重置 authStatus 为 "checking"（触发 UI 显示认证界面）
-   *
-   * 调用场景：
-   * - `core/http/interceptors/response.ts` 响应拦截器检测到 401/403
-   * - 用户主动点击"退出登录"
-   * - 需要强制重新认证的情况
    */
-  clearSession: () =>
+  clearSession: async () => {
+    // 清除持久化的 Session
+    await sessionStorageService.clearSession();
+
+    // 清除内存中的状态
     set({
       currentUser: null,
       accessToken: null,
       authStatus: 'checking',
       authError: null,
-    }),
+    });
+
+    console.log('[AuthStore] Session cleared');
+  },
+
+  /**
+   * 恢复会话
+   *
+   * 当检测到 401/403 或 Session 过期时调用。
+   * 先清除当前 Session，然后重新执行认证流程。
+   */
+  recoverSession: async () => {
+    console.log('[AuthStore] Recovering session...');
+
+    // 先清除当前 Session
+    await get().clearSession();
+
+    // 重新执行认证
+    await get().verifyDesktopUser();
+  },
 }));
