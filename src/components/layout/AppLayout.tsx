@@ -35,6 +35,9 @@
  */
 
 import type { ReactNode } from "react";
+import { FileText, Menu, Settings } from "lucide-react";
+
+export type AppView = "memo" | "settings";
 
 /**
  * 侧边栏组件属性
@@ -42,6 +45,8 @@ import type { ReactNode } from "react";
 interface SidebarProps {
   /** 是否折叠侧边栏（折叠时只显示图标） */
   collapsed?: boolean;
+  activeView: AppView;
+  onViewChange: (view: AppView) => void;
 }
 
 /**
@@ -53,7 +58,7 @@ interface SidebarProps {
  * 
  * @param props.collapsed - true 时侧边栏宽度变为 64px，仅显示图标
  */
-export function Sidebar({ collapsed = false }: SidebarProps) {
+export function Sidebar({ collapsed = false, activeView, onViewChange }: SidebarProps) {
   return (
     <aside
       className={`flex flex-col border-r border-border bg-card h-full transition-all duration-200 ${
@@ -68,8 +73,20 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
       </div>
       {/* 导航菜单 */}
       <nav className="flex-1 p-2 space-y-1">
-        <NavItem icon="📝" label="备忘录" collapsed={collapsed} />
-        <NavItem icon="⚙️" label="设置" collapsed={collapsed} />
+        <NavItem
+          icon={<FileText className="h-4 w-4" />}
+          label="备忘录"
+          collapsed={collapsed}
+          active={activeView === "memo"}
+          onClick={() => onViewChange("memo")}
+        />
+        <NavItem
+          icon={<Settings className="h-4 w-4" />}
+          label="设置"
+          collapsed={collapsed}
+          active={activeView === "settings"}
+          onClick={() => onViewChange("settings")}
+        />
       </nav>
     </aside>
   );
@@ -80,11 +97,13 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
  */
 interface NavItemProps {
   /** 图标（emoji 格式） */
-  icon: string;
+  icon: ReactNode;
   /** 导航标签文字 */
   label: string;
   /** 是否折叠（不显示文字） */
   collapsed?: boolean;
+  active?: boolean;
+  onClick?: () => void;
 }
 
 /**
@@ -100,14 +119,17 @@ function NavItem({
   icon,
   label,
   collapsed,
+  active,
+  onClick,
 }: NavItemProps) {
   return (
     <button
+      onClick={onClick}
       className={`flex items-center gap-3 w-full p-2 rounded-md hover:bg-accent transition-colors ${
         collapsed ? "justify-center" : ""
-      }`}
+      } ${active ? "bg-accent text-accent-foreground" : ""}`}
     >
-      <span>{icon}</span>
+      {icon}
       {!collapsed && <span className="text-sm">{label}</span>}
     </button>
   );
@@ -141,7 +163,7 @@ export function Header({ userName, onToggleSidebar }: HeaderProps) {
         onClick={onToggleSidebar}
         className="p-2 hover:bg-accent rounded-md transition-colors"
       >
-        ☰
+        <Menu className="h-4 w-4" />
       </button>
       {/* 右侧：用户信息 */}
       <div className="flex items-center gap-2">
@@ -164,6 +186,8 @@ interface AppLayoutProps {
   sidebarCollapsed?: boolean;
   /** 切换侧边栏的回调 */
   onToggleSidebar?: () => void;
+  activeView: AppView;
+  onViewChange: (view: AppView) => void;
 }
 
 /**
@@ -175,11 +199,17 @@ interface AppLayoutProps {
  * @param props.sidebarCollapsed - 侧边栏是否折叠
  * @param props.onToggleSidebar - 切换侧边栏的回调
  */
-export function AppLayout({ children, sidebarCollapsed, onToggleSidebar }: AppLayoutProps) {
+export function AppLayout({
+  children,
+  sidebarCollapsed,
+  onToggleSidebar,
+  activeView,
+  onViewChange,
+}: AppLayoutProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* 侧边栏 */}
-      <Sidebar collapsed={sidebarCollapsed} />
+      <Sidebar collapsed={sidebarCollapsed} activeView={activeView} onViewChange={onViewChange} />
       {/* 右侧内容区 */}
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* 顶部栏 */}

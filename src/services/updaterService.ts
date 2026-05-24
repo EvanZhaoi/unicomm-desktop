@@ -12,8 +12,6 @@
  * Phase 2: 接入 tauri-plugin-updater 实现完整功能
  */
 
-import { invoke } from '@tauri-apps/api/core';
-
 /**
  * 更新状态枚举
  */
@@ -115,7 +113,6 @@ export interface UpdaterServiceAPI {
  */
 class UpdaterService implements UpdaterServiceAPI {
   private status: UpdateStatus = UpdateStatus.Unknown;
-  private latestVersion: string | undefined;
 
   /**
    * 获取当前版本
@@ -135,12 +132,10 @@ class UpdaterService implements UpdaterServiceAPI {
     try {
       // TODO: Phase 2 实现
       // const result = await invoke<{ version: string; notes?: string; date?: string }>('plugin:updater|check');
-      // this.latestVersion = result.version;
       // this.status = result.version > current ? UpdateStatus.Available : UpdateStatus.UpToDate;
 
       // Phase 1: 模拟没有更新
       this.status = UpdateStatus.UpToDate;
-      this.latestVersion = current;
 
       return {
         current,
@@ -217,7 +212,7 @@ class UpdaterService implements UpdaterServiceAPI {
   /**
    * 监听更新可用事件
    */
-  onUpdateAvailable(callback: UpdateAvailableCallback): void {
+  onUpdateAvailable(_callback: UpdateAvailableCallback): void {
     // TODO: Phase 2 实现
     // invoke('plugin:updater|listen', { event: 'update_available' }, callback);
     console.log('[Updater] Listening for update available events');

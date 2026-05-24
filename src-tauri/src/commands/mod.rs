@@ -6,8 +6,8 @@
 //!
 //! 这些命令用于 UniComm 桌面端认证流程。
 
-pub mod user;
 pub mod device;
+pub mod user;
 
-pub use user::*;
 pub use device::*;
+pub use user::*;

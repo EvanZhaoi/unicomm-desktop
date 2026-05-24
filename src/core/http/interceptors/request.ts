@@ -19,6 +19,8 @@ export function requestInterceptor(config: InternalAxiosRequestConfig): Internal
   
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+    config.headers['unicomm-token'] = token;
+    config.headers.satoken = token;
   }
   
   // 添加请求 ID（用于日志追踪）

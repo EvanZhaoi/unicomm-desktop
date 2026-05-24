@@ -123,7 +123,7 @@ class TrayManager implements TrayManagerAPI {
   /**
    * 初始化托盘系统
    */
-  async init(config?: TrayConfig): Promise<void> {
+  async init(_config?: TrayConfig): Promise<void> {
     if (this.initialized) {
       console.warn('[TrayManager] Already initialized');
       return;

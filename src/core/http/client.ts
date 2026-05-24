@@ -7,7 +7,7 @@
  */
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
 import { requestInterceptor } from './interceptors/request';
-import { responseInterceptor } from './interceptors/response';
+import { responseInterceptor, responseSuccessInterceptor } from './interceptors/response';
 
 /**
  * 默认配置
@@ -32,7 +32,7 @@ export function createClient(config?: AxiosRequestConfig): AxiosInstance {
   // 添加拦截器
   client.interceptors.request.use(requestInterceptor);
   client.interceptors.response.use(
-    (response) => response,
+    responseSuccessInterceptor,
     responseInterceptor
   );
   

@@ -60,6 +60,6 @@ pub fn get_current_windows_user() -> Result<WindowsUserInfo, String> {
         domain: None,
         computer_name: whoami::devicename(),
         os: std::env::consts::OS.to_string(),
-        os_version: whoami::os_version().to_string(),
+        os_version: whoami::distro(),
     })
 }

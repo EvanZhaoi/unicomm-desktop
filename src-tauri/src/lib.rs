@@ -35,12 +35,174 @@
 
 pub mod commands;
 
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    webview::WebviewWindowBuilder,
+    AppHandle, Manager, RunEvent, WebviewUrl, WindowEvent,
+};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutEvent, ShortcutState};
+
 /// 注册并暴露 Tauri 命令
 ///
 /// 暴露以下命令给前端调用：
 /// - `get_current_windows_user`: 获取当前 Windows 用户信息
 /// - `get_device_info`: 获取当前设备信息
 pub use commands::{get_current_windows_user, get_device_info};
+
+const MAIN_WINDOW_LABEL: &str = "main";
+const QUICK_MEMO_WINDOW_LABEL: &str = "quick-memo";
+const DEFAULT_MAIN_SHORTCUT: &str = "Ctrl+Alt+M";
+const DEFAULT_QUICK_MEMO_SHORTCUT: &str = "Ctrl+Alt+N";
+const MENU_SHOW: &str = "show";
+const MENU_HIDE: &str = "hide";
+const MENU_QUIT: &str = "quit";
+
+fn show_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+fn hide_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
+        let _ = window.hide();
+    }
+}
+
+fn show_quick_memo_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window(QUICK_MEMO_WINDOW_LABEL) {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.center();
+        let _ = window.set_focus();
+    }
+}
+
+#[tauri::command]
+fn hide_quick_memo(app: AppHandle) {
+    if let Some(window) = app.get_webview_window(QUICK_MEMO_WINDOW_LABEL) {
+        let _ = window.hide();
+    }
+}
+
+fn handle_main_shortcut(app: &AppHandle, event: ShortcutEvent) {
+    if event.state == ShortcutState::Pressed {
+        show_main_window(app);
+    }
+}
+
+fn handle_quick_memo_shortcut(app: &AppHandle, event: ShortcutEvent) {
+    if event.state == ShortcutState::Pressed {
+        show_quick_memo_window(app);
+    }
+}
+
+fn register_global_shortcuts(
+    app: &AppHandle,
+    main_shortcut: &str,
+    quick_memo_shortcut: &str,
+) -> Result<(), String> {
+    let main_shortcut = main_shortcut.trim();
+    let quick_memo_shortcut = quick_memo_shortcut.trim();
+
+    if main_shortcut.is_empty() || quick_memo_shortcut.is_empty() {
+        return Err("快捷键不能为空".to_string());
+    }
+
+    if main_shortcut.eq_ignore_ascii_case(quick_memo_shortcut) {
+        return Err("两个快捷键不能相同".to_string());
+    }
+
+    let shortcuts = app.global_shortcut();
+    shortcuts
+        .unregister_all()
+        .map_err(|error| error.to_string())?;
+    shortcuts
+        .on_shortcut(main_shortcut, |app, _shortcut, event| {
+            handle_main_shortcut(app, event);
+        })
+        .map_err(|error| error.to_string())?;
+    shortcuts
+        .on_shortcut(quick_memo_shortcut, |app, _shortcut, event| {
+            handle_quick_memo_shortcut(app, event);
+        })
+        .map_err(|error| error.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn configure_global_shortcuts(
+    app: AppHandle,
+    main_shortcut: String,
+    quick_memo_shortcut: String,
+) -> Result<(), String> {
+    register_global_shortcuts(&app, &main_shortcut, &quick_memo_shortcut)
+}
+
+fn setup_quick_memo_window(app: &mut tauri::App) -> tauri::Result<()> {
+    if app.get_webview_window(QUICK_MEMO_WINDOW_LABEL).is_some() {
+        return Ok(());
+    }
+
+    WebviewWindowBuilder::new(
+        app,
+        QUICK_MEMO_WINDOW_LABEL,
+        WebviewUrl::App("index.html".into()),
+    )
+    .title("快速 Memo")
+    .inner_size(520.0, 420.0)
+    .min_inner_size(420.0, 340.0)
+    .resizable(true)
+    .decorations(true)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .visible(false)
+    .center()
+    .build()?;
+
+    Ok(())
+}
+
+fn setup_tray(app: &mut tauri::App) -> tauri::Result<()> {
+    let show_item = MenuItem::with_id(app, MENU_SHOW, "显示 UniComm", true, None::<&str>)?;
+    let hide_item = MenuItem::with_id(app, MENU_HIDE, "隐藏到后台", true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, MENU_QUIT, "退出", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&show_item, &hide_item, &quit_item])?;
+
+    let mut tray = TrayIconBuilder::new()
+        .tooltip("UniComm")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            MENU_SHOW => show_main_window(app),
+            MENU_HIDE => hide_main_window(app),
+            MENU_QUIT => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| match event {
+            TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            }
+            | TrayIconEvent::DoubleClick {
+                button: MouseButton::Left,
+                ..
+            } => show_main_window(tray.app_handle()),
+            _ => {}
+        });
+
+    if let Some(icon) = app.default_window_icon().cloned() {
+        tray = tray.icon(icon);
+    }
+
+    tray.build(app)?;
+    Ok(())
+}
 
 /// 运行 Tauri 应用
 ///
@@ -50,13 +212,47 @@ pub use commands::{get_current_windows_user, get_device_info};
 /// # Panics
 ///
 /// 如果 Tauri 应用启动失败（例如配置错误、端口被占用），则 panic。
-fn run() {
-    tauri::Builder::default()
+pub fn run() {
+    let global_shortcut = tauri_plugin_global_shortcut::Builder::new().build();
+
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(global_shortcut)
+        .setup(|app| {
+            setup_tray(app)?;
+            setup_quick_memo_window(app)?;
+            register_global_shortcuts(
+                app.app_handle(),
+                DEFAULT_MAIN_SHORTCUT,
+                DEFAULT_QUICK_MEMO_SHORTCUT,
+            )
+            .map_err(|error| -> Box<dyn std::error::Error> { error.into() })?;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_current_windows_user,
             get_device_info,
+            configure_global_shortcuts,
+            hide_quick_memo,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app, event| {
+        if let RunEvent::WindowEvent {
+            label,
+            event: WindowEvent::CloseRequested { api, .. },
+            ..
+        } = event
+        {
+            if label == MAIN_WINDOW_LABEL || label == QUICK_MEMO_WINDOW_LABEL {
+                api.prevent_close();
+                if label == MAIN_WINDOW_LABEL {
+                    hide_main_window(app);
+                } else if let Some(window) = app.get_webview_window(QUICK_MEMO_WINDOW_LABEL) {
+                    let _ = window.hide();
+                }
+            }
+        }
+    });
 }

@@ -39,6 +39,10 @@ interface SettingsState {
     minimizeToTray: boolean;
     confirmBeforeQuit: boolean;
   };
+  shortcuts: {
+    showMain: string;
+    quickMemo: string;
+  };
   // 最后同步时间
   lastSyncTime: number | null;
 
@@ -47,6 +51,7 @@ interface SettingsState {
   setLanguage: (language: string) => void;
   setNotifications: (notifications: Partial<SettingsState['notifications']>) => void;
   setWindowSettings: (window: Partial<SettingsState['window']>) => void;
+  setShortcuts: (shortcuts: Partial<SettingsState['shortcuts']>) => void;
   setLastSyncTime: (time: number) => void;
   resetSettings: () => void;
 }
@@ -66,6 +71,10 @@ const defaultSettings = {
     startWithSystem: false,
     minimizeToTray: true,
     confirmBeforeQuit: true,
+  },
+  shortcuts: {
+    showMain: 'Ctrl+Alt+M',
+    quickMemo: 'Ctrl+Alt+N',
   },
   lastSyncTime: null,
 };
@@ -94,6 +103,11 @@ export const useSettingStore = create<SettingsState>()(
           window: { ...state.window, ...window },
         })),
 
+      setShortcuts: (shortcuts) =>
+        set((state) => ({
+          shortcuts: { ...state.shortcuts, ...shortcuts },
+        })),
+
       setLastSyncTime: (time) => set({ lastSyncTime: time }),
 
       resetSettings: () => set(defaultSettings),
@@ -105,6 +119,7 @@ export const useSettingStore = create<SettingsState>()(
         language: state.language,
         notifications: state.notifications,
         window: state.window,
+        shortcuts: state.shortcuts,
         lastSyncTime: state.lastSyncTime,
       }),
     }

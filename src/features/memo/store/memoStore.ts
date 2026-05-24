@@ -1,296 +1,203 @@
-/**
- * 备忘录状态管理模块 (Zustand Store)
- * 
- * 管理备忘录的客户端状态，包括：
- * - 备忘录列表数据
- * - 当前选中的备忘录
- * - 加载状态和错误状态
- * 
- * ## 功能规划（骨架阶段）
- * 
- * ### 待实现功能
- * - [ ] 加载备忘录列表（fetchMemos）
- * - [ ] 创建新备忘录（createMemo）
- * - [ ] 更新备忘录（updateMemo）
- * - [ ] 删除备忘录（deleteMemo）
- * - [ ] 置顶/取消置顶（togglePin）
- * - [ ] 归档/恢复归档（toggleArchive）
- * 
- * ## 使用示例
- * ```typescript
- * import { useMemoStore } from '@/features/memo/store/memoStore';
- * 
- * function MemoList() {
- *   const { memos, isLoading, fetchMemos } = useMemoStore();
- * 
- *   useEffect(() => {
- *     fetchMemos();
- *   }, []);
- * 
- *   if (isLoading) {
- *     return <div>加载中...</div>;
- *   }
- * 
- *   return (
- *     <div>
- *       {memos.map(memo => (
- *         <MemoItem key={memo.id} memo={memo} />
- *       ))}
- *     </div>
- *   );
- * }
- * ```
- * 
- * @module features/memo/store
- * @requires zustand
- */
-
 import { create } from "zustand";
+import {
+  createMemo,
+  deleteMemo,
+  listMemoGroups,
+  listMemos,
+  updateMemo,
+  updateMemoArchive,
+  updateMemoFavorite,
+  updateMemoTop,
+} from "../api/memoApi";
+import type { Memo, MemoGroup, MemoUpdateInput } from "../types/memo.types";
 
-/**
- * 备忘录列表项（精简版）
- * 
- * 与 memo.types.ts 中的 MemoListItem 保持一致。
- * TODO: 后续考虑直接从 types 导入，避免重复定义。
- */
-interface MemoListItem {
-  id: number;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-  isPinned: boolean;
-  isArchived: boolean;
-}
-
-/**
- * 备忘录 Store 的状态接口
- */
 interface MemoState {
-  /** 备忘录列表 */
-  memos: MemoListItem[];
-  /** 当前选中的备忘录 ID */
+  memos: Memo[];
+  groups: MemoGroup[];
   selectedMemoId: number | null;
-  /** 是否正在加载数据 */
+  activeGroupId: number | null;
+  keyword: string;
   isLoading: boolean;
-  /** 错误信息 */
+  isSaving: boolean;
   error: string | null;
-  /**
-   * 加载备忘录列表
-   */
+  fetchInitialData: () => Promise<void>;
   fetchMemos: () => Promise<void>;
-  /**
-   * 创建新备忘录
-   * @param title - 备忘录标题
-   * @param content - 备忘录内容（可选）
-   */
-  createMemo: (title: string, content?: string) => Promise<void>;
-  /**
-   * 更新备忘录
-   * @param id - 备忘录 ID
-   * @param updates - 要更新的字段
-   */
-  updateMemo: (id: number, updates: Partial<MemoListItem>) => Promise<void>;
-  /**
-   * 删除备忘录
-   * @param id - 备忘录 ID
-   */
-  deleteMemo: (id: number) => Promise<void>;
-  /**
-   * 选择备忘录
-   * @param id - 备忘录 ID，null 表示取消选择
-   */
+  setKeyword: (keyword: string) => void;
+  setActiveGroup: (groupId: number | null) => void;
+  createMemo: () => Promise<void>;
+  updateSelectedMemo: (input: MemoUpdateInput) => Promise<void>;
+  deleteSelectedMemo: () => Promise<void>;
   selectMemo: (id: number | null) => void;
-  /**
-   * 切换置顶状态
-   * @param id - 备忘录 ID
-   */
-  togglePin: (id: number) => Promise<void>;
-  /**
-   * 切换归档状态
-   * @param id - 备忘录 ID
-   */
+  toggleTop: (id: number) => Promise<void>;
+  toggleFavorite: (id: number) => Promise<void>;
   toggleArchive: (id: number) => Promise<void>;
 }
 
-/**
- * 备忘录状态管理 Store
- * 
- * 使用 Zustand 管理的全局备忘录状态。
- * 
- * @example
- * ```typescript
- * const {
- *   memos,
- *   selectedMemoId,
- *   isLoading,
- *   error,
- *   fetchMemos,
- *   createMemo,
- *   updateMemo,
- *   deleteMemo,
- *   selectMemo,
- *   togglePin,
- *   toggleArchive
- * } = useMemoStore();
- * ```
- */
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export const useMemoStore = create<MemoState>((set, get) => ({
-  // 初始状态
   memos: [],
+  groups: [],
   selectedMemoId: null,
+  activeGroupId: null,
+  keyword: "",
   isLoading: false,
+  isSaving: false,
   error: null,
 
-  /**
-   * 加载备忘录列表
-   * 
-   * TODO: 实现 API 调用
-   * - 调用 GET /api/v1/memos 获取备忘录列表
-   * - 更新 memos 状态
-   * - 处理错误情况
-   */
+  fetchInitialData: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const groups = await listMemoGroups();
+      const result = await listMemos({ page: 1, size: 50, isArchived: false });
+      set({
+        groups,
+        memos: result.list,
+        selectedMemoId: result.list[0]?.id ?? null,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({ error: errorMessage(error, "加载备忘录失败"), isLoading: false });
+    }
+  },
+
   fetchMemos: async () => {
     set({ isLoading: true, error: null });
     try {
-      // TODO: 调用 API
-      // const response = await request.get('/memos');
-      // set({ memos: response.data, isLoading: false });
-      
-      // 骨架阶段：模拟空列表
-      set({ memos: [], isLoading: false });
-    } catch (error) {
-      set({ error: "加载备忘录失败", isLoading: false });
-    }
-  },
-
-  /**
-   * 创建新备忘录
-   * 
-   * TODO: 实现 API 调用
-   * - 调用 POST /api/v1/memos 创建备忘录
-   * - 新备忘录添加到列表顶部
-   * 
-   * @param title - 备忘录标题
-   * @param content - 备忘录内容（可选）
-   */
-  createMemo: async (title, content) => {
-    set({ isLoading: true, error: null });
-    try {
-      // TODO: 调用 API
-      // const response = await request.post('/memos', { title, content });
-      // const newMemo = response.data;
-      // set(state => ({ memos: [newMemo, ...state.memos], isLoading: false }));
-      
-      // 骨架阶段：模拟成功
-      console.log("创建备忘录:", { title, content });
-      set({ isLoading: false });
-    } catch (error) {
-      set({ error: "创建备忘录失败", isLoading: false });
-    }
-  },
-
-  /**
-   * 更新备忘录
-   * 
-   * TODO: 实现 API 调用
-   * - 调用 PATCH /api/v1/memos/:id 更新备忘录
-   * - 更新列表中对应备忘录的信息
-   * 
-   * @param id - 备忘录 ID
-   * @param updates - 要更新的字段（title, content, isPinned, isArchived）
-   */
-  updateMemo: async (id, updates) => {
-    try {
-      // TODO: 调用 API
-      // await request.patch(`/memos/${id}`, updates);
-      // 
-      // 更新本地状态
+      const { activeGroupId, keyword } = get();
+      const result = await listMemos({
+        page: 1,
+        size: 50,
+        groupId: activeGroupId ?? undefined,
+        keyword: keyword || undefined,
+        isArchived: false,
+      });
       set((state) => ({
-        memos: state.memos.map((memo) =>
-          memo.id === id ? { ...memo, ...updates } : memo
-        ),
+        memos: result.list,
+        selectedMemoId:
+          state.selectedMemoId && result.list.some((memo) => memo.id === state.selectedMemoId)
+            ? state.selectedMemoId
+            : result.list[0]?.id ?? null,
+        isLoading: false,
       }));
     } catch (error) {
-      set({ error: "更新备忘录失败" });
+      set({ error: errorMessage(error, "加载备忘录失败"), isLoading: false });
     }
   },
 
-  /**
-   * 删除备忘录
-   * 
-   * TODO: 实现 API 调用
-   * - 调用 DELETE /api/v1/memos/:id 删除备忘录
-   * - 从列表中移除
-   * 
-   * @param id - 备忘录 ID
-   */
-  deleteMemo: async (id) => {
+  setKeyword: (keyword) => {
+    set({ keyword });
+  },
+
+  setActiveGroup: (groupId) => {
+    set({ activeGroupId: groupId });
+  },
+
+  createMemo: async () => {
+    set({ isSaving: true, error: null });
     try {
-      // TODO: 调用 API
-      // await request.delete(`/memos/${id}`);
-      // 
-      // 更新本地状态
+      const { activeGroupId, groups } = get();
+      const fallbackGroupId = activeGroupId ?? groups[0]?.id;
+      const memo = await createMemo({
+        title: "无标题",
+        content: "",
+        groupId: fallbackGroupId,
+        status: "normal",
+      });
+      const refreshedGroups = await listMemoGroups();
       set((state) => ({
-        memos: state.memos.filter((memo) => memo.id !== id),
-        selectedMemoId: state.selectedMemoId === id ? null : state.selectedMemoId,
+        memos: [memo, ...state.memos],
+        groups: refreshedGroups,
+        selectedMemoId: memo.id,
+        isSaving: false,
       }));
     } catch (error) {
-      set({ error: "删除备忘录失败" });
+      set({ error: errorMessage(error, "创建备忘录失败"), isSaving: false });
     }
   },
 
-  /**
-   * 选择备忘录
-   * 
-   * 设置当前选中的备忘录 ID，用于详情视图显示。
-   * 
-   * @param id - 备忘录 ID，null 表示取消选择
-   */
+  updateSelectedMemo: async (input) => {
+    const selectedMemoId = get().selectedMemoId;
+    if (!selectedMemoId) {
+      return;
+    }
+
+    set({ isSaving: true, error: null });
+    try {
+      const memo = await updateMemo(selectedMemoId, input);
+      set((state) => ({
+        memos: state.memos.map((item) => (item.id === memo.id ? memo : item)),
+        isSaving: false,
+      }));
+    } catch (error) {
+      set({ error: errorMessage(error, "保存备忘录失败"), isSaving: false });
+    }
+  },
+
+  deleteSelectedMemo: async () => {
+    const selectedMemoId = get().selectedMemoId;
+    if (!selectedMemoId) {
+      return;
+    }
+
+    set({ isSaving: true, error: null });
+    try {
+      await deleteMemo(selectedMemoId);
+      const refreshedGroups = await listMemoGroups();
+      set((state) => {
+        const memos = state.memos.filter((memo) => memo.id !== selectedMemoId);
+        return {
+          memos,
+          groups: refreshedGroups,
+          selectedMemoId: memos[0]?.id ?? null,
+          isSaving: false,
+        };
+      });
+    } catch (error) {
+      set({ error: errorMessage(error, "删除备忘录失败"), isSaving: false });
+    }
+  },
+
   selectMemo: (id) => {
     set({ selectedMemoId: id });
   },
 
-  /**
-   * 切换置顶状态
-   * 
-   * TODO: 实现 API 调用
-   * 
-   * @param id - 备忘录 ID
-   */
-  togglePin: async (id) => {
-    const memo = get().memos.find((m) => m.id === id);
-    if (memo) {
-      // 乐观更新：先更新本地状态
-      set((state) => ({
-        memos: state.memos.map((m) =>
-          m.id === id ? { ...m, isPinned: !m.isPinned } : m
-        ),
-      }));
-      
-      // TODO: 调用 API
-      // await request.patch(`/memos/${id}`, { isPinned: !memo.isPinned });
+  toggleTop: async (id) => {
+    const memo = get().memos.find((item) => item.id === id);
+    if (!memo) {
+      return;
     }
+    const updated = await updateMemoTop(id, !memo.isTop);
+    set((state) => ({
+      memos: state.memos.map((item) => (item.id === id ? updated : item)),
+    }));
   },
 
-  /**
-   * 切换归档状态
-   * 
-   * TODO: 实现 API 调用
-   * 
-   * @param id - 备忘录 ID
-   */
-  toggleArchive: async (id) => {
-    const memo = get().memos.find((m) => m.id === id);
-    if (memo) {
-      // 乐观更新：先更新本地状态
-      set((state) => ({
-        memos: state.memos.map((m) =>
-          m.id === id ? { ...m, isArchived: !m.isArchived } : m
-        ),
-      }));
-      
-      // TODO: 调用 API
-      // await request.patch(`/memos/${id}`, { isArchived: !memo.isArchived });
+  toggleFavorite: async (id) => {
+    const memo = get().memos.find((item) => item.id === id);
+    if (!memo) {
+      return;
     }
+    const updated = await updateMemoFavorite(id, !memo.isFavorite);
+    set((state) => ({
+      memos: state.memos.map((item) => (item.id === id ? updated : item)),
+    }));
+  },
+
+  toggleArchive: async (id) => {
+    const memo = get().memos.find((item) => item.id === id);
+    if (!memo) {
+      return;
+    }
+    const updated = await updateMemoArchive(id, !memo.isArchived);
+    set((state) => ({
+      memos: state.memos.filter((item) => item.id !== id),
+      selectedMemoId: state.selectedMemoId === id ? state.memos.find((item) => item.id !== id)?.id ?? null : state.selectedMemoId,
+      groups: state.groups.map((group) =>
+        group.id === updated.groupId ? { ...group, memoCount: Math.max(0, group.memoCount - 1) } : group
+      ),
+    }));
   },
 }));

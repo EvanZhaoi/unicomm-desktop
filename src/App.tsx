@@ -2,7 +2,7 @@
  * 应用根组件
  * 
  * UniComm Desktop 应用的根组件，负责：
- * 1. **初始化认证**: 启动时调用 `verifyDesktopUser()` 验证用户身份
+ * 1. **初始化认证**: 启动时调用 `initAuth()` 恢复或验证用户身份
  * 2. **权限控制**: 根据认证状态决定显示内容
  * 3. **渲染主界面**: 认证成功后显示应用主界面
  * 
@@ -22,9 +22,9 @@
  * ## 初始化流程
  * 
  * 1. **组件挂载** (useEffect)
- * 2. **获取设备信息** → `getDeviceInfo()`
- * 3. **获取 Windows 用户** → `getCurrentWindowsUser()`
- * 4. **调用认证接口** → `verifyDesktopUser(clientInfo)`
+ * 2. **恢复本地 Session**
+ * 3. **无有效 Session 时获取设备和 Windows 用户信息**
+ * 4. **调用认证接口** → `verifyDesktopUser()`
  * 5. **更新认证状态** (authStore)
  *    - 成功 → `authStatus = "verified"`，渲染主界面
  *    - 失败 → `authStatus = "rejected/offline"`，显示错误
@@ -39,7 +39,8 @@
  * @module App
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 // 认证状态管理
 import { useAuthStore } from "./features/auth/store/authStore";
 // 应用设置（侧边栏折叠状态）
@@ -49,8 +50,11 @@ import { useSettingsStore } from "./stores/settings.store";
 import { AppLayout } from "./components/layout";
 // 认证状态视图（未认证时显示）
 import { AuthStatusView } from "./features/auth/components/AuthStatusView";
-// UI 组件
-import { Card, CardContent, CardHeader, CardTitle } from "./components/ui";
+import { MemoWorkspace } from "./features/memo/components/MemoWorkspace";
+import { QuickMemoWindow } from "./features/memo/components/QuickMemoWindow";
+import { SettingsPanel } from "./features/settings/components/SettingsPanel";
+import { configureGlobalShortcuts } from "./desktop/shortcut/shortcutManager";
+import { useSettingStore } from "./stores/settingStore";
 
 /**
  * 应用内容组件
@@ -60,25 +64,47 @@ import { Card, CardContent, CardHeader, CardTitle } from "./components/ui";
  */
 function AppContent() {
   // 从 authStore 获取认证相关状态和方法
-  const { currentUser, authStatus, verifyDesktopUser } = useAuthStore();
+  const { currentUser, authStatus, initAuth } = useAuthStore();
   
   // 从 settingsStore 获取侧边栏状态和方法
   const { sidebarCollapsed, toggleSidebar } = useSettingsStore();
+  const { shortcuts } = useSettingStore();
+  const [activeView, setActiveView] = useState<"memo" | "settings">("memo");
+  const [isQuickMemoWindow] = useState(() => {
+    try {
+      return getCurrentWindow().label === "quick-memo";
+    } catch {
+      return false;
+    }
+  });
 
   /**
    * 初始化认证流程
    * 
    * 组件挂载时执行一次，完成以下步骤：
-   * 1. 获取设备信息（deviceId、computerName 等）
-   * 2. 获取 Windows 用户信息（username 等）
-   * 3. 调用 verifyDesktopUser 进行认证
-   * 
-   * 若 Tauri 命令失败（开发环境），使用空对象作为降级方案。
+   * 1. 尝试恢复已保存的 Session
+   * 2. 没有有效 Session 时，执行完整桌面认证流程
    */
   useEffect(() => {
-    // verifyDesktopUser() 获取设备信息和用户信息，自动调用后端 verify
-    verifyDesktopUser();
-  }, [verifyDesktopUser]);
+    initAuth();
+  }, [initAuth]);
+
+  useEffect(() => {
+    configureGlobalShortcuts(shortcuts).catch((error) => {
+      console.error("Failed to configure global shortcuts", error);
+    });
+  }, [shortcuts]);
+
+  if (isQuickMemoWindow) {
+    if (authStatus !== "verified" || !currentUser) {
+      return (
+        <div className="flex h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+          初始化中...
+        </div>
+      );
+    }
+    return <QuickMemoWindow />;
+  }
 
   /**
    * 权限控制
@@ -102,27 +128,13 @@ function AppContent() {
    * - 快捷操作入口（备忘录功能开发中）
    */
   return (
-    <AppLayout sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar}>
-      <div className="space-y-6">
-        {/* 欢迎信息 */}
-        <div>
-          <h2 className="text-2xl font-bold">欢迎回来，{currentUser.displayName}</h2>
-          <p className="text-muted-foreground">
-            {currentUser.departmentName} · {currentUser.employeeNo}
-          </p>
-        </div>
-        {/* 快捷操作卡片 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>快捷操作</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              备忘录功能开发中...
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+    <AppLayout
+      sidebarCollapsed={sidebarCollapsed}
+      onToggleSidebar={toggleSidebar}
+      activeView={activeView}
+      onViewChange={setActiveView}
+    >
+      {activeView === "memo" ? <MemoWorkspace /> : <SettingsPanel />}
     </AppLayout>
   );
 }

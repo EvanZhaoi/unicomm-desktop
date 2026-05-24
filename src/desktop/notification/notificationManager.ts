@@ -27,8 +27,6 @@
  * ```
  */
 
-import { invoke } from '@tauri-apps/api/core';
-
 /**
  * 通知严重级别
  */
@@ -188,7 +186,7 @@ class NotificationManager implements NotificationManagerAPI {
     return this.notify({
       title,
       body,
-      urgency: NotificationUrgency.High,
+      urgency: NotificationUrgency.Critical,
     });
   }
 

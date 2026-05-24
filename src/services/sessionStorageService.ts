@@ -80,11 +80,6 @@ class SessionStorageService implements SessionStorageServiceAPI {
   private readonly SESSION_KEY = 'unicomm_session';
 
   /**
-   * Session 过期时间（默认 24 小时）
-   */
-  private readonly SESSION_EXPIRE_MS = 24 * 60 * 60 * 1000;
-
-  /**
    * 保存 Session 数据到 localStorage
    */
   async saveSession(data: SessionData): Promise<void> {
@@ -171,12 +166,6 @@ class SessionStorageService implements SessionStorageServiceAPI {
     }
   }
 
-  /**
-   * 创建默认的过期时间
-   */
-  private createExpiresAt(): number {
-    return Date.now() + this.SESSION_EXPIRE_MS;
-  }
 }
 
 /**

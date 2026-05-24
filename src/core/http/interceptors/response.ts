@@ -10,12 +10,32 @@
  * 
  * @module core/http/interceptors
  */
-import type { AxiosError } from 'axios';
+import type { AxiosError, AxiosResponse } from 'axios';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { ApiError } from '../errors/ApiError';
 import { NetworkError } from '../errors/NetworkError';
 import { AuthError } from '../errors/AuthError';
 import type { ApiResponse } from '../types/api';
+
+/**
+ * 响应成功拦截器函数
+ *
+ * 后端统一返回 { code, message, data }，业务层只关心 data。
+ * 如果后端业务 code 不是成功码，即使 HTTP 状态是 200，也按 API 错误处理。
+ */
+export function responseSuccessInterceptor(response: AxiosResponse): any {
+  const body = response.data as ApiResponse | undefined;
+
+  if (!body || typeof body.code !== 'number') {
+    return response.data;
+  }
+
+  if (body.code < 200 || body.code >= 300) {
+    throw new ApiError(body.message || '请求失败', body.code, body);
+  }
+
+  return body.data;
+}
 
 /**
  * 响应错误拦截器函数

@@ -69,10 +69,8 @@ export interface DesktopVerifyResponse {
  * ```
  */
 export async function verifyDesktopApi(request: DesktopVerifyRequest): Promise<DesktopVerifyResponse> {
-  const response = await client.post<DesktopVerifyResponse>(
+  return client.post<DesktopVerifyResponse, DesktopVerifyResponse>(
     '/auth/desktop/verify',
     request
   );
-  // 拦截器已处理错误，成功时直接返回响应数据
-  return response.data;
 }

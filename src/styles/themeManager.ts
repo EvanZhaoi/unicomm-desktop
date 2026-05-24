@@ -23,9 +23,6 @@
  * ```
  */
 
-import { invoke } from '@tauri-apps/api/core';
-import { useSettingStore } from '@/stores/settingStore';
-
 /**
  * 主题模式枚举
  */
@@ -215,7 +212,7 @@ class ThemeManager implements ThemeManagerAPI {
       return ResolvedTheme.Light;
     }
 
-    return this.currentMode as ResolvedTheme;
+    return this.currentMode === ThemeMode.Dark ? ResolvedTheme.Dark : ResolvedTheme.Light;
   }
 
   /**
