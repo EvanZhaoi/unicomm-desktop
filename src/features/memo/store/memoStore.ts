@@ -9,6 +9,8 @@ import {
   updateMemoFavorite,
   updateMemoTop,
 } from "../api/memoApi";
+import { translate } from "@/i18n";
+import { useSettingStore } from "@/stores/settingStore";
 import type { Memo, MemoGroup, MemoUpdateInput } from "../types/memo.types";
 
 interface MemoState {
@@ -37,6 +39,10 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
+function localized(key: Parameters<typeof translate>[0]): string {
+  return translate(key, useSettingStore.getState().language);
+}
+
 export const useMemoStore = create<MemoState>((set, get) => ({
   memos: [],
   groups: [],
@@ -59,7 +65,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         isLoading: false,
       });
     } catch (error) {
-      set({ error: errorMessage(error, "加载备忘录失败"), isLoading: false });
+      set({ error: errorMessage(error, localized("memo.errors.load")), isLoading: false });
     }
   },
 
@@ -83,7 +89,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         isLoading: false,
       }));
     } catch (error) {
-      set({ error: errorMessage(error, "加载备忘录失败"), isLoading: false });
+      set({ error: errorMessage(error, localized("memo.errors.load")), isLoading: false });
     }
   },
 
@@ -114,7 +120,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         isSaving: false,
       }));
     } catch (error) {
-      set({ error: errorMessage(error, "创建备忘录失败"), isSaving: false });
+      set({ error: errorMessage(error, localized("memo.errors.create")), isSaving: false });
     }
   },
 
@@ -132,7 +138,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         isSaving: false,
       }));
     } catch (error) {
-      set({ error: errorMessage(error, "保存备忘录失败"), isSaving: false });
+      set({ error: errorMessage(error, localized("memo.errors.save")), isSaving: false });
     }
   },
 
@@ -156,7 +162,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         };
       });
     } catch (error) {
-      set({ error: errorMessage(error, "删除备忘录失败"), isSaving: false });
+      set({ error: errorMessage(error, localized("memo.errors.delete")), isSaving: false });
     }
   },
 

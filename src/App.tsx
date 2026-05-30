@@ -55,6 +55,7 @@ import { QuickMemoWindow } from "./features/memo/components/QuickMemoWindow";
 import { SettingsPanel } from "./features/settings/components/SettingsPanel";
 import { configureGlobalShortcuts } from "./desktop/shortcut/shortcutManager";
 import { useSettingStore } from "./stores/settingStore";
+import { useI18n } from "./i18n/useI18n";
 
 /**
  * 应用内容组件
@@ -68,7 +69,8 @@ function AppContent() {
   
   // 从 settingsStore 获取侧边栏状态和方法
   const { sidebarCollapsed, toggleSidebar } = useSettingsStore();
-  const { shortcuts } = useSettingStore();
+  const { shortcuts, language } = useSettingStore();
+  const { t } = useI18n();
   const [activeView, setActiveView] = useState<"memo" | "settings">("memo");
   const [isQuickMemoWindow] = useState(() => {
     try {
@@ -95,11 +97,16 @@ function AppContent() {
     });
   }, [shortcuts]);
 
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.documentElement.dataset.language = language;
+  }, [language]);
+
   if (isQuickMemoWindow) {
     if (authStatus !== "verified" || !currentUser) {
       return (
         <div className="flex h-screen items-center justify-center bg-background text-sm text-muted-foreground">
-          初始化中...
+          {t("app.initializing")}
         </div>
       );
     }

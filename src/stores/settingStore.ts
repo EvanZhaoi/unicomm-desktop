@@ -17,6 +17,8 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { detectDefaultLanguage, isSupportedLanguage } from '@/i18n';
+import type { Language } from '@/i18n';
 import type { ThemeMode } from '@/styles/themeManager';
 
 /**
@@ -26,7 +28,7 @@ interface SettingsState {
   // 主题设置
   themeMode: ThemeMode;
   // 语言设置
-  language: string;
+  language: Language;
   // 通知设置
   notifications: {
     enabled: boolean;
@@ -48,7 +50,7 @@ interface SettingsState {
 
   // Actions
   setThemeMode: (mode: ThemeMode) => void;
-  setLanguage: (language: string) => void;
+  setLanguage: (language: Language) => void;
   setNotifications: (notifications: Partial<SettingsState['notifications']>) => void;
   setWindowSettings: (window: Partial<SettingsState['window']>) => void;
   setShortcuts: (shortcuts: Partial<SettingsState['shortcuts']>) => void;
@@ -56,28 +58,47 @@ interface SettingsState {
   resetSettings: () => void;
 }
 
+type SettingsData = Omit<
+  SettingsState,
+  | 'setThemeMode'
+  | 'setLanguage'
+  | 'setNotifications'
+  | 'setWindowSettings'
+  | 'setShortcuts'
+  | 'setLastSyncTime'
+  | 'resetSettings'
+>;
+
 /**
  * 默认设置值
  */
-const defaultSettings = {
-  themeMode: 'system' as ThemeMode,
-  language: 'zh-CN',
-  notifications: {
-    enabled: true,
-    sound: true,
-    desktop: true,
-  },
-  window: {
-    startWithSystem: false,
-    minimizeToTray: true,
-    confirmBeforeQuit: true,
-  },
-  shortcuts: {
-    showMain: 'Ctrl+Alt+M',
-    quickMemo: 'Ctrl+Alt+N',
-  },
-  lastSyncTime: null,
-};
+function createDefaultSettings(): SettingsData {
+  return {
+    themeMode: 'system' as ThemeMode,
+    language: detectDefaultLanguage(),
+    notifications: {
+      enabled: true,
+      sound: true,
+      desktop: true,
+    },
+    window: {
+      startWithSystem: false,
+      minimizeToTray: true,
+      confirmBeforeQuit: true,
+    },
+    shortcuts: {
+      showMain: 'Ctrl+Alt+M',
+      quickMemo: 'Ctrl+Alt+N',
+    },
+    lastSyncTime: null,
+  };
+}
+
+function isSettingsData(value: unknown): value is Partial<SettingsData> {
+  return typeof value === 'object' && value !== null;
+}
+
+const defaultSettings = createDefaultSettings();
 
 /**
  * Settings Store
@@ -110,10 +131,26 @@ export const useSettingStore = create<SettingsState>()(
 
       setLastSyncTime: (time) => set({ lastSyncTime: time }),
 
-      resetSettings: () => set(defaultSettings),
+      resetSettings: () => set(createDefaultSettings()),
     }),
     {
       name: 'unicomm_settings', // localStorage key
+      merge: (persistedState, currentState) => {
+        if (!isSettingsData(persistedState)) {
+          return currentState;
+        }
+
+        const persistedLanguage = persistedState.language;
+
+        return {
+          ...currentState,
+          ...persistedState,
+          language:
+            typeof persistedLanguage === 'string' && isSupportedLanguage(persistedLanguage)
+              ? persistedLanguage
+              : currentState.language,
+        };
+      },
       partialize: (state) => ({
         themeMode: state.themeMode,
         language: state.language,

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Keyboard, RotateCcw, Save } from "lucide-react";
+import { Globe2, Keyboard, RotateCcw, Save, Type } from "lucide-react";
 import { Button } from "@/components/ui";
 import { configureGlobalShortcuts } from "@/desktop/shortcut/shortcutManager";
+import { useI18n } from "@/i18n/useI18n";
 import { useSettingStore } from "@/stores/settingStore";
+import type { Language } from "@/i18n";
 
 const DEFAULT_SHORTCUTS = {
   showMain: "Ctrl+Alt+M",
@@ -18,7 +20,8 @@ function normalizeShortcut(value: string): string {
 }
 
 export function SettingsPanel() {
-  const { shortcuts, setShortcuts } = useSettingStore();
+  const { shortcuts, language, setLanguage, setShortcuts } = useSettingStore();
+  const { t } = useI18n();
   const [showMain, setShowMain] = useState(shortcuts.showMain);
   const [quickMemo, setQuickMemo] = useState(shortcuts.quickMemo);
   const [message, setMessage] = useState<string | null>(null);
@@ -40,12 +43,12 @@ export function SettingsPanel() {
     setError(null);
 
     if (!next.showMain || !next.quickMemo) {
-      setError("快捷键不能为空");
+      setError(t("settings.shortcuts.empty"));
       return;
     }
 
     if (next.showMain.toLowerCase() === next.quickMemo.toLowerCase()) {
-      setError("两个快捷键不能相同");
+      setError(t("settings.shortcuts.duplicate"));
       return;
     }
 
@@ -55,9 +58,9 @@ export function SettingsPanel() {
       setShortcuts(next);
       setShowMain(next.showMain);
       setQuickMemo(next.quickMemo);
-      setMessage("快捷键已更新");
+      setMessage(t("settings.shortcuts.saved"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "快捷键更新失败");
+      setError(err instanceof Error ? err.message : t("settings.shortcuts.failed"));
     } finally {
       setIsSaving(false);
     }
@@ -74,13 +77,44 @@ export function SettingsPanel() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <section className="border border-border bg-background">
         <div className="flex h-14 items-center gap-2 border-b border-border px-4">
-          <Keyboard className="h-4 w-4" />
-          <h2 className="text-sm font-semibold">快捷键</h2>
+          <Globe2 className="h-4 w-4" />
+          <h2 className="text-sm font-semibold">{t("settings.language.title")}</h2>
         </div>
 
         <div className="space-y-5 p-5">
           <label className="grid gap-2">
-            <span className="text-sm font-medium">唤出主界面</span>
+            <span className="text-sm font-medium">{t("settings.language.label")}</span>
+            <select
+              value={language}
+              onChange={(event) => {
+                setLanguage(event.target.value as Language);
+                setMessage(t("settings.language.saved"));
+                setError(null);
+              }}
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="zh-CN">{t("settings.language.zh")}</option>
+              <option value="ja-JP">{t("settings.language.ja")}</option>
+            </select>
+          </label>
+
+          <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2 text-sm">
+            <Type className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">{t("settings.language.font")}</span>
+            <span className="font-medium">{t("settings.language.fontName")}</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="border border-border bg-background">
+        <div className="flex h-14 items-center gap-2 border-b border-border px-4">
+          <Keyboard className="h-4 w-4" />
+          <h2 className="text-sm font-semibold">{t("settings.shortcuts.title")}</h2>
+        </div>
+
+        <div className="space-y-5 p-5">
+          <label className="grid gap-2">
+            <span className="text-sm font-medium">{t("settings.shortcuts.showMain")}</span>
             <input
               value={showMain}
               onChange={(event) => setShowMain(event.target.value)}
@@ -90,7 +124,7 @@ export function SettingsPanel() {
           </label>
 
           <label className="grid gap-2">
-            <span className="text-sm font-medium">唤出简易 Memo</span>
+            <span className="text-sm font-medium">{t("settings.shortcuts.quickMemo")}</span>
             <input
               value={quickMemo}
               onChange={(event) => setQuickMemo(event.target.value)}
@@ -107,11 +141,11 @@ export function SettingsPanel() {
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={reset} disabled={isSaving}>
                 <RotateCcw />
-                恢复默认
+                {t("settings.actions.reset")}
               </Button>
               <Button onClick={save} disabled={isSaving}>
                 <Save />
-                保存
+                {t("settings.actions.save")}
               </Button>
             </div>
           </div>

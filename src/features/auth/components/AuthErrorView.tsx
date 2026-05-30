@@ -21,6 +21,8 @@
  * @module features/auth/components
  */
 
+import { useI18n } from "@/i18n/useI18n";
+
 /**
  * AuthErrorView 组件的属性接口
  */
@@ -46,11 +48,13 @@ interface AuthErrorViewProps {
  * ```
  */
 export function AuthErrorView({ message }: AuthErrorViewProps) {
+  const { t } = useI18n();
+
   return (
     <div className="flex items-center justify-center p-8">
       <div className="text-center text-destructive">
         {/* 错误标题 */}
-        <p className="text-lg font-medium">认证失败</p>
+        <p className="text-lg font-medium">{t("auth.failed")}</p>
         {/* 可选的错误详情 */}
         {message && (
           <p className="text-sm mt-2 text-muted-foreground">{message}</p>

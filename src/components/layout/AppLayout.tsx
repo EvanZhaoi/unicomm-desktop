@@ -36,6 +36,7 @@
 
 import type { ReactNode } from "react";
 import { FileText, Menu, Settings } from "lucide-react";
+import { useI18n } from "@/i18n/useI18n";
 
 export type AppView = "memo" | "settings";
 
@@ -59,6 +60,8 @@ interface SidebarProps {
  * @param props.collapsed - true 时侧边栏宽度变为 64px，仅显示图标
  */
 export function Sidebar({ collapsed = false, activeView, onViewChange }: SidebarProps) {
+  const { t } = useI18n();
+
   return (
     <aside
       className={`flex flex-col border-r border-border bg-card h-full transition-all duration-200 ${
@@ -75,14 +78,14 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
       <nav className="flex-1 p-2 space-y-1">
         <NavItem
           icon={<FileText className="h-4 w-4" />}
-          label="备忘录"
+          label={t("nav.memo")}
           collapsed={collapsed}
           active={activeView === "memo"}
           onClick={() => onViewChange("memo")}
         />
         <NavItem
           icon={<Settings className="h-4 w-4" />}
-          label="设置"
+          label={t("nav.settings")}
           collapsed={collapsed}
           active={activeView === "settings"}
           onClick={() => onViewChange("settings")}

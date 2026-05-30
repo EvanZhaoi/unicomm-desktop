@@ -23,6 +23,7 @@
  * @module features/auth/components
  */
 
+import { useI18n } from "@/i18n/useI18n";
 import { useAuthStore } from "../store/authStore";
 
 /**
@@ -38,6 +39,7 @@ import { useAuthStore } from "../store/authStore";
  * - verified → null（不渲染）
  */
 export function AuthStatusView() {
+  const { t } = useI18n();
   // 从 authStore 读取当前认证状态
   const authStatus = useAuthStore((state) => state.authStatus);
 
@@ -48,7 +50,7 @@ export function AuthStatusView() {
         <div className="text-center">
           {/* 加载动画 spinner */}
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-muted-foreground">正在识别当前 Windows 用户...</p>
+          <p className="text-muted-foreground">{t("auth.checking")}</p>
         </div>
       </div>
     );
@@ -59,8 +61,8 @@ export function AuthStatusView() {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center text-destructive">
-          <p className="text-lg font-medium">当前 Windows 用户未授权</p>
-          <p className="text-sm mt-2">请联系系统管理员获取权限</p>
+          <p className="text-lg font-medium">{t("auth.rejected.title")}</p>
+          <p className="text-sm mt-2">{t("auth.rejected.description")}</p>
         </div>
       </div>
     );
@@ -71,8 +73,8 @@ export function AuthStatusView() {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center text-muted-foreground">
-          <p className="text-lg font-medium">无法连接认证服务</p>
-          <p className="text-sm mt-2">请检查网络连接后重试</p>
+          <p className="text-lg font-medium">{t("auth.offline.title")}</p>
+          <p className="text-sm mt-2">{t("auth.offline.description")}</p>
         </div>
       </div>
     );

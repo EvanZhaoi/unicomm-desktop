@@ -3,6 +3,7 @@ import { emit } from "@tauri-apps/api/event";
 import { Save, X } from "lucide-react";
 import { Button } from "@/components/ui";
 import { hideQuickMemoWindow } from "@/desktop/shortcut/shortcutManager";
+import { useI18n } from "@/i18n/useI18n";
 import { createMemo, listMemoGroups } from "../api/memoApi";
 import type { MemoGroup } from "../types/memo.types";
 
@@ -12,6 +13,7 @@ function extractTitle(content: string): string {
 }
 
 export function QuickMemoWindow() {
+  const { t } = useI18n();
   const [groups, setGroups] = useState<MemoGroup[]>([]);
   const [groupId, setGroupId] = useState<number | undefined>();
   const [content, setContent] = useState("");
@@ -58,7 +60,7 @@ export function QuickMemoWindow() {
       setContent("");
       await close();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "新增 Memo 失败");
+      setError(err instanceof Error ? err.message : t("quickMemo.error.create"));
     } finally {
       setIsSaving(false);
     }
@@ -67,8 +69,8 @@ export function QuickMemoWindow() {
   return (
     <div className="flex h-screen flex-col bg-background">
       <header className="flex h-12 items-center justify-between border-b border-border px-3">
-        <div className="text-sm font-semibold">快速 Memo</div>
-        <Button size="icon" variant="ghost" onClick={close} title="关闭">
+        <div className="text-sm font-semibold">{t("quickMemo.title")}</div>
+        <Button size="icon" variant="ghost" onClick={close} title={t("quickMemo.close")}>
           <X />
         </Button>
       </header>
@@ -99,14 +101,14 @@ export function QuickMemoWindow() {
             }
           }}
           className="min-h-0 flex-1 resize-none rounded-md border border-input bg-background p-3 text-sm leading-6 outline-none focus:ring-1 focus:ring-ring"
-          placeholder="输入内容，保存后新增一条 Memo"
+          placeholder={t("quickMemo.placeholder")}
         />
 
         <div className="flex items-center justify-between gap-3">
           <div className="min-h-5 text-xs text-destructive">{error}</div>
           <Button onClick={save} disabled={!canSave}>
             <Save />
-            新增
+            {t("quickMemo.create")}
           </Button>
         </div>
       </main>

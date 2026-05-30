@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui";
+import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
 import { useMemoStore } from "../store/memoStore";
 import type { Memo } from "../types/memo.types";
@@ -28,6 +29,7 @@ function formatDate(value: string): string {
 }
 
 export function MemoWorkspace() {
+  const { t } = useI18n();
   const {
     memos,
     groups,
@@ -99,8 +101,8 @@ export function MemoWorkspace() {
     <div className="grid h-[calc(100vh-5.5rem)] grid-cols-[220px_320px_minmax(0,1fr)] overflow-hidden border border-border bg-background">
       <aside className="border-r border-border bg-muted/30">
         <div className="flex h-14 items-center justify-between border-b border-border px-3">
-          <div className="text-sm font-semibold">备忘录</div>
-          <Button size="icon" variant="ghost" onClick={createMemo} disabled={isSaving} title="新建 Memo">
+          <div className="text-sm font-semibold">{t("memo.title")}</div>
+          <Button size="icon" variant="ghost" onClick={createMemo} disabled={isSaving} title={t("memo.new")}>
             <Plus />
           </Button>
         </div>
@@ -113,7 +115,7 @@ export function MemoWorkspace() {
             onClick={() => chooseGroup(null)}
           >
             <FileText className="h-4 w-4" />
-            <span className="flex-1 truncate">全部</span>
+            <span className="flex-1 truncate">{t("memo.all")}</span>
             <span className="text-xs text-muted-foreground">{memos.length}</span>
           </button>
           <div className="mt-3 space-y-1">
@@ -148,18 +150,18 @@ export function MemoWorkspace() {
                 }
               }}
               className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-2 text-sm outline-none focus:ring-1 focus:ring-ring"
-              placeholder="搜索标题或内容"
+              placeholder={t("memo.search.placeholder")}
             />
           </div>
-          <Button size="icon" variant="outline" onClick={search} title="搜索">
+          <Button size="icon" variant="outline" onClick={search} title={t("memo.search")}>
             <Search />
           </Button>
         </div>
         <div className="h-[calc(100%-3.5rem)] overflow-auto">
           {isLoading ? (
-            <div className="p-4 text-sm text-muted-foreground">加载中...</div>
+            <div className="p-4 text-sm text-muted-foreground">{t("memo.loading")}</div>
           ) : memos.length === 0 ? (
-            <div className="p-4 text-sm text-muted-foreground">暂无备忘录</div>
+            <div className="p-4 text-sm text-muted-foreground">{t("memo.empty")}</div>
           ) : (
             memos.map((memo) => (
               <button
@@ -172,10 +174,10 @@ export function MemoWorkspace() {
               >
                 <div className="flex items-center gap-2">
                   <div className="min-w-0 flex-1 truncate text-sm font-medium">{memo.title}</div>
-                  {memo.isTop && <span className="text-xs text-primary">置顶</span>}
+                  {memo.isTop && <span className="text-xs text-primary">{t("memo.pinned")}</span>}
                 </div>
                 <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                  {memo.content || "无内容"}
+                  {memo.content || t("memo.noContent")}
                 </div>
                 <div className="mt-2 text-xs text-muted-foreground">{formatDate(memo.updateTime)}</div>
               </button>
@@ -189,13 +191,13 @@ export function MemoWorkspace() {
           <>
             <div className="flex h-14 items-center justify-between border-b border-border px-4">
               <div className="flex items-center gap-2">
-                <Button size="icon" variant="ghost" onClick={() => toggleTop(draft.id)} title="置顶">
+                <Button size="icon" variant="ghost" onClick={() => toggleTop(draft.id)} title={t("memo.action.pin")}>
                   <FileText className={cn(draft.isTop && "text-primary")} />
                 </Button>
-                <Button size="icon" variant="ghost" onClick={() => toggleFavorite(draft.id)} title="收藏">
+                <Button size="icon" variant="ghost" onClick={() => toggleFavorite(draft.id)} title={t("memo.action.favorite")}>
                   <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />
                 </Button>
-                <Button size="icon" variant="ghost" onClick={() => toggleArchive(draft.id)} title="归档">
+                <Button size="icon" variant="ghost" onClick={() => toggleArchive(draft.id)} title={t("memo.action.archive")}>
                   <Archive />
                 </Button>
               </div>
@@ -203,11 +205,11 @@ export function MemoWorkspace() {
                 {error && <span className="text-xs text-destructive">{error}</span>}
                 <Button variant="outline" onClick={deleteSelectedMemo} disabled={isSaving}>
                   <Trash2 />
-                  删除
+                  {t("memo.action.delete")}
                 </Button>
                 <Button onClick={saveDraft} disabled={isSaving}>
                   <Save />
-                  保存
+                  {t("memo.action.save")}
                 </Button>
               </div>
             </div>
@@ -216,7 +218,7 @@ export function MemoWorkspace() {
                 value={draft.title}
                 onChange={(event) => setDraft({ ...draft, title: event.target.value })}
                 className="w-full border-0 bg-transparent text-2xl font-semibold outline-none"
-                placeholder="无标题"
+                placeholder={t("memo.title.placeholder")}
               />
               <div className="flex items-center gap-3 text-sm">
                 <select
@@ -235,23 +237,25 @@ export function MemoWorkspace() {
                   onChange={(event) => setDraft({ ...draft, status: event.target.value as Memo["status"] })}
                   className="h-9 rounded-md border border-input bg-background px-2 outline-none"
                 >
-                  <option value="normal">普通</option>
-                  <option value="todo">待办</option>
-                  <option value="done">完成</option>
+                  <option value="normal">{t("memo.status.normal")}</option>
+                  <option value="todo">{t("memo.status.todo")}</option>
+                  <option value="done">{t("memo.status.done")}</option>
                 </select>
-                <span className="text-xs text-muted-foreground">更新于 {formatDate(draft.updateTime)}</span>
+                <span className="text-xs text-muted-foreground">
+                  {t("memo.updatedAt", { time: formatDate(draft.updateTime) })}
+                </span>
               </div>
               <textarea
                 value={draft.content}
                 onChange={(event) => setDraft({ ...draft, content: event.target.value })}
                 className="min-h-0 flex-1 resize-none rounded-md border border-input bg-background p-3 font-mono text-sm leading-6 outline-none focus:ring-1 focus:ring-ring"
-                placeholder="输入 Markdown 内容..."
+                placeholder={t("memo.editor.placeholder")}
               />
             </div>
           </>
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            选择或新建一条备忘录
+            {t("memo.selectOrCreate")}
           </div>
         )}
       </main>

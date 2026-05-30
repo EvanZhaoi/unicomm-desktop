@@ -12,6 +12,7 @@ Tauri 2 + React 19 企业协同桌面应用
 - **Zustand 5.x** - 状态管理
 - **TanStack Query 5.x** - 服务端状态
 - **React Router 7.x** - 路由
+- **Alibaba PuHuiTi 3.0** - 中日文界面首选字体
 
 ## 项目结构
 
@@ -22,7 +23,10 @@ unicomm-desktop/
 │   ├── native/               # Native 抽象层
 │   ├── features/             # 功能模块 (领域驱动)
 │   │   ├── auth/             # 认证模块
-│   │   └── memo/             # 备忘录模块 (骨架)
+│   │   ├── memo/             # 备忘录模块
+│   │   └── settings/         # 设置模块
+│   ├── i18n/                  # 中日文国际化文案
+│   ├── assets/fonts/          # 内置字体文件
 │   ├── stores/               # 全局状态
 │   ├── components/          # 公共组件
 │   ├── services/             # 服务层
@@ -76,14 +80,39 @@ npm run tauri build
 - [x] HTTP 请求服务 (Axios)
 - [x] 基础布局 (Sidebar + Header)
 - [x] shadcn/ui 基础组件
+- [x] Memo 工作台
+- [x] 快速 Memo 小窗口
+- [x] 系统托盘与后台运行
+- [x] 全局快捷键
+- [x] 设置页快捷键配置
+- [x] 中文/日文界面切换
+- [x] 阿里巴巴普惠体 3.0 / Alibaba Sans JP 内置字体
 
 ### 开发中 🚧
-- [ ] Memo 备忘录功能
-- [ ] 窗口管理
-- [ ] 系统托盘
 - [ ] 通知
-- [ ] 快捷键
 - [ ] 剪贴板
+
+## 字体与语言
+
+- 默认语言：中文 (`zh-CN`)
+- 可选语言：中文 (`zh-CN`) / 日文 (`ja-JP`)
+- 设置位置：主界面侧边栏 `设置` -> `语言与字体`
+- 中文首选字体：阿里巴巴普惠体 3.0
+- 日文首选字体：Alibaba Sans JP
+- 字体文件目录：`src/assets/fonts/`
+- 首次启动时根据系统语言选择默认语言：`zh-*` 使用中文，`ja-*` 使用日文，未支持语言回退中文
+- 用户在设置页手动切换语言后，以本地保存的用户设置为准
+
+当前已内置常用 UI 字重：
+
+- `AlibabaPuHuiTi-3-55-Regular.woff2`
+- `AlibabaPuHuiTi-3-65-Medium.woff2`
+- `AlibabaPuHuiTi-3-85-Bold.woff2`
+- `AlibabaSansJP-Regular.woff2`
+- `AlibabaSansJP-Medium.woff2`
+- `AlibabaSansJP-Bold.woff2`
+
+`src/styles/globals.css` 通过 `@font-face` 加载项目内字体。若字体文件加载失败，会继续回退到对应语言的系统字体。
 
 ## 认证流程
 
@@ -95,4 +124,4 @@ npm run tauri build
 ## 备注
 
 - 当前运行在 macOS 环境，Windows API 功能返回模拟数据
-- Memo 功能仅骨架，不实现业务逻辑
+- Windows 托盘和全局快捷键仍需在 Windows 真机上做最终验收
