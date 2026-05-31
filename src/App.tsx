@@ -56,6 +56,8 @@ import { SettingsPanel } from "./features/settings/components/SettingsPanel";
 import { configureGlobalShortcuts } from "./desktop/shortcut/shortcutManager";
 import { useSettingStore } from "./stores/settingStore";
 import { useI18n } from "./i18n/useI18n";
+import { realtimeService } from "./services/realtime";
+import { useMemoStore } from "./features/memo/store/memoStore";
 
 /**
  * 应用内容组件
@@ -101,6 +103,38 @@ function AppContent() {
     document.documentElement.lang = language;
     document.documentElement.dataset.language = language;
   }, [language]);
+
+  useEffect(() => {
+    if (authStatus !== "verified") {
+      realtimeService.disconnect();
+      return;
+    }
+
+    let refreshTimer: number | null = null;
+    const unsubscribe = realtimeService.subscribe((event) => {
+      if (event.module !== "memo") {
+        return;
+      }
+
+      if (refreshTimer !== null) {
+        window.clearTimeout(refreshTimer);
+      }
+
+      refreshTimer = window.setTimeout(() => {
+        useMemoStore.getState().fetchInitialData();
+        refreshTimer = null;
+      }, 250);
+    });
+
+    realtimeService.connect();
+
+    return () => {
+      unsubscribe();
+      if (refreshTimer !== null) {
+        window.clearTimeout(refreshTimer);
+      }
+    };
+  }, [authStatus]);
 
   if (isQuickMemoWindow) {
     if (authStatus !== "verified" || !currentUser) {

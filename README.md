@@ -87,6 +87,7 @@ npm run tauri build
 - [x] 设置页快捷键配置
 - [x] 中文/日文界面切换
 - [x] 阿里巴巴普惠体 3.0 / Alibaba Sans JP 内置字体
+- [x] WebSocket 实时连接与 Memo 变更刷新
 
 ### 开发中 🚧
 - [ ] 通知
@@ -113,6 +114,13 @@ npm run tauri build
 - `AlibabaSansJP-Bold.woff2`
 
 `src/styles/globals.css` 通过 `@font-face` 加载项目内字体。若字体文件加载失败，会继续回退到对应语言的系统字体。
+
+## WebSocket 实时同步
+
+- 默认地址：根据 `VITE_API_BASE_URL` 自动推导为同源 `/ws`
+- 可通过 `VITE_WS_URL` 显式覆盖，例如 `ws://localhost:28080/ws`
+- 认证通过后自动连接，断线后自动重连
+- 收到 `memo.*` 或 `group.*` 事件后刷新 Memo 数据
 
 ## 认证流程
 
