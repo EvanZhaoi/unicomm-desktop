@@ -35,6 +35,12 @@ interface MemoState {
   toggleArchive: (id: number) => Promise<void>;
 }
 
+/*
+ * Memo store 负责把后端 API 结果整理成界面可直接消费的状态。
+ *
+ * 这里不缓存归档列表，也不在 WebSocket 事件里直接拼对象。
+ * 当前策略是：用户操作时局部更新，提高即时反馈；远端事件或初始化时重新拉取列表，保证最终一致。
+ */
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
@@ -56,6 +62,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
   fetchInitialData: async () => {
     set({ isLoading: true, error: null });
     try {
+      // 首屏需要分组和 Memo 列表一起加载；默认选中第一条 Memo，保证编辑区有稳定目标。
       const groups = await listMemoGroups();
       const result = await listMemos({ page: 1, size: 50, isArchived: false });
       set({
@@ -73,6 +80,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { activeGroupId, keyword } = get();
+      // 列表查询始终排除归档数据；归档入口后续可以单独做成筛选视图。
       const result = await listMemos({
         page: 1,
         size: 50,
@@ -82,6 +90,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       });
       set((state) => ({
         memos: result.list,
+        // 如果当前选中的 Memo 仍在新列表里，就保持选中；否则自动选中第一条，避免右侧编辑器悬空。
         selectedMemoId:
           state.selectedMemoId && result.list.some((memo) => memo.id === state.selectedMemoId)
             ? state.selectedMemoId
@@ -105,6 +114,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isSaving: true, error: null });
     try {
       const { activeGroupId, groups } = get();
+      // 未选择分组时使用第一个分组。后端也会保证默认分组存在，这里是为了前端请求更明确。
       const fallbackGroupId = activeGroupId ?? groups[0]?.id;
       const memo = await createMemo({
         title: "无标题",
@@ -114,6 +124,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       });
       const refreshedGroups = await listMemoGroups();
       set((state) => ({
+        // 创建成功后先把新 Memo 放到当前列表顶部，随后 WebSocket 事件也可能触发一次全量刷新。
         memos: [memo, ...state.memos],
         groups: refreshedGroups,
         selectedMemoId: memo.id,
@@ -153,6 +164,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       await deleteMemo(selectedMemoId);
       const refreshedGroups = await listMemoGroups();
       set((state) => {
+        // 删除后重新选择列表第一条，保持编辑器始终指向有效 Memo。
         const memos = state.memos.filter((memo) => memo.id !== selectedMemoId);
         return {
           memos,
@@ -199,6 +211,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     }
     const updated = await updateMemoArchive(id, !memo.isArchived);
     set((state) => ({
+      // 当前列表只展示未归档 Memo，因此归档成功后立即从列表中移除。
       memos: state.memos.filter((item) => item.id !== id),
       selectedMemoId: state.selectedMemoId === id ? state.memos.find((item) => item.id !== id)?.id ?? null : state.selectedMemoId,
       groups: state.groups.map((group) =>

@@ -32,9 +32,8 @@
  * ## 降级策略
  * 
  * 若 Tauri 后端不可用（开发环境无 Tauri 支持）：
- * - `getDeviceInfo()` / `getCurrentWindowsUser()` 抛出异常
- * - `catch` 块捕获异常，使用空对象调用 `verifyDesktopUser({})`
- * - 模拟认证流程继续（mock-token）
+ * - 设备信息和 Windows 用户信息服务会降级返回本机可用信息
+ * - 认证流程仍通过后端 `/api/v1/auth/desktop/verify` 完成
  * 
  * @module App
  */
