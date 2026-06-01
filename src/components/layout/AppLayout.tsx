@@ -105,13 +105,13 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
         <div className="space-y-1">
           {!collapsed && <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.status")}</div>}
           {!collapsed && (
-            <div className="mx-1 flex gap-1 rounded-md bg-muted p-1">
+            <div className="mx-1 grid grid-cols-2 gap-1 rounded-md bg-muted p-1">
               {statusFilters.map((filter) => (
                 <button
                   key={filter.value ?? "all"}
                   onClick={() => chooseStatus(filter.value)}
                   className={cn(
-                    "flex-1 rounded-sm px-1 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground",
+                    "h-6 rounded-sm px-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground whitespace-nowrap",
                     activeStatus === filter.value && "bg-primary text-primary-foreground hover:text-primary-foreground"
                   )}
                 >
