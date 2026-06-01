@@ -9,7 +9,7 @@ import type { MemoGroup } from "../types/memo.types";
 
 function extractTitle(content: string): string {
   const firstLine = content.split("\n").find((line) => line.trim().length > 0);
-  return firstLine?.trim().slice(0, 60) || "无标题";
+  return firstLine?.trim().slice(0, 60) || "";
 }
 
 export function QuickMemoWindow() {

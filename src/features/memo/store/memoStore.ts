@@ -133,7 +133,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       // 未选择分组时使用第一个分组。后端也会保证默认分组存在，这里是为了前端请求更明确。
       const fallbackGroupId = activeGroupId ?? groups[0]?.id;
       const memo = await createMemo({
-        title: "无标题",
+        title: "",
         content: "",
         groupId: fallbackGroupId,
         status: activeStatus ?? "normal",

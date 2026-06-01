@@ -82,8 +82,8 @@ npm run tauri build
 - [x] 基础布局：侧边栏 + 应用内自定义标题栏
 - [x] 主窗口关闭原生标题栏，标题栏颜色跟随主题
 - [x] shadcn/ui 基础组件
-- [x] Memo 工作台：列表、分组筛选、状态筛选、Milkdown 可视化编辑器、MD 源码视图
-- [x] Memo 可视化编辑：支持常用 Markdown 排版，编辑效果与阅读效果一致
+- [x] Memo 工作台：列表、分组筛选、状态筛选、Milkdown 双栏编辑器、MD 源码同步
+- [x] Memo 可视化编辑：支持 TopBar、表格、代码块、公式等常用 Markdown 排版能力
 - [x] Memo 图片插入：本地图片转 base64 后作为 Markdown 图片保存到 content
 - [x] 快速 Memo 小窗口
 - [x] 系统托盘与后台运行
@@ -129,8 +129,8 @@ npm run tauri build
 ## Memo 编辑器
 
 - 可视化编辑器使用 `@milkdown/crepe`，开源协议为 MIT，可免费商用
-- 默认使用可视化编辑，普通用户不需要理解 Markdown 源码
-- 需要精细调整内容时，可切换到 MD 源码视图
+- 默认使用双栏编辑，左侧为可视化编辑区，右侧为 MD 源码区
+- 低分辨率下可切换为单独可视化或单独 MD 源码视图
 - 图片当前通过 Crepe 上传回调转为 base64 data URL，并以 Markdown 图片语法保存到 `content`
 - 后续接入服务端上传接口时，可以把图片上传回调替换为“上传文件并返回 URL”的实现，业务数据结构不需要调整
 
@@ -139,6 +139,7 @@ npm run tauri build
 - 主窗口在 `src-tauri/tauri.conf.json` 中设置 `decorations: false`，避免 Windows 原生标题栏和应用内标题栏重复显示
 - 应用内标题栏由 `src/components/layout/AppLayout.tsx` 绘制，支持拖拽、最小化、最大化、关闭
 - 标题栏背景使用主题变量，浅色/深色模式下与页面主题保持一致
+- 主窗口默认尺寸为 1440x800，最小宽度为 1024，兼顾双栏编辑和低分辨率设备
 - 快速 Memo 使用独立 Tauri 窗口，默认隐藏，由全局快捷键唤出
 - 主窗口关闭时隐藏到后台，系统托盘菜单支持显示、隐藏、退出
 

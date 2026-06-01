@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Crepe } from "@milkdown/crepe";
+import { replaceAll } from "@milkdown/kit/utils";
 
 /**
  * 现阶段图片直接以 data URL 写入 Markdown，确保不依赖服务端也能保存和回显。
@@ -28,6 +29,8 @@ interface MemoRichEditorProps {
 
 export default function MemoRichEditor({ value, placeholder, onChange }: MemoRichEditorProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const editorRef = useRef<Crepe | null>(null);
+  const lastMarkdownRef = useRef(value);
   const onChangeRef = useRef(onChange);
 
   useEffect(() => {
@@ -41,17 +44,14 @@ export default function MemoRichEditor({ value, placeholder, onChange }: MemoRic
 
     /**
      * Crepe 内部基于 ProseMirror 管理编辑状态。
-     * value 只作为初始 Markdown 内容使用，父组件会在切换 Memo 或切换视图时通过 key 重新挂载编辑器，
-     * 因此这里不把 value 放进依赖，避免用户每次输入都触发编辑器重建。
+     * 这里默认打开 Crepe 的完整编辑体验（TopBar、表格、代码块、公式等），只关闭需要服务端能力的 AI。
      */
     const editor = new Crepe({
       root: rootRef.current,
       defaultValue: value,
       features: {
+        [Crepe.Feature.TopBar]: true,
         [Crepe.Feature.AI]: false,
-        [Crepe.Feature.CodeMirror]: false,
-        [Crepe.Feature.Latex]: false,
-        [Crepe.Feature.Table]: false,
       },
       featureConfigs: {
         [Crepe.Feature.Placeholder]: {
@@ -67,16 +67,30 @@ export default function MemoRichEditor({ value, placeholder, onChange }: MemoRic
       },
     }).on((listener) => {
       listener.markdownUpdated((_, markdown) => {
+        lastMarkdownRef.current = markdown;
         onChangeRef.current(markdown);
       });
     });
 
+    editorRef.current = editor;
+    lastMarkdownRef.current = value;
     void editor.create();
 
     return () => {
+      editorRef.current = null;
       void editor.destroy();
     };
   }, [placeholder]);
+
+  useEffect(() => {
+    if (!editorRef.current || value === lastMarkdownRef.current) {
+      return;
+    }
+
+    // 右侧 MD 源码区修改后，用 Milkdown 的 replaceAll 同步回左侧可视化编辑器。
+    lastMarkdownRef.current = value;
+    editorRef.current.editor.action(replaceAll(value, true));
+  }, [value]);
 
   return (
     <div className="memo-crepe-editor h-full min-h-0 overflow-y-auto rounded-md border border-input bg-card text-sm leading-7 text-foreground outline-none transition-all duration-150 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-primary/10">

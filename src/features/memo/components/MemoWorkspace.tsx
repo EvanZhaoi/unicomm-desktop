@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   Archive,
+  Columns2,
   FileCode2,
   FileText,
   Folder,
@@ -70,7 +71,7 @@ export function MemoWorkspace() {
     [memos, selectedMemoId]
   );
   const [draft, setDraft] = useState<Memo | null>(null);
-  const [editorMode, setEditorMode] = useState<"visual" | "markdown">("visual");
+  const [editorMode, setEditorMode] = useState<"split" | "visual" | "markdown">("split");
 
   useEffect(() => {
     fetchInitialData();
@@ -180,7 +181,14 @@ export function MemoWorkspace() {
               >
                 <div className="flex items-center gap-2">
                   {memo.isTop && <span className="text-xs text-primary">📌</span>}
-                  <div className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{memo.title}</div>
+                  <div
+                    className={cn(
+                      "min-w-0 flex-1 truncate text-sm font-medium",
+                      memo.title ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    {memo.title || t("memo.title.placeholder")}
+                  </div>
                   {memo.isFavorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
                 </div>
                 <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -209,8 +217,8 @@ export function MemoWorkspace() {
                 className="w-full border-0 bg-transparent text-xl font-semibold tracking-normal text-foreground outline-none placeholder:text-muted-foreground"
                 placeholder={t("memo.title.placeholder")}
               />
-              <div className="mt-3 flex items-center justify-between gap-4 text-xs text-muted-foreground">
-                <div className="flex min-w-0 items-center gap-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+                <div className="flex min-w-0 flex-wrap items-center gap-3">
                   <label className="inline-flex h-7 items-center gap-1.5 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground">
                     <Folder className="h-3.5 w-3.5" />
                     <span className="shrink-0">{t("memo.groups")}</span>
@@ -227,14 +235,14 @@ export function MemoWorkspace() {
                       ))}
                     </Select>
                   </label>
-                  <div className="flex h-7 items-center rounded-md bg-muted p-0.5">
+                  <div className="flex h-7 shrink-0 items-center rounded-md bg-muted p-0.5">
                     {memoStatusOptions.map((status) => (
                       <button
                         key={status.value}
                         type="button"
                         onClick={() => setDraft({ ...draft, status: status.value })}
                         className={cn(
-                          "inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors hover:text-foreground",
+                          "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-xs font-medium transition-colors hover:text-foreground",
                           draft.status === status.value
                             ? "bg-card text-foreground shadow-sm"
                             : "text-muted-foreground"
@@ -250,9 +258,20 @@ export function MemoWorkspace() {
                 <div className="flex shrink-0 gap-0.5 rounded-md bg-muted p-0.5">
                   <button
                     type="button"
+                    onClick={() => setEditorMode("split")}
+                    className={cn(
+                      "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:text-foreground",
+                      editorMode === "split" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                    )}
+                  >
+                    <Columns2 className="h-3 w-3" />
+                    {t("memo.editor.split")}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setEditorMode("visual")}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:text-foreground",
+                      "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:text-foreground",
                       editorMode === "visual" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                     )}
                   >
@@ -263,7 +282,7 @@ export function MemoWorkspace() {
                     type="button"
                     onClick={() => setEditorMode("markdown")}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:text-foreground",
+                      "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:text-foreground",
                       editorMode === "markdown" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                     )}
                   >
@@ -274,23 +293,38 @@ export function MemoWorkspace() {
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-hidden p-6">
-              {editorMode === "markdown" ? (
-                <textarea
-                  value={draft.content}
-                  onChange={(event) => setDraft({ ...draft, content: event.target.value })}
-                  className="h-full w-full resize-none rounded-md border border-input bg-background p-4 font-mono text-sm leading-7 text-foreground outline-none transition-all duration-150 placeholder:text-muted-foreground focus:border-ring focus:ring-[3px] focus:ring-primary/10"
-                  placeholder={t("memo.editor.placeholder")}
-                />
-              ) : (
-                <Suspense fallback={<EmptyMemoState icon={<FileText className="h-5 w-5" />} title={t("memo.loading")} />}>
-                  <MemoRichEditor
-                    key={`${draft.id}-${draft.updateTime}`}
-                    value={draft.content}
-                    placeholder={t("memo.editor.placeholder")}
-                    onChange={(content) => setDraft({ ...draft, content })}
-                  />
-                </Suspense>
-              )}
+              <div
+                className={cn(
+                  "grid h-full min-h-0 gap-3",
+                  editorMode === "split"
+                    ? "grid-rows-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)] xl:grid-rows-1"
+                    : "grid-cols-1"
+                )}
+              >
+                {editorMode !== "markdown" && (
+                  <Suspense fallback={<EmptyMemoState icon={<FileText className="h-5 w-5" />} title={t("memo.loading")} />}>
+                    <MemoRichEditor
+                      key={`${draft.id}-${draft.updateTime}`}
+                      value={draft.content}
+                      placeholder={t("memo.editor.placeholder")}
+                      onChange={(content) => setDraft({ ...draft, content })}
+                    />
+                  </Suspense>
+                )}
+                {editorMode !== "visual" && (
+                  <section className="flex min-h-0 flex-col overflow-hidden rounded-md border border-input bg-background">
+                    <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3 text-xs font-medium text-muted-foreground">
+                      <span>{t("memo.editor.markdown")}</span>
+                    </div>
+                    <textarea
+                      value={draft.content}
+                      onChange={(event) => setDraft({ ...draft, content: event.target.value })}
+                      className="min-h-0 flex-1 resize-none bg-background p-4 font-mono text-sm leading-7 text-foreground outline-none placeholder:text-muted-foreground"
+                      placeholder={t("memo.editor.placeholder")}
+                    />
+                  </section>
+                )}
+              </div>
             </div>
             <div className="flex h-11 shrink-0 items-center justify-between border-t border-border bg-card px-4">
               <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
