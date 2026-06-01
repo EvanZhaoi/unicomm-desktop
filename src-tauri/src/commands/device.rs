@@ -19,6 +19,7 @@ use serde::Serialize;
 /// - `os_version`: 操作系统版本
 /// - `app_version`: UniComm 应用版本（从 Cargo.toml 读取）
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeviceInfo {
     /// 设备唯一标识
     ///

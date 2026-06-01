@@ -4,6 +4,14 @@
 
 use serde::Serialize;
 
+fn read_windows_domain(computer_name: &str) -> Option<String> {
+    ["USERDOMAIN", "USERDNSDOMAIN"]
+        .iter()
+        .filter_map(|key| std::env::var(key).ok())
+        .map(|value| value.trim().to_string())
+        .find(|value| !value.is_empty() && value != computer_name)
+}
+
 /// Windows 用户信息结构
 ///
 /// 包含当前 Windows 登录用户的身份信息。
@@ -17,6 +25,7 @@ use serde::Serialize;
 /// - `os`: 操作系统类型（如 "windows"、"macos"、"linux"）
 /// - `os_version`: 操作系统版本字符串
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WindowsUserInfo {
     /// Windows 用户名
     pub username: String,
@@ -55,10 +64,12 @@ pub struct WindowsUserInfo {
 /// ```
 #[tauri::command]
 pub fn get_current_windows_user() -> Result<WindowsUserInfo, String> {
+    let computer_name = whoami::devicename();
+
     Ok(WindowsUserInfo {
         username: whoami::username(),
-        domain: None,
-        computer_name: whoami::devicename(),
+        domain: read_windows_domain(&computer_name),
+        computer_name,
         os: std::env::consts::OS.to_string(),
         os_version: whoami::distro(),
     })
