@@ -71,31 +71,39 @@
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #09090b;
+  --background: #f8f9fa;
+  --foreground: #1a1a1a;
   --card: #ffffff;
-  --card-foreground: #09090b;
+  --card-foreground: #1a1a1a;
   --popover: #ffffff;
-  --popover-foreground: #09090b;
+  --popover-foreground: #1a1a1a;
   --primary: #2563eb;
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
+  --secondary: #e9ecef;
+  --secondary-foreground: #495057;
+  --muted: #f1f3f5;
+  --muted-foreground: #868e96;
+  --accent: #f1f3f5;
+  --accent-foreground: #1a1a1a;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
+  --border: #e9ecef;
+  --input: #e9ecef;
   --ring: #2563eb;
-  --radius-sm: 0.25rem;
+  --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
   --font-zh: "Alibaba PuHuiTi 3.0", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", sans-serif;
   --font-ja: "Alibaba Sans JP", "Alibaba PuHuiTi 3.0", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif;
   --font-app: var(--font-zh);
@@ -110,14 +118,14 @@
   --foreground: #fafafa;
   --card: #18181b;
   --card-foreground: #fafafa;
-  --popover: #18181b;
+  --popover: #1f1f23;
   --popover-foreground: #fafafa;
   --primary: #3b82f6;
   --primary-foreground: #ffffff;
   --secondary: #27272a;
   --secondary-foreground: #fafafa;
   --muted: #27272a;
-  --muted-foreground: #a1a1aa;
+  --muted-foreground: #71717a;
   --accent: #27272a;
   --accent-foreground: #fafafa;
   --destructive: #dc2626;
@@ -125,6 +133,9 @@
   --border: #27272a;
   --input: #27272a;
   --ring: #3b82f6;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -135,4 +146,32 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-app);
+  overflow: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted-foreground) 28%, transparent);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
 }

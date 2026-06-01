@@ -21,6 +21,7 @@
  * @module features/auth/components
  */
 
+import { ShieldX } from "lucide-react";
 import { useI18n } from "@/i18n/useI18n";
 
 /**
@@ -51,14 +52,13 @@ export function AuthErrorView({ message }: AuthErrorViewProps) {
   const { t } = useI18n();
 
   return (
-    <div className="flex items-center justify-center p-8">
-      <div className="text-center text-destructive">
-        {/* 错误标题 */}
-        <p className="text-lg font-medium">{t("auth.failed")}</p>
-        {/* 可选的错误详情 */}
-        {message && (
-          <p className="text-sm mt-2 text-muted-foreground">{message}</p>
-        )}
+    <div className="flex h-screen items-center justify-center bg-background p-8">
+      <div className="rounded-xl border border-border bg-card px-10 py-9 text-center shadow-sm">
+        <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+          <ShieldX className="h-5 w-5" />
+        </div>
+        <p className="text-base font-medium text-destructive">{t("auth.failed")}</p>
+        {message && <p className="mt-2 text-sm text-muted-foreground">{message}</p>}
       </div>
     </div>
   );

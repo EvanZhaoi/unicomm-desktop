@@ -23,6 +23,7 @@
  * @module features/auth/components
  */
 
+import { ShieldAlert, WifiOff } from "lucide-react";
 import { useI18n } from "@/i18n/useI18n";
 import { useAuthStore } from "../store/authStore";
 
@@ -46,11 +47,11 @@ export function AuthStatusView() {
   // 正在验证中
   if (authStatus === "checking") {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          {/* 加载动画 spinner */}
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-muted-foreground">{t("auth.checking")}</p>
+      <div className="flex h-screen items-center justify-center bg-background p-8">
+        <div className="rounded-xl border border-border bg-card px-10 py-9 text-center shadow-sm">
+          <div className="mx-auto mb-5 h-10 w-10 animate-spin rounded-full border-2 border-primary/25 border-t-primary" />
+          <p className="text-base font-medium text-foreground">{t("auth.checking")}</p>
+          <p className="mt-2 text-sm text-muted-foreground">即将进入 UniComm 工作空间</p>
         </div>
       </div>
     );
@@ -59,10 +60,13 @@ export function AuthStatusView() {
   // 用户未被授权
   if (authStatus === "rejected") {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center text-destructive">
-          <p className="text-lg font-medium">{t("auth.rejected.title")}</p>
-          <p className="text-sm mt-2">{t("auth.rejected.description")}</p>
+      <div className="flex h-screen items-center justify-center bg-background p-8">
+        <div className="rounded-xl border border-border bg-card px-10 py-9 text-center shadow-sm">
+          <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+            <ShieldAlert className="h-5 w-5" />
+          </div>
+          <p className="text-base font-medium text-destructive">{t("auth.rejected.title")}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t("auth.rejected.description")}</p>
         </div>
       </div>
     );
@@ -71,10 +75,13 @@ export function AuthStatusView() {
   // 无法连接认证服务器
   if (authStatus === "offline") {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center text-muted-foreground">
-          <p className="text-lg font-medium">{t("auth.offline.title")}</p>
-          <p className="text-sm mt-2">{t("auth.offline.description")}</p>
+      <div className="flex h-screen items-center justify-center bg-background p-8">
+        <div className="rounded-xl border border-border bg-card px-10 py-9 text-center shadow-sm">
+          <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <WifiOff className="h-5 w-5" />
+          </div>
+          <p className="text-base font-medium text-foreground">{t("auth.offline.title")}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t("auth.offline.description")}</p>
         </div>
       </div>
     );

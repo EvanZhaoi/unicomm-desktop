@@ -35,8 +35,9 @@
  */
 
 import type { ReactNode } from "react";
-import { FileText, Menu, Settings } from "lucide-react";
+import { FileText, Menu, Settings, Sparkles } from "lucide-react";
 import { useI18n } from "@/i18n/useI18n";
+import { cn } from "@/utils/cn";
 
 export type AppView = "memo" | "settings";
 
@@ -64,18 +65,23 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
 
   return (
     <aside
-      className={`flex flex-col border-r border-border bg-card h-full transition-all duration-200 ${
+      className={cn(
+        "flex h-full shrink-0 flex-col border-r border-border bg-card shadow-sm transition-all duration-200 ease-out",
         collapsed ? "w-16" : "w-64"
-      }`}
+      )}
     >
-      {/* Logo 区域 */}
-      <div className="p-4 border-b border-border">
-        <h1 className={`font-semibold ${collapsed ? "text-center" : ""}`}>
-          {collapsed ? "UC" : "UniComm"}
-        </h1>
+      <div className="flex h-14 items-center gap-3 border-b border-border px-4">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+          <Sparkles className="h-4 w-4" />
+        </div>
+        {!collapsed && (
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-semibold tracking-normal text-foreground">UniComm</h1>
+            <p className="truncate text-[11px] text-muted-foreground">{t("nav.workspace")}</p>
+          </div>
+        )}
       </div>
-      {/* 导航菜单 */}
-      <nav className="flex-1 p-2 space-y-1">
+      <nav className="flex-1 space-y-1 p-2">
         <NavItem
           icon={<FileText className="h-4 w-4" />}
           label={t("nav.memo")}
@@ -91,6 +97,14 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
           onClick={() => onViewChange("settings")}
         />
       </nav>
+      {!collapsed && (
+        <div className="border-t border-border p-3">
+          <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span>{t("nav.ready")}</span>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
@@ -99,7 +113,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
  * 导航项组件属性
  */
 interface NavItemProps {
-  /** 图标（emoji 格式） */
+  /** 图标 */
   icon: ReactNode;
   /** 导航标签文字 */
   label: string;
@@ -128,9 +142,12 @@ function NavItem({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-3 w-full p-2 rounded-md hover:bg-accent transition-colors ${
-        collapsed ? "justify-center" : ""
-      } ${active ? "bg-accent text-accent-foreground" : ""}`}
+      title={collapsed ? label : undefined}
+      className={cn(
+        "flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground",
+        collapsed && "mx-auto w-10 justify-center px-0",
+        active && "bg-accent font-medium text-accent-foreground"
+      )}
     >
       {icon}
       {!collapsed && <span className="text-sm">{label}</span>}
@@ -160,18 +177,17 @@ interface HeaderProps {
  */
 export function Header({ userName, onToggleSidebar }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between h-14 px-4 border-b border-border bg-card">
-      {/* 左侧：菜单切换按钮 */}
+    <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
       <button
         onClick={onToggleSidebar}
-        className="p-2 hover:bg-accent rounded-md transition-colors"
+        className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        title="Toggle sidebar"
       >
         <Menu className="h-4 w-4" />
       </button>
-      {/* 右侧：用户信息 */}
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">{userName ?? "未登录"}</span>
-        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-sm">
           {userName?.charAt(0) ?? "?"}
         </div>
       </div>
@@ -210,15 +226,11 @@ export function AppLayout({
   onViewChange,
 }: AppLayoutProps) {
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* 侧边栏 */}
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <Sidebar collapsed={sidebarCollapsed} activeView={activeView} onViewChange={onViewChange} />
-      {/* 右侧内容区 */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        {/* 顶部栏 */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Header onToggleSidebar={onToggleSidebar} />
-        {/* 主内容区域 */}
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-hidden p-4">{children}</main>
       </div>
     </div>
   );
