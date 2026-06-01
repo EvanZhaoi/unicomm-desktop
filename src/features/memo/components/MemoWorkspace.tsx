@@ -115,11 +115,11 @@ export function MemoWorkspace() {
   };
 
   return (
-    <div className="grid h-full grid-cols-[320px_minmax(0,1fr)] overflow-hidden bg-background">
+    <div className="grid h-full grid-cols-[280px_minmax(0,1fr)] overflow-hidden bg-background">
       <section className="min-h-0 border-r border-border bg-card">
-        <div className="border-b border-border p-4">
+        <div className="border-b border-border p-3">
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
             <input
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
@@ -128,14 +128,14 @@ export function MemoWorkspace() {
                   search();
                 }
               }}
-              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-9 text-sm outline-none transition-all duration-150 focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+              className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-9 text-sm outline-none transition-all duration-150 focus:border-ring focus:ring-[3px] focus:ring-primary/10"
               placeholder={t("memo.search.placeholder")}
             />
             {keyword && (
               <button
                 type="button"
                 onClick={() => setKeyword("")}
-                className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="absolute right-2 top-1.5 flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 title={t("memo.search")}
               >
                 <X className="h-3.5 w-3.5" />
@@ -146,17 +146,17 @@ export function MemoWorkspace() {
         <button
           onClick={createMemo}
           disabled={isSaving}
-          className="mx-4 my-3 flex w-[calc(100%-2rem)] items-center justify-center gap-1 rounded-md bg-primary px-3 py-2.5 text-[13px] font-medium text-primary-foreground shadow-sm transition-colors duration-150 hover:bg-primary/90 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
+          className="mx-3 my-2.5 flex w-[calc(100%-1.5rem)] items-center justify-center gap-1 rounded-md bg-primary px-3 py-2 text-[13px] font-medium text-primary-foreground shadow-sm transition-colors duration-150 hover:bg-primary/90 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
         >
           <Plus className="h-4 w-4" />
           {t("memo.new")}
         </button>
-        <div className="px-4 pb-2">
+        <div className="px-3 pb-2">
           <Select
             value={activeGroupId ?? ""}
             onChange={(event) => chooseGroup(event.target.value ? Number(event.target.value) : null)}
             className="w-full"
-            selectClassName="h-8 text-xs text-muted-foreground"
+            selectClassName="h-7 text-xs text-muted-foreground"
           >
             <option value="">{t("memo.all")}</option>
             {groups.map((group) => (
@@ -166,7 +166,7 @@ export function MemoWorkspace() {
             ))}
           </Select>
         </div>
-        <div className="h-[calc(100%-10.75rem)] overflow-auto">
+        <div className="h-[calc(100%-9.25rem)] overflow-auto">
           {isLoading ? (
             <EmptyMemoState icon={<Search className="h-5 w-5" />} title={t("memo.loading")} />
           ) : memos.length === 0 ? (
@@ -176,7 +176,7 @@ export function MemoWorkspace() {
               <button
                 key={memo.id}
                 className={cn(
-                  "block w-full border-l-2 border-b border-l-transparent border-border p-4 text-left transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
+                  "block w-full border-l-2 border-b border-l-transparent border-border px-3 py-2.5 text-left transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
                   selectedMemoId === memo.id && "border-l-primary bg-accent"
                 )}
                 onClick={() => selectMemo(memo.id)}
@@ -196,7 +196,7 @@ export function MemoWorkspace() {
                 <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                   {memo.content || t("memo.noContent")}
                 </div>
-                <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+                <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
                   <span>{formatDate(memo.updateTime)}</span>
                   <span className="inline-flex items-center gap-1">
                     <span className={cn("h-1.5 w-1.5 rounded-full", memo.status === "todo" ? "bg-yellow-500" : memo.status === "done" ? "bg-blue-500" : "bg-emerald-500")} />
@@ -212,7 +212,7 @@ export function MemoWorkspace() {
       <main className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-background">
         {draft ? (
           <>
-            <div className="shrink-0 border-b border-border bg-card p-6">
+            <div className="shrink-0 border-b border-border bg-card p-4">
               <input
                 value={draft.title}
                 onChange={(event) => setDraft({ ...draft, title: event.target.value })}
@@ -294,7 +294,7 @@ export function MemoWorkspace() {
                 </div>
               </div>
             </div>
-            <div className="min-h-0 flex-1 overflow-hidden p-6">
+            <div className="min-h-0 flex-1 overflow-hidden p-4">
               <div
                 className={cn(
                   "grid h-full min-h-0 gap-3",
@@ -315,7 +315,7 @@ export function MemoWorkspace() {
                 )}
                 {editorMode !== "visual" && (
                   <section className="flex min-h-0 flex-col overflow-hidden rounded-md border border-input bg-background">
-                    <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3 text-xs font-medium text-muted-foreground">
+                    <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-3 text-xs font-medium text-muted-foreground">
                       <span>{t("memo.editor.markdown")}</span>
                     </div>
                     <textarea
@@ -324,15 +324,15 @@ export function MemoWorkspace() {
                         setDraft({ ...draft, content: event.target.value });
                         setMarkdownSyncVersion((version) => version + 1);
                       }}
-                      className="min-h-0 flex-1 resize-none bg-background p-4 font-mono text-sm leading-7 text-foreground outline-none placeholder:text-muted-foreground"
+                      className="min-h-0 flex-1 resize-none bg-background p-3 font-mono text-sm leading-7 text-foreground outline-none placeholder:text-muted-foreground"
                       placeholder={t("memo.editor.placeholder")}
                     />
                   </section>
                 )}
               </div>
             </div>
-            <div className="flex h-11 shrink-0 items-center justify-between border-t border-border bg-card px-4">
-              <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+            <div className="flex h-10 shrink-0 items-center justify-between border-t border-border bg-card px-4">
+              <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{t("memo.editor.saved")}</span>
                 {error && <span className="text-destructive">{error}</span>}
               </div>
@@ -362,7 +362,7 @@ export function MemoWorkspace() {
 
 function EmptyMemoState({ icon, title }: { icon: ReactNode; title: string }) {
   return (
-    <div className="flex h-full items-center justify-center p-6">
+    <div className="flex h-full items-center justify-center p-4">
       <div className="text-center">
         <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm">
           {icon}

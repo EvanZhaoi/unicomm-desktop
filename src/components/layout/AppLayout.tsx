@@ -10,7 +10,7 @@
  * │              Custom Titlebar               │
  * ├───────────┬───────────────────────────────│
  * │  Sidebar  │                               │
- * │  (220px)  │        Main Content            │
+ * │  (180px)  │        Main Content            │
  * │  Logo     │                               │
  * │  📝 备忘录 │                               │
  * │  ⚙️ 设置  │                               │
@@ -79,10 +79,10 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
     <aside
       className={cn(
         "flex h-full shrink-0 flex-col border-r border-border bg-card shadow-sm transition-all duration-200 ease-out",
-        collapsed ? "w-16" : "w-[220px]"
+        collapsed ? "w-14" : "w-[180px]"
       )}
     >
-      <div className="border-b border-border p-4">
+      <div className="border-b border-border p-3">
         {!collapsed && (
           <h1 className="text-base font-semibold tracking-normal text-foreground">UniComm</h1>
         )}
@@ -133,7 +133,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
         </div>
       </nav>
       {!collapsed && (
-        <div className="border-t border-border p-4">
+        <div className="border-t border-border p-3">
           <div className="mb-2 flex gap-0.5 rounded-md bg-muted p-0.5">
             <button
               title="Light"
@@ -203,8 +203,8 @@ function NavItem({
       onClick={onClick}
       title={collapsed ? label : undefined}
       className={cn(
-        "flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground",
-        collapsed && "mx-auto w-10 justify-center px-0",
+        "flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground",
+        collapsed && "mx-auto w-9 justify-center px-0",
         active && "bg-accent font-medium text-accent-foreground"
       )}
     >
@@ -252,15 +252,15 @@ function Titlebar() {
   };
 
   return (
-    <div className="flex h-12 select-none items-center justify-between border-b border-border bg-background px-3 text-xs text-muted-foreground [-webkit-app-region:drag]">
+    <div className="flex h-8 select-none items-center justify-between border-b border-border bg-background px-3 text-xs text-muted-foreground [-webkit-app-region:drag]">
       <div className="flex items-center gap-2.5">
         <span className="text-primary">●</span>
         <span>UniComm - 企业桌面协作平台</span>
       </div>
       <div className="flex gap-1 [-webkit-app-region:no-drag]">
-        <button onClick={minimizeWindow} className="flex h-9 w-11 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground"><Minus className="h-3.5 w-3.5" /></button>
-        <button onClick={toggleMaximizeWindow} className="flex h-9 w-11 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground"><Square className="h-3 w-3" /></button>
-        <button onClick={closeWindow} className="flex h-9 w-11 items-center justify-center rounded-md transition-colors hover:bg-destructive hover:text-destructive-foreground"><X className="h-3.5 w-3.5" /></button>
+        <button onClick={minimizeWindow} className="flex h-7 w-9 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground"><Minus className="h-3.5 w-3.5" /></button>
+        <button onClick={toggleMaximizeWindow} className="flex h-7 w-9 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground"><Square className="h-3 w-3" /></button>
+        <button onClick={closeWindow} className="flex h-7 w-9 items-center justify-center rounded-md transition-colors hover:bg-destructive hover:text-destructive-foreground"><X className="h-3.5 w-3.5" /></button>
       </div>
     </div>
   );

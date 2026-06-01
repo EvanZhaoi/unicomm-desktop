@@ -74,15 +74,15 @@ export function SettingsPanel() {
   };
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 px-2 py-2">
+    <div className="mx-auto flex max-w-4xl flex-col gap-4 px-2 py-2">
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="flex h-14 items-center gap-2 border-b border-border bg-muted px-5">
+        <div className="flex h-12 items-center gap-2 border-b border-border bg-muted px-4">
           <Globe2 className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">{t("settings.language.title")}</h2>
         </div>
 
-        <div className="p-6">
-          <label className="flex items-center justify-between gap-6 border-b border-border pb-5">
+        <div className="p-4">
+          <label className="flex items-center justify-between gap-4 border-b border-border pb-4">
             <span>
               <span className="block text-sm font-medium text-foreground">{t("settings.language.label")}</span>
               <span className="mt-1 block text-xs text-muted-foreground">
@@ -103,7 +103,7 @@ export function SettingsPanel() {
             </Select>
           </label>
 
-          <div className="flex items-center justify-between gap-6 pt-5">
+          <div className="flex items-center justify-between gap-4 pt-4">
             <span>
               <span className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <Type className="h-4 w-4 text-muted-foreground" />
@@ -119,13 +119,13 @@ export function SettingsPanel() {
       </section>
 
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="flex h-14 items-center gap-2 border-b border-border bg-muted px-5">
+        <div className="flex h-12 items-center gap-2 border-b border-border bg-muted px-4">
           <Keyboard className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">{t("settings.shortcuts.title")}</h2>
         </div>
 
-        <div className="p-6">
-          <label className="flex items-center justify-between gap-6 border-b border-border pb-5">
+        <div className="p-4">
+          <label className="flex items-center justify-between gap-4 border-b border-border pb-4">
             <span>
               <span className="block text-sm font-medium text-foreground">{t("settings.shortcuts.showMain")}</span>
               <span className="mt-1 block text-xs text-muted-foreground">{t("settings.shortcuts.showMainHint")}</span>
@@ -133,12 +133,12 @@ export function SettingsPanel() {
             <input
               value={showMain}
               onChange={(event) => setShowMain(event.target.value)}
-              className="h-9 min-w-40 rounded-sm border border-input bg-background px-3 text-sm outline-none transition-all duration-150 focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+              className="h-8 min-w-40 rounded-sm border border-input bg-background px-3 text-sm outline-none transition-all duration-150 focus:border-ring focus:ring-[3px] focus:ring-primary/10"
               placeholder="Ctrl+Alt+M"
             />
           </label>
 
-          <label className="flex items-center justify-between gap-6 border-b border-border py-5">
+          <label className="flex items-center justify-between gap-4 border-b border-border py-4">
             <span>
               <span className="block text-sm font-medium text-foreground">{t("settings.shortcuts.quickMemo")}</span>
               <span className="mt-1 block text-xs text-muted-foreground">{t("settings.shortcuts.quickMemoHint")}</span>
@@ -146,12 +146,12 @@ export function SettingsPanel() {
             <input
               value={quickMemo}
               onChange={(event) => setQuickMemo(event.target.value)}
-              className="h-9 min-w-40 rounded-sm border border-input bg-background px-3 text-sm outline-none transition-all duration-150 focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+              className="h-8 min-w-40 rounded-sm border border-input bg-background px-3 text-sm outline-none transition-all duration-150 focus:border-ring focus:ring-[3px] focus:ring-primary/10"
               placeholder="Ctrl+Alt+N"
             />
           </label>
 
-          <div className="flex items-center justify-between gap-3 pt-5">
+          <div className="flex items-center justify-between gap-3 pt-4">
             <div className="min-h-5 text-sm">
               {error && <span className="text-destructive">{error}</span>}
               {message && <span className="text-muted-foreground">{message}</span>}
