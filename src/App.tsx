@@ -14,9 +14,10 @@
  *     ├── 未认证 → AuthStatusView（显示认证状态/错误）
  *     └── 已认证 → AppLayout
  *         ├── Sidebar
- *         ├── Header
+ *         ├── 自定义窗口标题栏
  *         └── main content
- *             └── 欢迎卡片
+ *             ├── MemoWorkspace
+ *             └── SettingsPanel
  * ```
  * 
  * ## 初始化流程
@@ -31,9 +32,8 @@
  * 
  * ## 降级策略
  * 
- * 若 Tauri 后端不可用（开发环境无 Tauri 支持）：
- * - 设备信息和 Windows 用户信息服务会降级返回本机可用信息
- * - 认证流程仍通过后端 `/api/v1/auth/desktop/verify` 完成
+ * 若 Tauri 后端不可用，认证流程会停留在对应错误状态。
+ * 桌面能力统一由 `src/desktop/*` 封装，避免业务组件直接依赖 Rust 命令细节。
  * 
  * @module App
  */
@@ -42,7 +42,7 @@ import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 // 认证状态管理
 import { useAuthStore } from "./features/auth/store/authStore";
-// 应用设置（侧边栏折叠状态）
+// 应用布局设置（当前主要使用侧边栏折叠状态）
 import { useSettingsStore } from "./stores/settings.store";
 
 // 布局组件
@@ -163,10 +163,10 @@ function AppContent() {
    * 认证成功：渲染主界面
    * 
    * 包含：
-   * - AppLayout 布局容器
-   * - 欢迎信息卡片
-   * - 快捷操作入口（备忘录功能开发中）
-   */
+ * - AppLayout 布局容器：包含无原生装饰窗口下的自定义标题栏和侧边栏
+ * - MemoWorkspace：主 Memo 工作区
+ * - SettingsPanel：语言、字体和快捷键设置
+ */
   return (
     <AppLayout
       sidebarCollapsed={sidebarCollapsed}

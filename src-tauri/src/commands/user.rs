@@ -4,6 +4,11 @@
 
 use serde::Serialize;
 
+/// 读取当前 Windows 登录域。
+///
+/// 企业域环境通常会提供 `USERDOMAIN` 或 `USERDNSDOMAIN`。
+/// 当用户是本机账户时，`USERDOMAIN` 可能等于计算机名；这种情况不作为域名返回，
+/// 避免认证请求把本机名误认为 AD 域。
 fn read_windows_domain(computer_name: &str) -> Option<String> {
     ["USERDOMAIN", "USERDNSDOMAIN"]
         .iter()

@@ -32,6 +32,9 @@
 //!     ▼ (组合后调用后端)
 //! POST /api/v1/auth/desktop/verify
 //! ```
+//!
+//! 主窗口关闭了系统原生标题栏，由 React 的 `AppLayout.Titlebar` 绘制自定义标题栏。
+//! 快速 Memo 窗口仍使用系统标题栏，保持轻量窗口的原生关闭/移动体验。
 
 pub mod commands;
 

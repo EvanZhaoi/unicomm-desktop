@@ -7,11 +7,11 @@
  * 
  * ```
  * ┌────────────────────────────────────────────┐
- * │  Sidebar  │         Header                  │
- * │  (w-64)   ├───────────────────────────────│
- * │           │                               │
- * │  Logo     │        Main Content            │
- * │  ────     │                               │
+ * │              Custom Titlebar               │
+ * ├───────────┬───────────────────────────────│
+ * │  Sidebar  │                               │
+ * │  (220px)  │        Main Content            │
+ * │  Logo     │                               │
  * │  📝 备忘录 │                               │
  * │  ⚙️ 设置  │                               │
  * │           │                               │
@@ -215,6 +215,12 @@ function NavItem({
   );
 }
 
+/**
+ * 无原生窗口装饰时使用的应用内标题栏。
+ *
+ * 主窗口在 `tauri.conf.json` 中关闭了系统标题栏，因此这里负责拖拽区域、
+ * 最小化、最大化和关闭动作。背景使用 `bg-background`，保持和当前主题一致。
+ */
 function Titlebar() {
   const minimizeWindow = async () => {
     try {

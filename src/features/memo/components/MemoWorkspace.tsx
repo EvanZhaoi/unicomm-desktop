@@ -6,8 +6,10 @@ import {
   Bold,
   CheckSquare,
   Code,
+  FileCode2,
   FileText,
   Heading1,
+  Image,
   Inbox,
   Italic,
   Link,
@@ -43,6 +45,178 @@ function memoStatusKey(status: Memo["status"]) {
   return `memo.status.${status}` as const;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderInlineMarkdown(value: string): string {
+  return escapeHtml(value)
+    .replace(/!\[([^\]]*)\]\((data:image\/[^)]+|https?:\/\/[^)]+)\)/g, '<img src="$2" alt="$1" />')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/~~([^~]+)~~/g, "<s>$1</s>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+
+function markdownToHtml(content: string): string {
+  const lines = content.split("\n");
+  const html: string[] = [];
+  let inCodeBlock = false;
+  let codeLines: string[] = [];
+
+  lines.forEach((line) => {
+    if (line.startsWith("```")) {
+      if (inCodeBlock) {
+        html.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+        codeLines = [];
+      }
+      inCodeBlock = !inCodeBlock;
+      return;
+    }
+
+    if (inCodeBlock) {
+      codeLines.push(line);
+      return;
+    }
+
+    if (line.startsWith("# ")) {
+      html.push(`<h1>${renderInlineMarkdown(line.slice(2))}</h1>`);
+      return;
+    }
+    if (line.startsWith("## ")) {
+      html.push(`<h2>${renderInlineMarkdown(line.slice(3))}</h2>`);
+      return;
+    }
+    if (line.startsWith("- [ ] ")) {
+      html.push(`<p><input type="checkbox" disabled /> ${renderInlineMarkdown(line.slice(6))}</p>`);
+      return;
+    }
+    if (line.startsWith("- ")) {
+      html.push(`<ul><li>${renderInlineMarkdown(line.slice(2))}</li></ul>`);
+      return;
+    }
+    if (/^\d+\.\s/.test(line)) {
+      html.push(`<ol><li>${renderInlineMarkdown(line.replace(/^\d+\.\s/, ""))}</li></ol>`);
+      return;
+    }
+    if (line.startsWith("> ")) {
+      html.push(`<blockquote>${renderInlineMarkdown(line.slice(2))}</blockquote>`);
+      return;
+    }
+    if (line === "---") {
+      html.push("<hr />");
+      return;
+    }
+    if (!line.trim()) {
+      html.push("<p><br /></p>");
+      return;
+    }
+    html.push(`<p>${renderInlineMarkdown(line)}</p>`);
+  });
+
+  if (codeLines.length > 0) {
+    html.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+  }
+
+  return html.join("");
+}
+
+function inlineNodeToMarkdown(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent ?? "";
+  }
+
+  if (!(node instanceof HTMLElement)) {
+    return "";
+  }
+
+  const childText = Array.from(node.childNodes).map(inlineNodeToMarkdown).join("");
+  const tagName = node.tagName.toLowerCase();
+
+  if (tagName === "strong" || tagName === "b") {
+    return `**${childText}**`;
+  }
+  if (tagName === "em" || tagName === "i") {
+    return `*${childText}*`;
+  }
+  if (tagName === "s" || tagName === "strike") {
+    return `~~${childText}~~`;
+  }
+  if (tagName === "code") {
+    return `\`${childText}\``;
+  }
+  if (tagName === "a") {
+    return `[${childText}](${node.getAttribute("href") ?? ""})`;
+  }
+  if (tagName === "img") {
+    return `![${node.getAttribute("alt") ?? "image"}](${node.getAttribute("src") ?? ""})`;
+  }
+
+  return childText;
+}
+
+function blockNodeToMarkdown(node: Node, index: number): string {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent?.trim() ?? "";
+  }
+
+  if (!(node instanceof HTMLElement)) {
+    return "";
+  }
+
+  const tagName = node.tagName.toLowerCase();
+  const inlineText = Array.from(node.childNodes).map(inlineNodeToMarkdown).join("").trim();
+
+  if (tagName === "h1") {
+    return `# ${inlineText}`;
+  }
+  if (tagName === "h2") {
+    return `## ${inlineText}`;
+  }
+  if (tagName === "blockquote") {
+    return `> ${inlineText}`;
+  }
+  if (tagName === "pre") {
+    return `\`\`\`\n${node.textContent ?? ""}\n\`\`\``;
+  }
+  if (tagName === "ul") {
+    return Array.from(node.querySelectorAll(":scope > li"))
+      .map((item) => `- ${Array.from(item.childNodes).map(inlineNodeToMarkdown).join("").trim()}`)
+      .join("\n");
+  }
+  if (tagName === "ol") {
+    return Array.from(node.querySelectorAll(":scope > li"))
+      .map((item, itemIndex) => `${itemIndex + 1}. ${Array.from(item.childNodes).map(inlineNodeToMarkdown).join("").trim()}`)
+      .join("\n");
+  }
+  if (tagName === "hr") {
+    return "---";
+  }
+  if (tagName === "p" && node.querySelector('input[type="checkbox"]')) {
+    return `- [ ] ${inlineText}`;
+  }
+  if (tagName === "div" && index > 0 && inlineText === "") {
+    return "";
+  }
+
+  return inlineText;
+}
+
+function htmlToMarkdown(html: string): string {
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  return Array.from(container.childNodes)
+    .map(blockNodeToMarkdown)
+    .filter((line, index, lines) => line !== "" || index < lines.length - 1)
+    .join("\n")
+    .trim();
+}
+
 export function MemoWorkspace() {
   const { t } = useI18n();
   const {
@@ -70,8 +244,10 @@ export function MemoWorkspace() {
     [memos, selectedMemoId]
   );
   const [draft, setDraft] = useState<Memo | null>(null);
-  const [editorMode, setEditorMode] = useState<"edit" | "preview">("edit");
+  const [editorMode, setEditorMode] = useState<"visual" | "markdown">("visual");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const visualEditorRef = useRef<HTMLDivElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     fetchInitialData();
@@ -90,6 +266,14 @@ export function MemoWorkspace() {
   useEffect(() => {
     setDraft(selectedMemo ? { ...selectedMemo } : null);
   }, [selectedMemo]);
+
+  useEffect(() => {
+    if (editorMode !== "visual" || !draft || !visualEditorRef.current) {
+      return;
+    }
+
+    visualEditorRef.current.innerHTML = markdownToHtml(draft.content);
+  }, [draft?.id, editorMode]);
 
   const saveDraft = async () => {
     if (!draft) {
@@ -112,6 +296,38 @@ export function MemoWorkspace() {
     await fetchMemos();
   };
 
+  const syncVisualEditor = () => {
+    if (!draft || !visualEditorRef.current) {
+      return;
+    }
+
+    setDraft({ ...draft, content: htmlToMarkdown(visualEditorRef.current.innerHTML) });
+  };
+
+  const focusVisualEditor = () => {
+    visualEditorRef.current?.focus();
+  };
+
+  const execRichCommand = (command: string, value?: string) => {
+    if (editorMode !== "visual") {
+      return;
+    }
+
+    focusVisualEditor();
+    document.execCommand(command, false, value);
+    syncVisualEditor();
+  };
+
+  const insertVisualHtml = (html: string) => {
+    if (editorMode !== "visual") {
+      return;
+    }
+
+    focusVisualEditor();
+    document.execCommand("insertHTML", false, html);
+    syncVisualEditor();
+  };
+
   const insertMarkdown = (prefix: string, suffix = "", placeholder = "") => {
     if (!draft) {
       return;
@@ -127,7 +343,7 @@ export function MemoWorkspace() {
       currentContent.slice(0, selectionStart) + insertedText + currentContent.slice(selectionEnd);
 
     setDraft({ ...draft, content: nextContent });
-    setEditorMode("edit");
+    setEditorMode("markdown");
 
     window.requestAnimationFrame(() => {
       textareaRef.current?.focus();
@@ -152,13 +368,70 @@ export function MemoWorkspace() {
       ...draft,
       content: currentContent.slice(0, selectionStart) + block + currentContent.slice(selectionStart),
     });
-    setEditorMode("edit");
+    setEditorMode("markdown");
 
     window.requestAnimationFrame(() => {
       textareaRef.current?.focus();
       const cursor = selectionStart + block.length;
       textareaRef.current?.setSelectionRange(cursor, cursor);
     });
+  };
+
+  const applyInlineFormat = (command: string, prefix: string, suffix = prefix, placeholder = "") => {
+    if (editorMode === "visual") {
+      execRichCommand(command);
+      return;
+    }
+
+    insertMarkdown(prefix, suffix, placeholder);
+  };
+
+  const applyBlockFormat = (command: string, markdownBlock: string, value?: string) => {
+    if (editorMode === "visual") {
+      execRichCommand(command, value);
+      return;
+    }
+
+    insertBlock(markdownBlock);
+  };
+
+  const insertLink = () => {
+    if (editorMode === "visual") {
+      const url = window.prompt("URL");
+      if (url) {
+        execRichCommand("createLink", url);
+      }
+      return;
+    }
+
+    insertMarkdown("[", "](https://)", "链接文本");
+  };
+
+  const insertImageDataUrl = (dataUrl: string) => {
+    if (editorMode === "visual") {
+      insertVisualHtml(`<img src="${dataUrl}" alt="image" />`);
+      return;
+    }
+
+    insertBlock(`![image](${dataUrl})`);
+  };
+
+  const chooseImage = () => {
+    imageInputRef.current?.click();
+  };
+
+  const handleImageSelected = (file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        insertImageDataUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -241,42 +514,6 @@ export function MemoWorkspace() {
       <main className="flex min-w-0 flex-col bg-background">
         {draft ? (
           <>
-            <div className="flex h-12 items-center gap-1 border-b border-border bg-card px-4">
-              <ToolbarButton title="Bold" onClick={() => insertMarkdown("**", "**", "加粗文本")}><Bold className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="Italic" onClick={() => insertMarkdown("*", "*", "斜体文本")}><Italic className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="Strike" onClick={() => insertMarkdown("~~", "~~", "删除线文本")}><Strikethrough className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarSeparator />
-              <ToolbarButton title="Heading" onClick={() => insertBlock("# 标题")}><Heading1 className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="List" onClick={() => insertBlock("- 列表项")}><List className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="Ordered list" onClick={() => insertBlock("1. 列表项")}><ListOrdered className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="Todo" onClick={() => insertBlock("- [ ] 待办事项")}><CheckSquare className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarSeparator />
-              <ToolbarButton title="Quote" onClick={() => insertBlock("> 引用内容")}><Quote className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="Code" onClick={() => insertBlock("```\n代码\n```")}><Code className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="Link" onClick={() => insertMarkdown("[", "](https://)", "链接文本")}><Link className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarSeparator />
-              <ToolbarButton title="Line" onClick={() => insertBlock("---")}><Minus className="h-3.5 w-3.5" /></ToolbarButton>
-              <div className="ml-auto flex gap-0.5 rounded-sm bg-muted p-0.5">
-                <button
-                  onClick={() => setEditorMode("edit")}
-                  className={cn(
-                    "rounded-sm px-3 py-1.5 text-[11px] transition-colors hover:text-foreground",
-                    editorMode === "edit" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                  )}
-                >
-                  {t("memo.editor.edit")}
-                </button>
-                <button
-                  onClick={() => setEditorMode("preview")}
-                  className={cn(
-                    "rounded-sm px-3 py-1.5 text-[11px] transition-colors hover:text-foreground",
-                    editorMode === "preview" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                  )}
-                >
-                  {t("memo.editor.preview")}
-                </button>
-              </div>
-            </div>
             <div className="border-b border-border bg-card p-6">
               <input
                 value={draft.title}
@@ -307,9 +544,58 @@ export function MemoWorkspace() {
                 </select>
                 <span>{t("memo.updatedAt", { time: formatDate(draft.updateTime) })}</span>
               </div>
+              <div className="mt-4 flex flex-wrap items-center gap-1 rounded-md border border-border bg-background p-1">
+                <ToolbarButton title="Bold" onClick={() => applyInlineFormat("bold", "**", "**", "加粗文本")}><Bold className="h-3.5 w-3.5" /></ToolbarButton>
+                <ToolbarButton title="Italic" onClick={() => applyInlineFormat("italic", "*", "*", "斜体文本")}><Italic className="h-3.5 w-3.5" /></ToolbarButton>
+                <ToolbarButton title="Strike" onClick={() => applyInlineFormat("strikeThrough", "~~", "~~", "删除线文本")}><Strikethrough className="h-3.5 w-3.5" /></ToolbarButton>
+                <ToolbarSeparator />
+                <ToolbarButton title="Heading" onClick={() => applyBlockFormat("formatBlock", "# 标题", "h1")}><Heading1 className="h-3.5 w-3.5" /></ToolbarButton>
+                <ToolbarButton title="List" onClick={() => applyBlockFormat("insertUnorderedList", "- 列表项")}><List className="h-3.5 w-3.5" /></ToolbarButton>
+                <ToolbarButton title="Ordered list" onClick={() => applyBlockFormat("insertOrderedList", "1. 列表项")}><ListOrdered className="h-3.5 w-3.5" /></ToolbarButton>
+                <ToolbarButton title="Todo" onClick={() => editorMode === "visual" ? insertVisualHtml('<p><input type="checkbox" disabled /> 待办事项</p>') : insertBlock("- [ ] 待办事项")}><CheckSquare className="h-3.5 w-3.5" /></ToolbarButton>
+                <ToolbarSeparator />
+                <ToolbarButton title="Quote" onClick={() => editorMode === "visual" ? insertVisualHtml("<blockquote>引用内容</blockquote>") : insertBlock("> 引用内容")}><Quote className="h-3.5 w-3.5" /></ToolbarButton>
+                <ToolbarButton title="Code" onClick={() => editorMode === "visual" ? insertVisualHtml("<pre><code>代码</code></pre>") : insertBlock("```\n代码\n```")}><Code className="h-3.5 w-3.5" /></ToolbarButton>
+                <ToolbarButton title="Link" onClick={insertLink}><Link className="h-3.5 w-3.5" /></ToolbarButton>
+                <ToolbarButton title="Image" onClick={chooseImage}><Image className="h-3.5 w-3.5" /></ToolbarButton>
+                <ToolbarSeparator />
+                <ToolbarButton title="Line" onClick={() => editorMode === "visual" ? insertVisualHtml("<hr />") : insertBlock("---")}><Minus className="h-3.5 w-3.5" /></ToolbarButton>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    handleImageSelected(event.target.files?.[0]);
+                    event.target.value = "";
+                  }}
+                />
+                <div className="ml-auto flex gap-0.5 rounded-sm bg-muted p-0.5">
+                  <button
+                    onClick={() => setEditorMode("visual")}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-sm px-3 py-1.5 text-[11px] transition-colors hover:text-foreground",
+                      editorMode === "visual" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                    )}
+                  >
+                    <FileText className="h-3 w-3" />
+                    {t("memo.editor.visual")}
+                  </button>
+                  <button
+                    onClick={() => setEditorMode("markdown")}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-sm px-3 py-1.5 text-[11px] transition-colors hover:text-foreground",
+                      editorMode === "markdown" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                    )}
+                  >
+                    <FileCode2 className="h-3 w-3" />
+                    {t("memo.editor.markdown")}
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="min-h-0 flex-1 overflow-auto p-6">
-              {editorMode === "edit" ? (
+              {editorMode === "markdown" ? (
                 <textarea
                   ref={textareaRef}
                   value={draft.content}
@@ -318,7 +604,14 @@ export function MemoWorkspace() {
                   placeholder={t("memo.editor.placeholder")}
                 />
               ) : (
-                <MarkdownPreview content={draft.content} emptyText={t("memo.noContent")} />
+                <div
+                  ref={visualEditorRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={syncVisualEditor}
+                  className="memo-rich-editor h-full overflow-auto rounded-md border border-input bg-card p-5 text-sm leading-7 text-foreground outline-none transition-all duration-150 focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+                  data-placeholder={t("memo.editor.placeholder")}
+                />
               )}
             </div>
             <div className="flex h-[52px] items-center justify-between border-t border-border bg-card px-4 py-2">
@@ -373,50 +666,6 @@ function ToolbarButton({
     >
       {children}
     </button>
-  );
-}
-
-function MarkdownPreview({ content, emptyText }: { content: string; emptyText: string }) {
-  const lines = content.split("\n");
-
-  if (!content.trim()) {
-    return (
-      <div className="h-full rounded-md border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
-        {emptyText}
-      </div>
-    );
-  }
-
-  return (
-    <article className="h-full overflow-auto rounded-md border border-input bg-card p-5 text-sm leading-7 text-foreground">
-      {lines.map((line, index) => {
-        if (line.startsWith("# ")) {
-          return <h1 key={index} className="mb-3 mt-1 text-xl font-semibold">{line.slice(2)}</h1>;
-        }
-        if (line.startsWith("## ")) {
-          return <h2 key={index} className="mb-2 mt-4 text-lg font-semibold">{line.slice(3)}</h2>;
-        }
-        if (line.startsWith("- [ ] ")) {
-          return <p key={index} className="pl-1"><input type="checkbox" readOnly className="mr-2 align-middle" />{line.slice(6)}</p>;
-        }
-        if (line.startsWith("- ")) {
-          return <p key={index} className="pl-1">• {line.slice(2)}</p>;
-        }
-        if (/^\d+\.\s/.test(line)) {
-          return <p key={index} className="pl-1">{line}</p>;
-        }
-        if (line.startsWith("> ")) {
-          return <blockquote key={index} className="my-2 border-l-2 border-primary/50 pl-3 text-muted-foreground">{line.slice(2)}</blockquote>;
-        }
-        if (line === "---") {
-          return <hr key={index} className="my-4 border-border" />;
-        }
-        if (!line.trim()) {
-          return <div key={index} className="h-3" />;
-        }
-        return <p key={index} className="whitespace-pre-wrap">{line}</p>;
-      })}
-    </article>
   );
 }
 

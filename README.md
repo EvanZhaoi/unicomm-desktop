@@ -78,9 +78,12 @@ npm run tauri build
 - [x] 认证状态管理 (Zustand)
 - [x] 认证状态视图组件
 - [x] HTTP 请求服务 (Axios)
-- [x] 基础布局 (Sidebar + Header)
+- [x] 基础布局：侧边栏 + 应用内自定义标题栏
+- [x] 主窗口关闭原生标题栏，标题栏颜色跟随主题
 - [x] shadcn/ui 基础组件
-- [x] Memo 工作台
+- [x] Memo 工作台：列表、分组筛选、状态筛选、可视化编辑器、MD 源码视图
+- [x] Memo 富文本工具栏：加粗、斜体、删除线、标题、列表、待办、引用、代码、链接、图片、分割线
+- [x] Memo 图片插入：本地图片转 base64 后作为 Markdown 图片保存到 content
 - [x] 快速 Memo 小窗口
 - [x] 系统托盘与后台运行
 - [x] 全局快捷键
@@ -122,14 +125,24 @@ npm run tauri build
 - 认证通过后自动连接，断线后自动重连
 - 收到 `memo.*` 或 `group.*` 事件后刷新 Memo 数据
 
+## 窗口与桌面能力
+
+- 主窗口在 `src-tauri/tauri.conf.json` 中设置 `decorations: false`，避免 Windows 原生标题栏和应用内标题栏重复显示
+- 应用内标题栏由 `src/components/layout/AppLayout.tsx` 绘制，支持拖拽、最小化、最大化、关闭
+- 标题栏背景使用主题变量，浅色/深色模式下与页面主题保持一致
+- 快速 Memo 使用独立 Tauri 窗口，默认隐藏，由全局快捷键唤出
+- 主窗口关闭时隐藏到后台，系统托盘菜单支持显示、隐藏、退出
+
 ## 认证流程
 
-1. 应用启动 → 读取当前系统用户信息
+1. 应用启动 → 读取当前 Windows 用户信息和设备信息
 2. 调用 `/api/v1/auth/desktop/verify` 验证用户
 3. 根据认证状态显示不同视图
 4. 成功后进入主界面
 
+桌面端返回给前端的 Tauri 命令字段统一使用 `camelCase`，与 TypeScript 类型保持一致。Windows 域信息优先从 `USERDOMAIN / USERDNSDOMAIN` 读取；本机账户场景下如果域值等于计算机名，则不作为企业域返回。
+
 ## 备注
 
-- 当前运行在 macOS 环境，Windows API 功能返回模拟数据
-- Windows 托盘和全局快捷键仍需在 Windows 真机上做最终验收
+- 当前主要开发环境为 macOS，Windows 专属行为需要在 Windows 真机上验收
+- Windows 托盘、全局快捷键、无原生标题栏窗口边缘行为仍需在 Windows 真机上做最终验收
