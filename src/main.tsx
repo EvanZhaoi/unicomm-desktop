@@ -30,7 +30,10 @@
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-// 导入全局样式（Tailwind CSS 等）
+// Milkdown Crepe 提供富文本编辑器基础样式；globals.css 会继续覆盖主题变量。
+import "@milkdown/crepe/theme/common/style.css";
+import "@milkdown/crepe/theme/frame.css";
+// 导入全局样式（Tailwind CSS 和应用主题等）
 import "./styles/globals.css";
 // 导入根组件
 import App from "./App";

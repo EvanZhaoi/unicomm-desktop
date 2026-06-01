@@ -12,6 +12,7 @@ Tauri 2 + React 19 企业协同桌面应用
 - **Zustand 5.x** - 状态管理
 - **TanStack Query 5.x** - 服务端状态
 - **React Router 7.x** - 路由
+- **Milkdown Crepe 7.x** - Memo 可视化 Markdown 编辑器
 - **Alibaba PuHuiTi 3.0** - 中日文界面首选字体
 
 ## 项目结构
@@ -81,8 +82,8 @@ npm run tauri build
 - [x] 基础布局：侧边栏 + 应用内自定义标题栏
 - [x] 主窗口关闭原生标题栏，标题栏颜色跟随主题
 - [x] shadcn/ui 基础组件
-- [x] Memo 工作台：列表、分组筛选、状态筛选、可视化编辑器、MD 源码视图
-- [x] Memo 富文本工具栏：加粗、斜体、删除线、标题、列表、待办、引用、代码、链接、图片、分割线
+- [x] Memo 工作台：列表、分组筛选、状态筛选、Milkdown 可视化编辑器、MD 源码视图
+- [x] Memo 可视化编辑：支持常用 Markdown 排版，编辑效果与阅读效果一致
 - [x] Memo 图片插入：本地图片转 base64 后作为 Markdown 图片保存到 content
 - [x] 快速 Memo 小窗口
 - [x] 系统托盘与后台运行
@@ -124,6 +125,14 @@ npm run tauri build
 - 可通过 `VITE_WS_URL` 显式覆盖，例如 `ws://localhost:28080/ws`
 - 认证通过后自动连接，断线后自动重连
 - 收到 `memo.*` 或 `group.*` 事件后刷新 Memo 数据
+
+## Memo 编辑器
+
+- 可视化编辑器使用 `@milkdown/crepe`，开源协议为 MIT，可免费商用
+- 默认使用可视化编辑，普通用户不需要理解 Markdown 源码
+- 需要精细调整内容时，可切换到 MD 源码视图
+- 图片当前通过 Crepe 上传回调转为 base64 data URL，并以 Markdown 图片语法保存到 `content`
+- 后续接入服务端上传接口时，可以把图片上传回调替换为“上传文件并返回 URL”的实现，业务数据结构不需要调整
 
 ## 窗口与桌面能力
 

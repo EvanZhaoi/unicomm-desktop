@@ -176,89 +176,39 @@ textarea {
   background: transparent;
 }
 
-.memo-rich-editor:empty::before {
-  content: attr(data-placeholder);
-  color: var(--muted-foreground);
-  pointer-events: none;
-}
-
-.memo-rich-editor h1 {
-  margin: 0.25rem 0 0.75rem;
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.3;
-}
-
-.memo-rich-editor h2 {
-  margin: 1rem 0 0.5rem;
-  font-size: 1.125rem;
-  font-weight: 600;
-  line-height: 1.35;
-}
-
-.memo-rich-editor p {
-  margin: 0.25rem 0;
-}
-
-.memo-rich-editor ul,
-.memo-rich-editor ol {
-  margin: 0.5rem 0;
-  padding-left: 1.5rem;
-}
-
-.memo-rich-editor ul {
-  list-style: disc;
-}
-
-.memo-rich-editor ol {
-  list-style: decimal;
-}
-
-.memo-rich-editor blockquote {
-  margin: 0.75rem 0;
-  border-left: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
-  padding-left: 0.75rem;
-  color: var(--muted-foreground);
-}
-
-.memo-rich-editor pre {
-  margin: 0.75rem 0;
-  overflow: auto;
-  border-radius: var(--radius-md);
-  background: var(--muted);
-  padding: 0.75rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 0.875rem;
-  line-height: 1.6;
-}
-
-.memo-rich-editor code {
-  border-radius: var(--radius-sm);
-  background: var(--muted);
-  padding: 0.125rem 0.25rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-}
-
-.memo-rich-editor pre code {
+.memo-crepe-editor .milkdown {
+  --crepe-color-background: var(--card);
+  --crepe-color-on-background: var(--foreground);
+  --crepe-color-surface: var(--background);
+  --crepe-color-surface-low: var(--muted);
+  --crepe-color-on-surface: var(--foreground);
+  --crepe-color-on-surface-variant: var(--muted-foreground);
+  --crepe-color-outline: var(--border);
+  --crepe-color-primary: var(--primary);
+  --crepe-color-secondary: var(--secondary);
+  --crepe-color-on-secondary: var(--secondary-foreground);
+  --crepe-color-inverse: var(--foreground);
+  --crepe-color-on-inverse: var(--background);
+  --crepe-color-inline-code: var(--destructive);
+  --crepe-color-error: var(--destructive);
+  --crepe-color-hover: var(--accent);
+  --crepe-color-selected: color-mix(in srgb, var(--primary) 18%, transparent);
+  --crepe-color-inline-area: var(--muted);
+  --crepe-font-title: var(--font-app);
+  --crepe-font-default: var(--font-app);
+  --crepe-font-code: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  min-height: 100%;
   background: transparent;
-  padding: 0;
 }
 
-.memo-rich-editor a {
-  color: var(--primary);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.memo-crepe-editor .milkdown .ProseMirror {
+  min-height: calc(100vh - 280px);
+  padding: 1.25rem;
+  outline: none;
 }
 
-.memo-rich-editor img {
-  margin: 0.75rem 0;
+.memo-crepe-editor img {
   max-width: 100%;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
-}
-
-.memo-rich-editor hr {
-  margin: 1rem 0;
-  border: 0;
-  border-top: 1px solid var(--border);
 }
