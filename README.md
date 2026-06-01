@@ -139,7 +139,7 @@ npm run tauri build
 - 主窗口在 `src-tauri/tauri.conf.json` 中设置 `decorations: false`，避免 Windows 原生标题栏和应用内标题栏重复显示
 - 应用内标题栏由 `src/components/layout/AppLayout.tsx` 绘制，支持拖拽、最小化、最大化、关闭
 - 标题栏背景使用主题变量，浅色/深色模式下与页面主题保持一致
-- UI 密度按高 DPI / 200% 缩放优化：侧边栏 180px、Memo 列表 280px、标题栏 32px、编辑区 16px 内边距
+- UI 密度按高 DPI / 200% 缩放优化：侧边栏 150px、Memo 列表 280px、标题栏 32px、编辑区 12px 内边距
 - 主窗口默认尺寸为 1440x800，最小宽度为 1024，兼顾双栏编辑和低分辨率设备
 - 快速 Memo 使用独立 Tauri 窗口，默认隐藏，由全局快捷键唤出
 - 主窗口关闭时隐藏到后台，系统托盘菜单支持显示、隐藏、退出

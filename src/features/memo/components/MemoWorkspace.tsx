@@ -176,7 +176,7 @@ export function MemoWorkspace() {
               <button
                 key={memo.id}
                 className={cn(
-                  "block w-full border-l-2 border-b border-l-transparent border-border px-3 py-2.5 text-left transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
+                  "block w-full border-l-2 border-b border-l-transparent border-border px-3 py-2 text-left transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
                   selectedMemoId === memo.id && "border-l-primary bg-accent"
                 )}
                 onClick={() => selectMemo(memo.id)}
@@ -193,10 +193,10 @@ export function MemoWorkspace() {
                   </div>
                   {memo.isFavorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
                 </div>
-                <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                   {memo.content || t("memo.noContent")}
                 </div>
-                <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+                <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
                   <span>{formatDate(memo.updateTime)}</span>
                   <span className="inline-flex items-center gap-1">
                     <span className={cn("h-1.5 w-1.5 rounded-full", memo.status === "todo" ? "bg-yellow-500" : memo.status === "done" ? "bg-blue-500" : "bg-emerald-500")} />
@@ -219,16 +219,16 @@ export function MemoWorkspace() {
                 className="w-full border-0 bg-transparent text-xl font-semibold tracking-normal text-foreground outline-none placeholder:text-muted-foreground"
                 placeholder={t("memo.title.placeholder")}
               />
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-                <div className="flex min-w-0 flex-wrap items-center gap-3">
-                  <label className="inline-flex h-7 items-center gap-1.5 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground">
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <label className="inline-flex h-6 items-center gap-1.5 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground">
                     <Folder className="h-3.5 w-3.5" />
                     <span className="shrink-0">{t("memo.groups")}</span>
                     <Select
                       value={draft.groupId}
                       onChange={(event) => setDraft({ ...draft, groupId: Number(event.target.value) })}
                       className="w-[130px]"
-                      selectClassName="h-6 border-0 bg-transparent py-0 pl-1 pr-6 text-xs shadow-none hover:border-transparent focus:border-transparent focus:ring-0"
+                      selectClassName="h-5 border-0 bg-transparent py-0 pl-1 pr-6 text-xs shadow-none hover:border-transparent focus:border-transparent focus:ring-0"
                     >
                       {groups.map((group) => (
                         <option key={group.id} value={group.id}>
@@ -237,14 +237,14 @@ export function MemoWorkspace() {
                       ))}
                     </Select>
                   </label>
-                  <div className="flex h-7 shrink-0 items-center rounded-md bg-muted p-0.5">
+                  <div className="flex h-6 shrink-0 items-center rounded-md bg-muted p-0.5">
                     {memoStatusOptions.map((status) => (
                       <button
                         key={status.value}
                         type="button"
                         onClick={() => setDraft({ ...draft, status: status.value })}
                         className={cn(
-                          "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-xs font-medium transition-colors hover:text-foreground",
+                          "inline-flex h-5 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-xs font-medium transition-colors hover:text-foreground",
                           draft.status === status.value
                             ? "bg-card text-foreground shadow-sm"
                             : "text-muted-foreground"
@@ -262,7 +262,7 @@ export function MemoWorkspace() {
                     type="button"
                     onClick={() => setEditorMode("visual")}
                     className={cn(
-                      "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:text-foreground",
+                      "inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-md px-2.5 text-xs font-medium transition-colors hover:text-foreground",
                       editorMode === "visual" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                     )}
                   >
@@ -273,7 +273,7 @@ export function MemoWorkspace() {
                     type="button"
                     onClick={() => setEditorMode("markdown")}
                     className={cn(
-                      "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:text-foreground",
+                      "inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-md px-2.5 text-xs font-medium transition-colors hover:text-foreground",
                       editorMode === "markdown" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                     )}
                   >
@@ -284,7 +284,7 @@ export function MemoWorkspace() {
                     type="button"
                     onClick={() => setEditorMode("split")}
                     className={cn(
-                      "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:text-foreground",
+                      "inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-md px-2.5 text-xs font-medium transition-colors hover:text-foreground",
                       editorMode === "split" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                     )}
                   >
@@ -294,7 +294,7 @@ export function MemoWorkspace() {
                 </div>
               </div>
             </div>
-            <div className="min-h-0 flex-1 overflow-hidden p-4">
+            <div className="min-h-0 flex-1 overflow-hidden p-3">
               <div
                 className={cn(
                   "grid h-full min-h-0 gap-3",
@@ -331,7 +331,7 @@ export function MemoWorkspace() {
                 )}
               </div>
             </div>
-            <div className="flex h-10 shrink-0 items-center justify-between border-t border-border bg-card px-4">
+            <div className="flex h-9 shrink-0 items-center justify-between border-t border-border bg-card px-3">
               <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{t("memo.editor.saved")}</span>
                 {error && <span className="text-destructive">{error}</span>}
@@ -364,7 +364,7 @@ function EmptyMemoState({ icon, title }: { icon: ReactNode; title: string }) {
   return (
     <div className="flex h-full items-center justify-center p-4">
       <div className="text-center">
-        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm">
+        <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm">
           {icon}
         </div>
         <p className="text-sm font-medium text-foreground">{title}</p>

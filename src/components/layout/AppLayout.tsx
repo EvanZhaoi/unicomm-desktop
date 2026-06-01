@@ -10,7 +10,7 @@
  * │              Custom Titlebar               │
  * ├───────────┬───────────────────────────────│
  * │  Sidebar  │                               │
- * │  (180px)  │        Main Content            │
+ * │  (150px)  │        Main Content            │
  * │  Logo     │                               │
  * │  📝 备忘录 │                               │
  * │  ⚙️ 设置  │                               │
@@ -79,7 +79,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
     <aside
       className={cn(
         "flex h-full shrink-0 flex-col border-r border-border bg-card shadow-sm transition-all duration-200 ease-out",
-        collapsed ? "w-14" : "w-[180px]"
+        collapsed ? "w-14" : "w-[150px]"
       )}
     >
       <div className="border-b border-border p-3">
@@ -90,9 +90,9 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
           <h1 className="text-center text-sm font-semibold tracking-normal text-foreground">UC</h1>
         )}
       </div>
-      <nav className="flex-1 space-y-3 overflow-y-auto p-2">
+      <nav className="flex-1 space-y-2 overflow-y-auto p-2">
         <div className="space-y-1">
-          {!collapsed && <div className="px-2 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.shortcuts")}</div>}
+          {!collapsed && <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.shortcuts")}</div>}
           <NavItem
             icon={<FileText className="h-4 w-4" />}
             label={t("nav.memo")}
@@ -103,7 +103,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
           />
         </div>
         <div className="space-y-1">
-          {!collapsed && <div className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.status")}</div>}
+          {!collapsed && <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.status")}</div>}
           {!collapsed && (
             <div className="mx-1 flex gap-1 rounded-md bg-muted p-1">
               {statusFilters.map((filter) => (
@@ -122,7 +122,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
           )}
         </div>
         <div className="space-y-1">
-          {!collapsed && <div className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.settings")}</div>}
+          {!collapsed && <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.settings")}</div>}
           <NavItem
             icon={<Settings className="h-4 w-4" />}
             label={t("nav.settings")}
@@ -203,7 +203,7 @@ function NavItem({
       onClick={onClick}
       title={collapsed ? label : undefined}
       className={cn(
-        "flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground",
+        "flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-sm text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground",
         collapsed && "mx-auto w-9 justify-center px-0",
         active && "bg-accent font-medium text-accent-foreground"
       )}
