@@ -24,6 +24,8 @@
  * @requires @tauri-apps/api/core (Tauri 后端)
  */
 
+import { invoke } from "@/native/api/invoke";
+
 export interface WindowsUserInfo {
   /** Windows 用户名 */
   username: string;
@@ -57,7 +59,5 @@ export interface WindowsUserInfo {
  * ```
  */
 export async function getCurrentWindowsUser(): Promise<WindowsUserInfo> {
-  // 动态导入 Tauri API，兼容非 Tauri 环境
-  const { invoke } = await import("@tauri-apps/api/core");
   return invoke<WindowsUserInfo>("get_current_windows_user");
 }

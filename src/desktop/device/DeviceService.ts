@@ -28,6 +28,8 @@
  * @requires @tauri-apps/api/core (Tauri 后端)
  */
 
+import { invoke } from "@/native/api/invoke";
+
 export interface DeviceInfo {
   /** 设备唯一标识符，用于服务端识别和认证 */
   deviceId: string;
@@ -62,7 +64,5 @@ export interface DeviceInfo {
  * ```
  */
 export async function getDeviceInfo(): Promise<DeviceInfo> {
-  // 动态导入 Tauri API，兼容非 Tauri 环境（开发模式下可能不可用）
-  const { invoke } = await import("@tauri-apps/api/core");
   return invoke<DeviceInfo>("get_device_info");
 }
