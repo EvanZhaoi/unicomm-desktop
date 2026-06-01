@@ -71,7 +71,8 @@ export function MemoWorkspace() {
     [memos, selectedMemoId]
   );
   const [draft, setDraft] = useState<Memo | null>(null);
-  const [editorMode, setEditorMode] = useState<"split" | "visual" | "markdown">("split");
+  const [editorMode, setEditorMode] = useState<"visual" | "markdown" | "split">("visual");
+  const [markdownSyncVersion, setMarkdownSyncVersion] = useState(0);
 
   useEffect(() => {
     fetchInitialData();
@@ -89,6 +90,7 @@ export function MemoWorkspace() {
 
   useEffect(() => {
     setDraft(selectedMemo ? { ...selectedMemo } : null);
+    setMarkdownSyncVersion((version) => version + 1);
   }, [selectedMemo]);
 
   const saveDraft = async () => {
@@ -258,17 +260,6 @@ export function MemoWorkspace() {
                 <div className="flex shrink-0 gap-0.5 rounded-md bg-muted p-0.5">
                   <button
                     type="button"
-                    onClick={() => setEditorMode("split")}
-                    className={cn(
-                      "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:text-foreground",
-                      editorMode === "split" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                    )}
-                  >
-                    <Columns2 className="h-3 w-3" />
-                    {t("memo.editor.split")}
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setEditorMode("visual")}
                     className={cn(
                       "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:text-foreground",
@@ -289,6 +280,17 @@ export function MemoWorkspace() {
                     <FileCode2 className="h-3 w-3" />
                     {t("memo.editor.markdown")}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorMode("split")}
+                    className={cn(
+                      "inline-flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:text-foreground",
+                      editorMode === "split" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                    )}
+                  >
+                    <Columns2 className="h-3 w-3" />
+                    {t("memo.editor.split")}
+                  </button>
                 </div>
               </div>
             </div>
@@ -304,7 +306,7 @@ export function MemoWorkspace() {
                 {editorMode !== "markdown" && (
                   <Suspense fallback={<EmptyMemoState icon={<FileText className="h-5 w-5" />} title={t("memo.loading")} />}>
                     <MemoRichEditor
-                      key={`${draft.id}-${draft.updateTime}`}
+                      key={`${draft.id}-${draft.updateTime}-${markdownSyncVersion}`}
                       value={draft.content}
                       placeholder={t("memo.editor.placeholder")}
                       onChange={(content) => setDraft({ ...draft, content })}
@@ -318,7 +320,10 @@ export function MemoWorkspace() {
                     </div>
                     <textarea
                       value={draft.content}
-                      onChange={(event) => setDraft({ ...draft, content: event.target.value })}
+                      onChange={(event) => {
+                        setDraft({ ...draft, content: event.target.value });
+                        setMarkdownSyncVersion((version) => version + 1);
+                      }}
                       className="min-h-0 flex-1 resize-none bg-background p-4 font-mono text-sm leading-7 text-foreground outline-none placeholder:text-muted-foreground"
                       placeholder={t("memo.editor.placeholder")}
                     />
