@@ -192,10 +192,10 @@ export function MemoWorkspace() {
         </div>
       </section>
 
-      <main className="flex min-w-0 flex-col bg-background">
+      <main className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-background">
         {draft ? (
           <>
-            <div className="border-b border-border bg-card p-6">
+            <div className="shrink-0 border-b border-border bg-card p-6">
               <input
                 value={draft.title}
                 onChange={(event) => setDraft({ ...draft, title: event.target.value })}
@@ -252,7 +252,7 @@ export function MemoWorkspace() {
                 </div>
               </div>
             </div>
-            <div className="min-h-0 flex-1 overflow-auto p-6">
+            <div className="min-h-0 flex-1 overflow-hidden p-6">
               {editorMode === "markdown" ? (
                 <textarea
                   value={draft.content}
@@ -271,7 +271,7 @@ export function MemoWorkspace() {
                 </Suspense>
               )}
             </div>
-            <div className="flex h-11 items-center justify-between border-t border-border bg-card px-4">
+            <div className="flex h-11 shrink-0 items-center justify-between border-t border-border bg-card px-4">
               <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{t("memo.editor.saved")}</span>
                 {error && <span className="text-destructive">{error}</span>}

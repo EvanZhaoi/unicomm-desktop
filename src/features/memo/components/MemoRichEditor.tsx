@@ -79,7 +79,7 @@ export default function MemoRichEditor({ value, placeholder, onChange }: MemoRic
   }, [placeholder]);
 
   return (
-    <div className="memo-crepe-editor h-full overflow-auto rounded-md border border-input bg-card text-sm leading-7 text-foreground outline-none transition-all duration-150 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-primary/10">
+    <div className="memo-crepe-editor h-full min-h-0 overflow-y-auto rounded-md border border-input bg-card text-sm leading-7 text-foreground outline-none transition-all duration-150 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-primary/10">
       <div ref={rootRef} />
     </div>
   );
