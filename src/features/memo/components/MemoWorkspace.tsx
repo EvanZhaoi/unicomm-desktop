@@ -3,14 +3,23 @@ import type { ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   Archive,
+  Bold,
+  CheckSquare,
+  Code,
   FileText,
-  Folder,
+  Heading1,
   Inbox,
+  Italic,
+  Link,
+  List,
+  ListOrdered,
+  Minus,
   Plus,
+  Quote,
   Save,
   Search,
   Star,
-  Trash2,
+  Strikethrough,
 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
@@ -51,9 +60,7 @@ export function MemoWorkspace() {
     setActiveGroup,
     createMemo,
     updateSelectedMemo,
-    deleteSelectedMemo,
     selectMemo,
-    toggleTop,
     toggleFavorite,
     toggleArchive,
   } = useMemoStore();
@@ -104,55 +111,9 @@ export function MemoWorkspace() {
   };
 
   return (
-    <div className="grid h-[calc(100vh-5.5rem)] grid-cols-[220px_320px_minmax(0,1fr)] overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      <aside className="min-h-0 border-r border-border bg-card">
-        <div className="flex h-14 items-center justify-between border-b border-border px-3">
-          <div>
-            <div className="text-sm font-semibold text-foreground">{t("memo.title")}</div>
-            <div className="text-[11px] text-muted-foreground">{t("memo.count", { count: memos.length })}</div>
-          </div>
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={createMemo} disabled={isSaving} title={t("memo.new")}>
-            <Plus />
-          </Button>
-        </div>
-        <nav className="space-y-1 p-2">
-          <button
-            className={cn(
-              "flex h-10 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground",
-              activeGroupId === null ? "bg-accent text-accent-foreground" : "hover:bg-accent"
-            )}
-            onClick={() => chooseGroup(null)}
-          >
-            <FileText className="h-4 w-4" />
-            <span className="flex-1 truncate">{t("memo.all")}</span>
-            <span className="text-xs text-muted-foreground">{memos.length}</span>
-          </button>
-          <div className="pt-3">
-            <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t("memo.groups")}
-            </div>
-          </div>
-          <div className="space-y-1">
-            {groups.map((group) => (
-              <button
-                key={group.id}
-                className={cn(
-                  "flex h-10 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground",
-                  activeGroupId === group.id ? "bg-accent text-accent-foreground" : "hover:bg-accent"
-                )}
-                onClick={() => chooseGroup(group.id)}
-              >
-                <Folder className="h-4 w-4" style={{ color: group.color }} />
-                <span className="flex-1 truncate">{group.name}</span>
-                <span className="text-xs text-muted-foreground">{group.memoCount}</span>
-              </button>
-            ))}
-          </div>
-        </nav>
-      </aside>
-
+    <div className="grid h-full grid-cols-[320px_minmax(0,1fr)] overflow-hidden bg-background">
       <section className="min-h-0 border-r border-border bg-card">
-        <div className="flex h-14 items-center gap-2 border-b border-border px-3">
+        <div className="border-b border-border p-4">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
@@ -167,11 +128,43 @@ export function MemoWorkspace() {
               placeholder={t("memo.search.placeholder")}
             />
           </div>
-          <Button size="icon" variant="outline" className="h-9 w-9" onClick={search} title={t("memo.search")}>
-            <Search />
-          </Button>
         </div>
-        <div className="h-[calc(100%-3.5rem)] overflow-auto">
+        <div className="flex flex-wrap gap-1 px-4 pb-2">
+          {[t("memo.tags.all"), t("memo.tags.work"), t("memo.tags.tech"), t("memo.tags.life")].map((tag, index) => (
+            <button
+              key={tag}
+              className={cn(
+                "rounded-full px-2 py-1 text-[10px] transition-colors hover:bg-secondary hover:text-foreground",
+                index === 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              )}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={createMemo}
+          disabled={isSaving}
+          className="mx-4 my-3 flex w-[calc(100%-2rem)] items-center justify-center gap-1 rounded-md bg-primary px-3 py-2.5 text-[13px] font-medium text-primary-foreground shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md disabled:pointer-events-none disabled:opacity-60"
+        >
+          <Plus className="h-4 w-4" />
+          {t("memo.new")}
+        </button>
+        <div className="px-4 pb-2">
+          <select
+            value={activeGroupId ?? ""}
+            onChange={(event) => chooseGroup(event.target.value ? Number(event.target.value) : null)}
+            className="h-8 w-full rounded-sm border border-input bg-background px-2 text-xs text-muted-foreground outline-none focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+          >
+            <option value="">{t("memo.all")}</option>
+            {groups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="h-[calc(100%-10.75rem)] overflow-auto">
           {isLoading ? (
             <EmptyMemoState icon={<Search className="h-5 w-5" />} title={t("memo.loading")} />
           ) : memos.length === 0 ? (
@@ -196,7 +189,10 @@ export function MemoWorkspace() {
                 </div>
                 <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
                   <span>{formatDate(memo.updateTime)}</span>
-                  <span className="rounded-sm bg-muted px-1.5 py-0.5">{t(memoStatusKey(memo.status))}</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className={cn("h-1.5 w-1.5 rounded-full", memo.status === "todo" ? "bg-yellow-500" : memo.status === "done" ? "bg-blue-500" : "bg-emerald-500")} />
+                    {t(memoStatusKey(memo.status))}
+                  </span>
                 </div>
               </button>
             ))
@@ -207,42 +203,38 @@ export function MemoWorkspace() {
       <main className="flex min-w-0 flex-col bg-background">
         {draft ? (
           <>
-            <div className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
-              <div className="flex items-center gap-2">
-                <Button size="icon" variant="ghost" className={cn("h-8 w-8", draft.isTop && "bg-primary/10 text-primary")} onClick={() => toggleTop(draft.id)} title={t("memo.action.pin")}>
-                  <FileText className={cn(draft.isTop && "text-primary")} />
-                </Button>
-                <Button size="icon" variant="ghost" className={cn("h-8 w-8", draft.isFavorite && "bg-primary/10 text-primary")} onClick={() => toggleFavorite(draft.id)} title={t("memo.action.favorite")}>
-                  <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />
-                </Button>
-                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => toggleArchive(draft.id)} title={t("memo.action.archive")}>
-                  <Archive />
-                </Button>
-              </div>
-              <div className="flex items-center gap-2">
-                {error && <span className="text-xs text-destructive">{error}</span>}
-                <Button variant="outline" onClick={deleteSelectedMemo} disabled={isSaving}>
-                  <Trash2 />
-                  {t("memo.action.delete")}
-                </Button>
-                <Button onClick={saveDraft} disabled={isSaving}>
-                  <Save />
-                  {t("memo.action.save")}
-                </Button>
+            <div className="flex h-12 items-center gap-1 border-b border-border bg-card px-4">
+              <ToolbarButton active title="Bold"><Bold className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Italic"><Italic className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Strike"><Strikethrough className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarSeparator />
+              <ToolbarButton title="Heading"><Heading1 className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="List"><List className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Ordered list"><ListOrdered className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Todo"><CheckSquare className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarSeparator />
+              <ToolbarButton title="Quote"><Quote className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Code"><Code className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Link"><Link className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarSeparator />
+              <ToolbarButton title="Line"><Minus className="h-3.5 w-3.5" /></ToolbarButton>
+              <div className="ml-auto flex gap-0.5 rounded-sm bg-muted p-0.5">
+                <button className="rounded-sm bg-card px-3 py-1.5 text-[11px] text-foreground shadow-sm">{t("memo.editor.edit")}</button>
+                <button className="rounded-sm px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground">{t("memo.editor.preview")}</button>
               </div>
             </div>
-            <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
+            <div className="border-b border-border bg-card p-6">
               <input
                 value={draft.title}
                 onChange={(event) => setDraft({ ...draft, title: event.target.value })}
                 className="w-full border-0 bg-transparent text-xl font-semibold tracking-normal text-foreground outline-none placeholder:text-muted-foreground"
                 placeholder={t("memo.title.placeholder")}
               />
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
                 <select
                   value={draft.groupId}
                   onChange={(event) => setDraft({ ...draft, groupId: Number(event.target.value) })}
-                  className="h-8 rounded-sm border border-input bg-card px-2 text-xs outline-none transition-all duration-150 hover:border-ring focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+                  className="rounded-sm border border-input bg-transparent px-2 py-1 outline-none transition-all duration-150 hover:border-ring focus:border-ring focus:ring-[3px] focus:ring-primary/10"
                 >
                   {groups.map((group) => (
                     <option key={group.id} value={group.id}>
@@ -253,22 +245,42 @@ export function MemoWorkspace() {
                 <select
                   value={draft.status}
                   onChange={(event) => setDraft({ ...draft, status: event.target.value as Memo["status"] })}
-                  className="h-8 rounded-sm border border-input bg-card px-2 text-xs outline-none transition-all duration-150 hover:border-ring focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+                  className="rounded-sm border border-input bg-transparent px-2 py-1 outline-none transition-all duration-150 hover:border-ring focus:border-ring focus:ring-[3px] focus:ring-primary/10"
                 >
                   <option value="normal">{t("memo.status.normal")}</option>
                   <option value="todo">{t("memo.status.todo")}</option>
                   <option value="done">{t("memo.status.done")}</option>
                 </select>
-                <span className="text-xs text-muted-foreground">
-                  {t("memo.updatedAt", { time: formatDate(draft.updateTime) })}
-                </span>
+                <span>{t("memo.updatedAt", { time: formatDate(draft.updateTime) })}</span>
               </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto p-6">
               <textarea
                 value={draft.content}
                 onChange={(event) => setDraft({ ...draft, content: event.target.value })}
-                className="min-h-0 flex-1 resize-none rounded-md border border-input bg-background p-4 font-mono text-sm leading-7 text-foreground outline-none transition-all duration-150 placeholder:text-muted-foreground focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+                className="h-full w-full resize-none rounded-md border border-input bg-background p-4 font-mono text-sm leading-7 text-foreground outline-none transition-all duration-150 placeholder:text-muted-foreground focus:border-ring focus:ring-[3px] focus:ring-primary/10"
                 placeholder={t("memo.editor.placeholder")}
               />
+            </div>
+            <div className="flex h-[52px] items-center justify-between border-t border-border bg-card px-4 py-2">
+              <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{t("memo.editor.saved")}</span>
+                {error && <span className="text-destructive">{error}</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => toggleArchive(draft.id)} disabled={isSaving}>
+                  <Archive />
+                  {t("memo.action.archive")}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => toggleFavorite(draft.id)} disabled={isSaving}>
+                  <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />
+                  {t("memo.action.favorite")}
+                </Button>
+                <Button size="sm" onClick={saveDraft} disabled={isSaving}>
+                  <Save />
+                  {t("memo.action.save")}
+                </Button>
+              </div>
             </div>
           </>
         ) : (
@@ -277,6 +289,24 @@ export function MemoWorkspace() {
       </main>
     </div>
   );
+}
+
+function ToolbarButton({ active, title, children }: { active?: boolean; title: string; children: ReactNode }) {
+  return (
+    <button
+      title={title}
+      className={cn(
+        "flex h-8 w-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+        active && "bg-primary/10 text-primary"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ToolbarSeparator() {
+  return <div className="mx-1 h-5 w-px bg-border" />;
 }
 
 function EmptyMemoState({ icon, title }: { icon: ReactNode; title: string }) {

@@ -35,7 +35,7 @@
  */
 
 import type { ReactNode } from "react";
-import { FileText, Menu, Settings, Sparkles } from "lucide-react";
+import { Bell, Bot, FileText, Minus, Settings, Square, X } from "lucide-react";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
 
@@ -67,39 +67,72 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
     <aside
       className={cn(
         "flex h-full shrink-0 flex-col border-r border-border bg-card shadow-sm transition-all duration-200 ease-out",
-        collapsed ? "w-16" : "w-64"
+        collapsed ? "w-16" : "w-[220px]"
       )}
     >
-      <div className="flex h-14 items-center gap-3 border-b border-border px-4">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-          <Sparkles className="h-4 w-4" />
-        </div>
+      <div className="border-b border-border p-4">
         {!collapsed && (
-          <div className="min-w-0">
-            <h1 className="truncate text-base font-semibold tracking-normal text-foreground">UniComm</h1>
-            <p className="truncate text-[11px] text-muted-foreground">{t("nav.workspace")}</p>
-          </div>
+          <h1 className="text-base font-semibold tracking-normal text-foreground">UniComm</h1>
+        )}
+        {collapsed && (
+          <h1 className="text-center text-sm font-semibold tracking-normal text-foreground">UC</h1>
         )}
       </div>
-      <nav className="flex-1 space-y-1 p-2">
-        <NavItem
-          icon={<FileText className="h-4 w-4" />}
-          label={t("nav.memo")}
-          collapsed={collapsed}
-          active={activeView === "memo"}
-          onClick={() => onViewChange("memo")}
-        />
-        <NavItem
-          icon={<Settings className="h-4 w-4" />}
-          label={t("nav.settings")}
-          collapsed={collapsed}
-          active={activeView === "settings"}
-          onClick={() => onViewChange("settings")}
-        />
+      <nav className="flex-1 overflow-y-auto p-2">
+        <div className="mb-6">
+          {!collapsed && <div className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.shortcuts")}</div>}
+          <NavItem
+            icon={<FileText className="h-4 w-4" />}
+            label={t("nav.memo")}
+            badge="12"
+            collapsed={collapsed}
+            active={activeView === "memo"}
+            onClick={() => onViewChange("memo")}
+          />
+          <NavItem icon={<Bell className="h-4 w-4" />} label={t("nav.notifications")} badge="3" collapsed={collapsed} />
+          <NavItem icon={<Bot className="h-4 w-4" />} label={t("nav.assistant")} collapsed={collapsed} />
+        </div>
+        <div className="mb-6">
+          {!collapsed && <div className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.status")}</div>}
+          {!collapsed && (
+            <div className="mx-1 flex gap-1 rounded-md bg-muted p-1">
+              {[
+                t("memo.all"),
+                t("memo.status.normal"),
+                t("memo.status.todo"),
+                t("memo.status.done"),
+              ].map((label, index) => (
+                <button
+                  key={label}
+                  className={cn(
+                    "flex-1 rounded-sm px-1 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground",
+                    index === 0 && "bg-primary text-primary-foreground hover:text-primary-foreground"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div>
+          {!collapsed && <div className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.settings")}</div>}
+          <NavItem
+            icon={<Settings className="h-4 w-4" />}
+            label={t("nav.settings")}
+            collapsed={collapsed}
+            active={activeView === "settings"}
+            onClick={() => onViewChange("settings")}
+          />
+        </div>
       </nav>
       {!collapsed && (
-        <div className="border-t border-border p-3">
-          <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+        <div className="border-t border-border p-4">
+          <div className="mb-2 flex gap-0.5 rounded-md bg-muted p-0.5">
+            <button className="flex-1 rounded-sm bg-card px-2 py-1.5 text-[11px] text-foreground shadow-sm">☀️</button>
+            <button className="flex-1 rounded-sm px-2 py-1.5 text-[11px] text-muted-foreground">🌙</button>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             <span>{t("nav.ready")}</span>
           </div>
@@ -117,6 +150,7 @@ interface NavItemProps {
   icon: ReactNode;
   /** 导航标签文字 */
   label: string;
+  badge?: string;
   /** 是否折叠（不显示文字） */
   collapsed?: boolean;
   active?: boolean;
@@ -135,6 +169,7 @@ interface NavItemProps {
 function NavItem({
   icon,
   label,
+  badge,
   collapsed,
   active,
   onClick,
@@ -150,48 +185,25 @@ function NavItem({
       )}
     >
       {icon}
-      {!collapsed && <span className="text-sm">{label}</span>}
+      {!collapsed && <span className="flex-1 text-left text-[13px]">{label}</span>}
+      {!collapsed && badge && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{badge}</span>}
     </button>
   );
 }
 
-/**
- * 顶部栏组件属性
- */
-interface HeaderProps {
-  /** 当前用户名（显示在右侧） */
-  userName?: string;
-  /** 切换侧边栏的回调函数 */
-  onToggleSidebar?: () => void;
-}
-
-/**
- * 顶部栏组件
- * 
- * 显示在布局顶部，包含：
- * - 左侧：菜单切换按钮
- * - 右侧：用户头像和名称
- * 
- * @param props.userName - 当前用户名，用于显示在右侧
- * @param props.onToggleSidebar - 点击左侧按钮时的回调
- */
-export function Header({ userName, onToggleSidebar }: HeaderProps) {
+function Titlebar() {
   return (
-    <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
-      <button
-        onClick={onToggleSidebar}
-        className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        title="Toggle sidebar"
-      >
-        <Menu className="h-4 w-4" />
-      </button>
+    <div className="flex h-9 select-none items-center justify-between border-b border-border bg-card px-2 text-xs text-muted-foreground [-webkit-app-region:drag]">
       <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">{userName ?? "未登录"}</span>
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-sm">
-          {userName?.charAt(0) ?? "?"}
-        </div>
+        <span className="text-primary">●</span>
+        <span>UniComm - 企业桌面协作平台</span>
       </div>
-    </header>
+      <div className="flex [-webkit-app-region:no-drag]">
+        <button className="flex h-8 w-11 items-center justify-center rounded-sm transition-colors hover:bg-accent hover:text-foreground"><Minus className="h-3.5 w-3.5" /></button>
+        <button className="flex h-8 w-11 items-center justify-center rounded-sm transition-colors hover:bg-accent hover:text-foreground"><Square className="h-3 w-3" /></button>
+        <button className="flex h-8 w-11 items-center justify-center rounded-sm transition-colors hover:bg-destructive hover:text-destructive-foreground"><X className="h-3.5 w-3.5" /></button>
+      </div>
+    </div>
   );
 }
 
@@ -221,16 +233,15 @@ interface AppLayoutProps {
 export function AppLayout({
   children,
   sidebarCollapsed,
-  onToggleSidebar,
   activeView,
   onViewChange,
 }: AppLayoutProps) {
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      <Sidebar collapsed={sidebarCollapsed} activeView={activeView} onViewChange={onViewChange} />
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Header onToggleSidebar={onToggleSidebar} />
-        <main className="min-h-0 flex-1 overflow-hidden p-4">{children}</main>
+    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+      <Titlebar />
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <Sidebar collapsed={sidebarCollapsed} activeView={activeView} onViewChange={onViewChange} />
+        <main className="min-w-0 flex-1 overflow-hidden">{children}</main>
       </div>
     </div>
   );
