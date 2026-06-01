@@ -18,6 +18,7 @@ interface MemoState {
   groups: MemoGroup[];
   selectedMemoId: number | null;
   activeGroupId: number | null;
+  activeStatus: Memo["status"] | null;
   keyword: string;
   isLoading: boolean;
   isSaving: boolean;
@@ -26,6 +27,7 @@ interface MemoState {
   fetchMemos: () => Promise<void>;
   setKeyword: (keyword: string) => void;
   setActiveGroup: (groupId: number | null) => void;
+  setActiveStatus: (status: Memo["status"] | null) => void;
   createMemo: () => Promise<void>;
   updateSelectedMemo: (input: MemoUpdateInput) => Promise<void>;
   deleteSelectedMemo: () => Promise<void>;
@@ -54,6 +56,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
   groups: [],
   selectedMemoId: null,
   activeGroupId: null,
+  activeStatus: null,
   keyword: "",
   isLoading: false,
   isSaving: false,
@@ -63,8 +66,16 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       // 首屏需要分组和 Memo 列表一起加载；默认选中第一条 Memo，保证编辑区有稳定目标。
+      const { activeGroupId, activeStatus, keyword } = get();
       const groups = await listMemoGroups();
-      const result = await listMemos({ page: 1, size: 50, isArchived: false });
+      const result = await listMemos({
+        page: 1,
+        size: 50,
+        groupId: activeGroupId ?? undefined,
+        status: activeStatus ?? undefined,
+        keyword: keyword || undefined,
+        isArchived: false,
+      });
       set({
         groups,
         memos: result.list,
@@ -79,12 +90,13 @@ export const useMemoStore = create<MemoState>((set, get) => ({
   fetchMemos: async () => {
     set({ isLoading: true, error: null });
     try {
-      const { activeGroupId, keyword } = get();
+      const { activeGroupId, activeStatus, keyword } = get();
       // 列表查询始终排除归档数据；归档入口后续可以单独做成筛选视图。
       const result = await listMemos({
         page: 1,
         size: 50,
         groupId: activeGroupId ?? undefined,
+        status: activeStatus ?? undefined,
         keyword: keyword || undefined,
         isArchived: false,
       });
@@ -110,17 +122,21 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ activeGroupId: groupId });
   },
 
+  setActiveStatus: (status) => {
+    set({ activeStatus: status });
+  },
+
   createMemo: async () => {
     set({ isSaving: true, error: null });
     try {
-      const { activeGroupId, groups } = get();
+      const { activeGroupId, activeStatus, groups } = get();
       // 未选择分组时使用第一个分组。后端也会保证默认分组存在，这里是为了前端请求更明确。
       const fallbackGroupId = activeGroupId ?? groups[0]?.id;
       const memo = await createMemo({
         title: "无标题",
         content: "",
         groupId: fallbackGroupId,
-        status: "normal",
+        status: activeStatus ?? "normal",
       });
       const refreshedGroups = await listMemoGroups();
       set((state) => ({

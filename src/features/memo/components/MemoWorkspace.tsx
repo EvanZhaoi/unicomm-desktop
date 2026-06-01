@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -70,6 +70,8 @@ export function MemoWorkspace() {
     [memos, selectedMemoId]
   );
   const [draft, setDraft] = useState<Memo | null>(null);
+  const [editorMode, setEditorMode] = useState<"edit" | "preview">("edit");
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     fetchInitialData();
@@ -110,6 +112,55 @@ export function MemoWorkspace() {
     await fetchMemos();
   };
 
+  const insertMarkdown = (prefix: string, suffix = "", placeholder = "") => {
+    if (!draft) {
+      return;
+    }
+
+    const textarea = textareaRef.current;
+    const currentContent = draft.content;
+    const selectionStart = textarea?.selectionStart ?? currentContent.length;
+    const selectionEnd = textarea?.selectionEnd ?? currentContent.length;
+    const selectedText = currentContent.slice(selectionStart, selectionEnd) || placeholder;
+    const insertedText = `${prefix}${selectedText}${suffix}`;
+    const nextContent =
+      currentContent.slice(0, selectionStart) + insertedText + currentContent.slice(selectionEnd);
+
+    setDraft({ ...draft, content: nextContent });
+    setEditorMode("edit");
+
+    window.requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      const nextStart = selectionStart + prefix.length;
+      const nextEnd = nextStart + selectedText.length;
+      textareaRef.current?.setSelectionRange(nextStart, nextEnd);
+    });
+  };
+
+  const insertBlock = (text: string) => {
+    if (!draft) {
+      return;
+    }
+
+    const textarea = textareaRef.current;
+    const currentContent = draft.content;
+    const selectionStart = textarea?.selectionStart ?? currentContent.length;
+    const needsLeadingBreak = currentContent.length > 0 && !currentContent.endsWith("\n");
+    const block = `${needsLeadingBreak ? "\n" : ""}${text}`;
+
+    setDraft({
+      ...draft,
+      content: currentContent.slice(0, selectionStart) + block + currentContent.slice(selectionStart),
+    });
+    setEditorMode("edit");
+
+    window.requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      const cursor = selectionStart + block.length;
+      textareaRef.current?.setSelectionRange(cursor, cursor);
+    });
+  };
+
   return (
     <div className="grid h-full grid-cols-[320px_minmax(0,1fr)] overflow-hidden bg-background">
       <section className="min-h-0 border-r border-border bg-card">
@@ -128,19 +179,6 @@ export function MemoWorkspace() {
               placeholder={t("memo.search.placeholder")}
             />
           </div>
-        </div>
-        <div className="flex flex-wrap gap-1 px-4 pb-2">
-          {[t("memo.tags.all"), t("memo.tags.work"), t("memo.tags.tech"), t("memo.tags.life")].map((tag, index) => (
-            <button
-              key={tag}
-              className={cn(
-                "rounded-full px-2 py-1 text-[10px] transition-colors hover:bg-secondary hover:text-foreground",
-                index === 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-              )}
-            >
-              {tag}
-            </button>
-          ))}
         </div>
         <button
           onClick={createMemo}
@@ -204,23 +242,39 @@ export function MemoWorkspace() {
         {draft ? (
           <>
             <div className="flex h-12 items-center gap-1 border-b border-border bg-card px-4">
-              <ToolbarButton active title="Bold"><Bold className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="Italic"><Italic className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="Strike"><Strikethrough className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Bold" onClick={() => insertMarkdown("**", "**", "加粗文本")}><Bold className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Italic" onClick={() => insertMarkdown("*", "*", "斜体文本")}><Italic className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Strike" onClick={() => insertMarkdown("~~", "~~", "删除线文本")}><Strikethrough className="h-3.5 w-3.5" /></ToolbarButton>
               <ToolbarSeparator />
-              <ToolbarButton title="Heading"><Heading1 className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="List"><List className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="Ordered list"><ListOrdered className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="Todo"><CheckSquare className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Heading" onClick={() => insertBlock("# 标题")}><Heading1 className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="List" onClick={() => insertBlock("- 列表项")}><List className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Ordered list" onClick={() => insertBlock("1. 列表项")}><ListOrdered className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Todo" onClick={() => insertBlock("- [ ] 待办事项")}><CheckSquare className="h-3.5 w-3.5" /></ToolbarButton>
               <ToolbarSeparator />
-              <ToolbarButton title="Quote"><Quote className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="Code"><Code className="h-3.5 w-3.5" /></ToolbarButton>
-              <ToolbarButton title="Link"><Link className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Quote" onClick={() => insertBlock("> 引用内容")}><Quote className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Code" onClick={() => insertBlock("```\n代码\n```")}><Code className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Link" onClick={() => insertMarkdown("[", "](https://)", "链接文本")}><Link className="h-3.5 w-3.5" /></ToolbarButton>
               <ToolbarSeparator />
-              <ToolbarButton title="Line"><Minus className="h-3.5 w-3.5" /></ToolbarButton>
+              <ToolbarButton title="Line" onClick={() => insertBlock("---")}><Minus className="h-3.5 w-3.5" /></ToolbarButton>
               <div className="ml-auto flex gap-0.5 rounded-sm bg-muted p-0.5">
-                <button className="rounded-sm bg-card px-3 py-1.5 text-[11px] text-foreground shadow-sm">{t("memo.editor.edit")}</button>
-                <button className="rounded-sm px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground">{t("memo.editor.preview")}</button>
+                <button
+                  onClick={() => setEditorMode("edit")}
+                  className={cn(
+                    "rounded-sm px-3 py-1.5 text-[11px] transition-colors hover:text-foreground",
+                    editorMode === "edit" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                  )}
+                >
+                  {t("memo.editor.edit")}
+                </button>
+                <button
+                  onClick={() => setEditorMode("preview")}
+                  className={cn(
+                    "rounded-sm px-3 py-1.5 text-[11px] transition-colors hover:text-foreground",
+                    editorMode === "preview" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                  )}
+                >
+                  {t("memo.editor.preview")}
+                </button>
               </div>
             </div>
             <div className="border-b border-border bg-card p-6">
@@ -255,12 +309,17 @@ export function MemoWorkspace() {
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-auto p-6">
-              <textarea
-                value={draft.content}
-                onChange={(event) => setDraft({ ...draft, content: event.target.value })}
-                className="h-full w-full resize-none rounded-md border border-input bg-background p-4 font-mono text-sm leading-7 text-foreground outline-none transition-all duration-150 placeholder:text-muted-foreground focus:border-ring focus:ring-[3px] focus:ring-primary/10"
-                placeholder={t("memo.editor.placeholder")}
-              />
+              {editorMode === "edit" ? (
+                <textarea
+                  ref={textareaRef}
+                  value={draft.content}
+                  onChange={(event) => setDraft({ ...draft, content: event.target.value })}
+                  className="h-full w-full resize-none rounded-md border border-input bg-background p-4 font-mono text-sm leading-7 text-foreground outline-none transition-all duration-150 placeholder:text-muted-foreground focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+                  placeholder={t("memo.editor.placeholder")}
+                />
+              ) : (
+                <MarkdownPreview content={draft.content} emptyText={t("memo.noContent")} />
+              )}
             </div>
             <div className="flex h-[52px] items-center justify-between border-t border-border bg-card px-4 py-2">
               <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
@@ -291,10 +350,22 @@ export function MemoWorkspace() {
   );
 }
 
-function ToolbarButton({ active, title, children }: { active?: boolean; title: string; children: ReactNode }) {
+function ToolbarButton({
+  active,
+  title,
+  children,
+  onClick,
+}: {
+  active?: boolean;
+  title: string;
+  children: ReactNode;
+  onClick?: () => void;
+}) {
   return (
     <button
+      type="button"
       title={title}
+      onClick={onClick}
       className={cn(
         "flex h-8 w-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
         active && "bg-primary/10 text-primary"
@@ -302,6 +373,50 @@ function ToolbarButton({ active, title, children }: { active?: boolean; title: s
     >
       {children}
     </button>
+  );
+}
+
+function MarkdownPreview({ content, emptyText }: { content: string; emptyText: string }) {
+  const lines = content.split("\n");
+
+  if (!content.trim()) {
+    return (
+      <div className="h-full rounded-md border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
+        {emptyText}
+      </div>
+    );
+  }
+
+  return (
+    <article className="h-full overflow-auto rounded-md border border-input bg-card p-5 text-sm leading-7 text-foreground">
+      {lines.map((line, index) => {
+        if (line.startsWith("# ")) {
+          return <h1 key={index} className="mb-3 mt-1 text-xl font-semibold">{line.slice(2)}</h1>;
+        }
+        if (line.startsWith("## ")) {
+          return <h2 key={index} className="mb-2 mt-4 text-lg font-semibold">{line.slice(3)}</h2>;
+        }
+        if (line.startsWith("- [ ] ")) {
+          return <p key={index} className="pl-1"><input type="checkbox" readOnly className="mr-2 align-middle" />{line.slice(6)}</p>;
+        }
+        if (line.startsWith("- ")) {
+          return <p key={index} className="pl-1">• {line.slice(2)}</p>;
+        }
+        if (/^\d+\.\s/.test(line)) {
+          return <p key={index} className="pl-1">{line}</p>;
+        }
+        if (line.startsWith("> ")) {
+          return <blockquote key={index} className="my-2 border-l-2 border-primary/50 pl-3 text-muted-foreground">{line.slice(2)}</blockquote>;
+        }
+        if (line === "---") {
+          return <hr key={index} className="my-4 border-border" />;
+        }
+        if (!line.trim()) {
+          return <div key={index} className="h-3" />;
+        }
+        return <p key={index} className="whitespace-pre-wrap">{line}</p>;
+      })}
+    </article>
   );
 }
 

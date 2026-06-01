@@ -1,10 +1,7 @@
 /**
  * 应用布局组件
  * 
- * 提供 UniComm Desktop 的主布局结构，包括：
- * - 侧边栏 (Sidebar)
- * - 顶部栏 (Header)
- * - 主内容区域 (main)
+ * 提供 UniComm Desktop 的主布局结构，包括侧边栏、窗口标题栏和主内容区域。
  * 
  * ## 布局结构
  * 
@@ -23,10 +20,7 @@
  * 
  * ## 使用示例
  * ```tsx
- * <AppLayout
- *   sidebarCollapsed={isCollapsed}
- *   onToggleSidebar={() => setIsCollapsed(!isCollapsed)}
- * >
+ * <AppLayout sidebarCollapsed={isCollapsed}>
  *   <YourContent />
  * </AppLayout>
  * ```
@@ -35,9 +29,13 @@
  */
 
 import type { ReactNode } from "react";
-import { Bell, Bot, FileText, Minus, Settings, Square, X } from "lucide-react";
+import { FileText, Minus, Moon, Settings, Square, Sun, X } from "lucide-react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
+import { useMemoStore } from "@/features/memo/store/memoStore";
+import type { Memo } from "@/features/memo/types/memo.types";
+import { useSettingsStore } from "@/stores/settings.store";
 
 export type AppView = "memo" | "settings";
 
@@ -62,6 +60,20 @@ interface SidebarProps {
  */
 export function Sidebar({ collapsed = false, activeView, onViewChange }: SidebarProps) {
   const { t } = useI18n();
+  const { memos, activeStatus, setActiveStatus, fetchMemos } = useMemoStore();
+  const { theme, setTheme } = useSettingsStore();
+
+  const statusFilters: Array<{ label: string; value: Memo["status"] | null }> = [
+    { label: t("memo.all"), value: null },
+    { label: t("memo.status.normal"), value: "normal" },
+    { label: t("memo.status.todo"), value: "todo" },
+    { label: t("memo.status.done"), value: "done" },
+  ];
+
+  const chooseStatus = async (status: Memo["status"] | null) => {
+    setActiveStatus(status);
+    await fetchMemos();
+  };
 
   return (
     <aside
@@ -84,32 +96,26 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
           <NavItem
             icon={<FileText className="h-4 w-4" />}
             label={t("nav.memo")}
-            badge="12"
+            badge={String(memos.length)}
             collapsed={collapsed}
             active={activeView === "memo"}
             onClick={() => onViewChange("memo")}
           />
-          <NavItem icon={<Bell className="h-4 w-4" />} label={t("nav.notifications")} badge="3" collapsed={collapsed} />
-          <NavItem icon={<Bot className="h-4 w-4" />} label={t("nav.assistant")} collapsed={collapsed} />
         </div>
         <div className="mb-6">
           {!collapsed && <div className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.status")}</div>}
           {!collapsed && (
             <div className="mx-1 flex gap-1 rounded-md bg-muted p-1">
-              {[
-                t("memo.all"),
-                t("memo.status.normal"),
-                t("memo.status.todo"),
-                t("memo.status.done"),
-              ].map((label, index) => (
+              {statusFilters.map((filter) => (
                 <button
-                  key={label}
+                  key={filter.value ?? "all"}
+                  onClick={() => chooseStatus(filter.value)}
                   className={cn(
                     "flex-1 rounded-sm px-1 py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground",
-                    index === 0 && "bg-primary text-primary-foreground hover:text-primary-foreground"
+                    activeStatus === filter.value && "bg-primary text-primary-foreground hover:text-primary-foreground"
                   )}
                 >
-                  {label}
+                  {filter.label}
                 </button>
               ))}
             </div>
@@ -129,8 +135,26 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
       {!collapsed && (
         <div className="border-t border-border p-4">
           <div className="mb-2 flex gap-0.5 rounded-md bg-muted p-0.5">
-            <button className="flex-1 rounded-sm bg-card px-2 py-1.5 text-[11px] text-foreground shadow-sm">☀️</button>
-            <button className="flex-1 rounded-sm px-2 py-1.5 text-[11px] text-muted-foreground">🌙</button>
+            <button
+              title="Light"
+              onClick={() => setTheme("light")}
+              className={cn(
+                "flex h-8 flex-1 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground",
+                theme === "light" && "bg-card text-foreground shadow-sm"
+              )}
+            >
+              <Sun className="h-3.5 w-3.5" />
+            </button>
+            <button
+              title="Dark"
+              onClick={() => setTheme("dark")}
+              className={cn(
+                "flex h-8 flex-1 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground",
+                theme === "dark" && "bg-card text-foreground shadow-sm"
+              )}
+            >
+              <Moon className="h-3.5 w-3.5" />
+            </button>
           </div>
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -192,6 +216,35 @@ function NavItem({
 }
 
 function Titlebar() {
+  const minimizeWindow = async () => {
+    try {
+      await getCurrentWindow().minimize();
+    } catch (error) {
+      console.error("Failed to minimize window", error);
+    }
+  };
+
+  const toggleMaximizeWindow = async () => {
+    try {
+      const currentWindow = getCurrentWindow();
+      if (await currentWindow.isMaximized()) {
+        await currentWindow.unmaximize();
+      } else {
+        await currentWindow.maximize();
+      }
+    } catch (error) {
+      console.error("Failed to toggle window maximize state", error);
+    }
+  };
+
+  const closeWindow = async () => {
+    try {
+      await getCurrentWindow().close();
+    } catch (error) {
+      console.error("Failed to close window", error);
+    }
+  };
+
   return (
     <div className="flex h-9 select-none items-center justify-between border-b border-border bg-card px-2 text-xs text-muted-foreground [-webkit-app-region:drag]">
       <div className="flex items-center gap-2">
@@ -199,9 +252,9 @@ function Titlebar() {
         <span>UniComm - 企业桌面协作平台</span>
       </div>
       <div className="flex [-webkit-app-region:no-drag]">
-        <button className="flex h-8 w-11 items-center justify-center rounded-sm transition-colors hover:bg-accent hover:text-foreground"><Minus className="h-3.5 w-3.5" /></button>
-        <button className="flex h-8 w-11 items-center justify-center rounded-sm transition-colors hover:bg-accent hover:text-foreground"><Square className="h-3 w-3" /></button>
-        <button className="flex h-8 w-11 items-center justify-center rounded-sm transition-colors hover:bg-destructive hover:text-destructive-foreground"><X className="h-3.5 w-3.5" /></button>
+        <button onClick={minimizeWindow} className="flex h-8 w-11 items-center justify-center rounded-sm transition-colors hover:bg-accent hover:text-foreground"><Minus className="h-3.5 w-3.5" /></button>
+        <button onClick={toggleMaximizeWindow} className="flex h-8 w-11 items-center justify-center rounded-sm transition-colors hover:bg-accent hover:text-foreground"><Square className="h-3 w-3" /></button>
+        <button onClick={closeWindow} className="flex h-8 w-11 items-center justify-center rounded-sm transition-colors hover:bg-destructive hover:text-destructive-foreground"><X className="h-3.5 w-3.5" /></button>
       </div>
     </div>
   );
@@ -215,8 +268,6 @@ interface AppLayoutProps {
   children: ReactNode;
   /** 是否折叠侧边栏 */
   sidebarCollapsed?: boolean;
-  /** 切换侧边栏的回调 */
-  onToggleSidebar?: () => void;
   activeView: AppView;
   onViewChange: (view: AppView) => void;
 }
@@ -228,7 +279,6 @@ interface AppLayoutProps {
  * 
  * @param props.children - 主内容区域的子组件
  * @param props.sidebarCollapsed - 侧边栏是否折叠
- * @param props.onToggleSidebar - 切换侧边栏的回调
  */
 export function AppLayout({
   children,

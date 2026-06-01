@@ -69,7 +69,7 @@ function AppContent() {
   const { currentUser, authStatus, initAuth } = useAuthStore();
   
   // 从 settingsStore 获取侧边栏状态和方法
-  const { sidebarCollapsed, toggleSidebar } = useSettingsStore();
+  const { sidebarCollapsed } = useSettingsStore();
   const { shortcuts, language } = useSettingStore();
   const { t } = useI18n();
   const [activeView, setActiveView] = useState<"memo" | "settings">("memo");
@@ -170,7 +170,6 @@ function AppContent() {
   return (
     <AppLayout
       sidebarCollapsed={sidebarCollapsed}
-      onToggleSidebar={toggleSidebar}
       activeView={activeView}
       onViewChange={setActiveView}
     >
