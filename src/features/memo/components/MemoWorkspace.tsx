@@ -5,6 +5,7 @@ import {
   Archive,
   FileCode2,
   FileText,
+  Folder,
   Inbox,
   Plus,
   Save,
@@ -35,6 +36,12 @@ function formatDate(value: string): string {
 function memoStatusKey(status: Memo["status"]) {
   return `memo.status.${status}` as const;
 }
+
+const memoStatusOptions: Array<{ value: Memo["status"]; colorClassName: string }> = [
+  { value: "normal", colorClassName: "bg-emerald-500" },
+  { value: "todo", colorClassName: "bg-yellow-500" },
+  { value: "done", colorClassName: "bg-blue-500" },
+];
 
 export function MemoWorkspace() {
   const { t } = useI18n();
@@ -202,31 +209,45 @@ export function MemoWorkspace() {
                 className="w-full border-0 bg-transparent text-xl font-semibold tracking-normal text-foreground outline-none placeholder:text-muted-foreground"
                 placeholder={t("memo.title.placeholder")}
               />
-              <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                <Select
-                  value={draft.groupId}
-                  onChange={(event) => setDraft({ ...draft, groupId: Number(event.target.value) })}
-                  selectClassName="h-8 bg-card text-xs"
-                >
-                  {groups.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      {group.name}
-                    </option>
-                  ))}
-                </Select>
-                <Select
-                  value={draft.status}
-                  onChange={(event) => setDraft({ ...draft, status: event.target.value as Memo["status"] })}
-                  selectClassName="h-8 bg-card text-xs"
-                >
-                  <option value="normal">{t("memo.status.normal")}</option>
-                  <option value="todo">{t("memo.status.todo")}</option>
-                  <option value="done">{t("memo.status.done")}</option>
-                </Select>
-                <span>{t("memo.updatedAt", { time: formatDate(draft.updateTime) })}</span>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <div className="flex gap-0.5 rounded-md bg-muted p-0.5">
+              <div className="mt-3 flex items-center justify-between gap-4 text-xs text-muted-foreground">
+                <div className="flex min-w-0 items-center gap-3">
+                  <label className="inline-flex h-7 items-center gap-1.5 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground">
+                    <Folder className="h-3.5 w-3.5" />
+                    <span className="shrink-0">{t("memo.groups")}</span>
+                    <Select
+                      value={draft.groupId}
+                      onChange={(event) => setDraft({ ...draft, groupId: Number(event.target.value) })}
+                      className="w-[130px]"
+                      selectClassName="h-6 border-0 bg-transparent py-0 pl-1 pr-6 text-xs shadow-none hover:border-transparent focus:border-transparent focus:ring-0"
+                    >
+                      {groups.map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {group.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+                  <div className="flex h-7 items-center rounded-md bg-muted p-0.5">
+                    {memoStatusOptions.map((status) => (
+                      <button
+                        key={status.value}
+                        type="button"
+                        onClick={() => setDraft({ ...draft, status: status.value })}
+                        className={cn(
+                          "inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors hover:text-foreground",
+                          draft.status === status.value
+                            ? "bg-card text-foreground shadow-sm"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        <span className={cn("h-1.5 w-1.5 rounded-full", status.colorClassName)} />
+                        {t(memoStatusKey(status.value))}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="truncate">{t("memo.updatedAt", { time: formatDate(draft.updateTime) })}</span>
+                </div>
+                <div className="flex shrink-0 gap-0.5 rounded-md bg-muted p-0.5">
                   <button
                     type="button"
                     onClick={() => setEditorMode("visual")}
