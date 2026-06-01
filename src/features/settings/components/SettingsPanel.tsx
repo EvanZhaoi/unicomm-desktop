@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Globe2, Keyboard, RotateCcw, Save, Type } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Button, Select } from "@/components/ui";
 import { configureGlobalShortcuts } from "@/desktop/shortcut/shortcutManager";
 import { useI18n } from "@/i18n/useI18n";
 import { useSettingStore } from "@/stores/settingStore";
@@ -89,18 +89,18 @@ export function SettingsPanel() {
                 {t("settings.language.zh")} / {t("settings.language.ja")}
               </span>
             </span>
-            <select
+            <Select
               value={language}
               onChange={(event) => {
                 setLanguage(event.target.value as Language);
                 setMessage(t("settings.language.saved"));
                 setError(null);
               }}
-              className="h-9 min-w-40 rounded-sm border border-input bg-background px-3 text-sm outline-none transition-all duration-150 focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+              className="min-w-40"
             >
               <option value="zh-CN">{t("settings.language.zh")}</option>
               <option value="ja-JP">{t("settings.language.ja")}</option>
-            </select>
+            </Select>
           </label>
 
           <div className="flex items-center justify-between gap-6 pt-5">

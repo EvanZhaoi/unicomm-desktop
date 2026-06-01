@@ -10,8 +10,9 @@ import {
   Save,
   Search,
   Star,
+  X,
 } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Button, Select } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
 import { useMemoStore } from "../store/memoStore";
@@ -117,24 +118,35 @@ export function MemoWorkspace() {
                   search();
                 }
               }}
-              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-2 text-sm outline-none transition-all duration-150 focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+              className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-9 text-sm outline-none transition-all duration-150 focus:border-ring focus:ring-[3px] focus:ring-primary/10"
               placeholder={t("memo.search.placeholder")}
             />
+            {keyword && (
+              <button
+                type="button"
+                onClick={() => setKeyword("")}
+                className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                title={t("memo.search")}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
         <button
           onClick={createMemo}
           disabled={isSaving}
-          className="mx-4 my-3 flex w-[calc(100%-2rem)] items-center justify-center gap-1 rounded-md bg-primary px-3 py-2.5 text-[13px] font-medium text-primary-foreground shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md disabled:pointer-events-none disabled:opacity-60"
+          className="mx-4 my-3 flex w-[calc(100%-2rem)] items-center justify-center gap-1 rounded-md bg-primary px-3 py-2.5 text-[13px] font-medium text-primary-foreground shadow-sm transition-colors duration-150 hover:bg-primary/90 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
         >
           <Plus className="h-4 w-4" />
           {t("memo.new")}
         </button>
         <div className="px-4 pb-2">
-          <select
+          <Select
             value={activeGroupId ?? ""}
             onChange={(event) => chooseGroup(event.target.value ? Number(event.target.value) : null)}
-            className="h-8 w-full rounded-sm border border-input bg-background px-2 text-xs text-muted-foreground outline-none focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+            className="w-full"
+            selectClassName="h-8 text-xs text-muted-foreground"
           >
             <option value="">{t("memo.all")}</option>
             {groups.map((group) => (
@@ -142,7 +154,7 @@ export function MemoWorkspace() {
                 {group.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="h-[calc(100%-10.75rem)] overflow-auto">
           {isLoading ? (
@@ -154,7 +166,7 @@ export function MemoWorkspace() {
               <button
                 key={memo.id}
                 className={cn(
-                  "block w-full border-l-2 border-b border-l-transparent border-border p-4 text-left transition-colors duration-100 hover:bg-accent",
+                  "block w-full border-l-2 border-b border-l-transparent border-border p-4 text-left transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
                   selectedMemoId === memo.id && "border-l-primary bg-accent"
                 )}
                 onClick={() => selectMemo(memo.id)}
@@ -191,35 +203,35 @@ export function MemoWorkspace() {
                 placeholder={t("memo.title.placeholder")}
               />
               <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                <select
+                <Select
                   value={draft.groupId}
                   onChange={(event) => setDraft({ ...draft, groupId: Number(event.target.value) })}
-                  className="rounded-sm border border-input bg-transparent px-2 py-1 outline-none transition-all duration-150 hover:border-ring focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+                  selectClassName="h-8 bg-card text-xs"
                 >
                   {groups.map((group) => (
                     <option key={group.id} value={group.id}>
                       {group.name}
                     </option>
                   ))}
-                </select>
-                <select
+                </Select>
+                <Select
                   value={draft.status}
                   onChange={(event) => setDraft({ ...draft, status: event.target.value as Memo["status"] })}
-                  className="rounded-sm border border-input bg-transparent px-2 py-1 outline-none transition-all duration-150 hover:border-ring focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+                  selectClassName="h-8 bg-card text-xs"
                 >
                   <option value="normal">{t("memo.status.normal")}</option>
                   <option value="todo">{t("memo.status.todo")}</option>
                   <option value="done">{t("memo.status.done")}</option>
-                </select>
+                </Select>
                 <span>{t("memo.updatedAt", { time: formatDate(draft.updateTime) })}</span>
               </div>
               <div className="mt-4 flex justify-end">
-                <div className="flex gap-0.5 rounded-sm bg-muted p-0.5">
+                <div className="flex gap-0.5 rounded-md bg-muted p-0.5">
                   <button
                     type="button"
                     onClick={() => setEditorMode("visual")}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-sm px-3 py-1.5 text-[11px] transition-colors hover:text-foreground",
+                      "inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:text-foreground",
                       editorMode === "visual" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                     )}
                   >
@@ -230,7 +242,7 @@ export function MemoWorkspace() {
                     type="button"
                     onClick={() => setEditorMode("markdown")}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-sm px-3 py-1.5 text-[11px] transition-colors hover:text-foreground",
+                      "inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:text-foreground",
                       editorMode === "markdown" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                     )}
                   >
@@ -259,7 +271,7 @@ export function MemoWorkspace() {
                 </Suspense>
               )}
             </div>
-            <div className="flex h-[52px] items-center justify-between border-t border-border bg-card px-4 py-2">
+            <div className="flex h-11 items-center justify-between border-t border-border bg-card px-4">
               <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{t("memo.editor.saved")}</span>
                 {error && <span className="text-destructive">{error}</span>}

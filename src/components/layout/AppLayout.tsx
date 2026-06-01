@@ -90,9 +90,9 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
           <h1 className="text-center text-sm font-semibold tracking-normal text-foreground">UC</h1>
         )}
       </div>
-      <nav className="flex-1 overflow-y-auto p-2">
-        <div className="mb-6">
-          {!collapsed && <div className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.shortcuts")}</div>}
+      <nav className="flex-1 space-y-3 overflow-y-auto p-2">
+        <div className="space-y-1">
+          {!collapsed && <div className="px-2 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.shortcuts")}</div>}
           <NavItem
             icon={<FileText className="h-4 w-4" />}
             label={t("nav.memo")}
@@ -102,8 +102,8 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
             onClick={() => onViewChange("memo")}
           />
         </div>
-        <div className="mb-6">
-          {!collapsed && <div className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.status")}</div>}
+        <div className="space-y-1">
+          {!collapsed && <div className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.status")}</div>}
           {!collapsed && (
             <div className="mx-1 flex gap-1 rounded-md bg-muted p-1">
               {statusFilters.map((filter) => (
@@ -121,8 +121,8 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
             </div>
           )}
         </div>
-        <div>
-          {!collapsed && <div className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.settings")}</div>}
+        <div className="space-y-1">
+          {!collapsed && <div className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.settings")}</div>}
           <NavItem
             icon={<Settings className="h-4 w-4" />}
             label={t("nav.settings")}
@@ -252,15 +252,15 @@ function Titlebar() {
   };
 
   return (
-    <div className="flex h-9 select-none items-center justify-between border-b border-border bg-background px-2 text-xs text-muted-foreground [-webkit-app-region:drag]">
-      <div className="flex items-center gap-2">
+    <div className="flex h-12 select-none items-center justify-between border-b border-border bg-background px-3 text-xs text-muted-foreground [-webkit-app-region:drag]">
+      <div className="flex items-center gap-2.5">
         <span className="text-primary">●</span>
         <span>UniComm - 企业桌面协作平台</span>
       </div>
-      <div className="flex [-webkit-app-region:no-drag]">
-        <button onClick={minimizeWindow} className="flex h-8 w-11 items-center justify-center rounded-sm transition-colors hover:bg-accent hover:text-foreground"><Minus className="h-3.5 w-3.5" /></button>
-        <button onClick={toggleMaximizeWindow} className="flex h-8 w-11 items-center justify-center rounded-sm transition-colors hover:bg-accent hover:text-foreground"><Square className="h-3 w-3" /></button>
-        <button onClick={closeWindow} className="flex h-8 w-11 items-center justify-center rounded-sm transition-colors hover:bg-destructive hover:text-destructive-foreground"><X className="h-3.5 w-3.5" /></button>
+      <div className="flex gap-1 [-webkit-app-region:no-drag]">
+        <button onClick={minimizeWindow} className="flex h-9 w-11 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground"><Minus className="h-3.5 w-3.5" /></button>
+        <button onClick={toggleMaximizeWindow} className="flex h-9 w-11 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground"><Square className="h-3 w-3" /></button>
+        <button onClick={closeWindow} className="flex h-9 w-11 items-center justify-center rounded-md transition-colors hover:bg-destructive hover:text-destructive-foreground"><X className="h-3.5 w-3.5" /></button>
       </div>
     </div>
   );
