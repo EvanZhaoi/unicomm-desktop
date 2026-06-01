@@ -246,7 +246,7 @@ function Titlebar() {
   };
 
   return (
-    <div className="flex h-9 select-none items-center justify-between border-b border-border bg-card px-2 text-xs text-muted-foreground [-webkit-app-region:drag]">
+    <div className="flex h-9 select-none items-center justify-between border-b border-border bg-background px-2 text-xs text-muted-foreground [-webkit-app-region:drag]">
       <div className="flex items-center gap-2">
         <span className="text-primary">●</span>
         <span>UniComm - 企业桌面协作平台</span>
