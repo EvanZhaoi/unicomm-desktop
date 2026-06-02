@@ -5,6 +5,7 @@ import type {
   MemoGroup,
   MemoListParams,
   MemoUpdateInput,
+  MemberSearchResult,
   PageResult,
 } from "../types/memo.types";
 
@@ -46,4 +47,10 @@ export function updateMemoArchive(id: number, value: boolean): Promise<Memo> {
 
 export function listMemoGroups(): Promise<MemoGroup[]> {
   return client.get<MemoGroup[], MemoGroup[]>("/memo-groups");
+}
+
+export function searchMembers(keyword: string, limit = 10): Promise<MemberSearchResult[]> {
+  return client.get<MemberSearchResult[], MemberSearchResult[]>("/members/search", {
+    params: { keyword, limit },
+  });
 }

@@ -23,8 +23,9 @@ import {
 import { Button, Select } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
+import { searchMembers } from "../api/memoApi";
 import { useMemoStore } from "../store/memoStore";
-import type { Memo, MemoGroup } from "../types/memo.types";
+import type { Memo, MemoGroup, MemberSearchResult } from "../types/memo.types";
 
 const MemoRichEditor = lazy(() => import("./MemoRichEditor"));
 
@@ -316,17 +317,12 @@ export function MemoWorkspace() {
             </div>
             <RelatedUsersEditor
               users={draft.relatedUsers}
+              ownerUsername={draft.ownerUsername}
               disabled={!isOwner}
-              onChange={(usernames) =>
+              onChange={(relatedUsers) =>
                 setDraft({
                   ...draft,
-                  relatedUsers: usernames.map((username, index) => ({
-                    id: draft.relatedUsers.find((user) => user.username === username)?.id ?? -index - 1,
-                    username,
-                    permission: "view",
-                    createTime: "",
-                    updateTime: "",
-                  })),
+                  relatedUsers,
                 })
               }
             />
@@ -480,29 +476,88 @@ function MemoGroupDropdown({
 
 function RelatedUsersEditor({
   users,
+  ownerUsername,
   disabled,
   onChange,
 }: {
   users: Memo["relatedUsers"];
+  ownerUsername: string;
   disabled: boolean;
-  onChange: (usernames: string[]) => void;
+  onChange: (users: Memo["relatedUsers"]) => void;
 }) {
   const { t } = useI18n();
   const [input, setInput] = useState("");
-  const usernames = users.map((user) => user.username);
+  const [options, setOptions] = useState<MemberSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [open, setOpen] = useState(false);
+  const usernames = useMemo(() => users.map((user) => user.username), [users]);
 
-  const addUser = () => {
-    const username = input.trim();
-    if (!username || usernames.includes(username)) {
-      setInput("");
+  useEffect(() => {
+    if (disabled) {
       return;
     }
-    onChange([...usernames, username]);
+
+    const keyword = input.trim();
+    if (keyword.length < 1) {
+      setOptions([]);
+      setOpen(false);
+      return;
+    }
+
+    let disposed = false;
+    const timer = window.setTimeout(async () => {
+      setSearching(true);
+      try {
+        const result = await searchMembers(keyword, 8);
+        if (!disposed) {
+          setOptions(result.filter((member) => member.username !== ownerUsername && !usernames.includes(member.username)));
+          setOpen(true);
+        }
+      } catch {
+        if (!disposed) {
+          setOptions([]);
+          setOpen(false);
+        }
+      } finally {
+        if (!disposed) {
+          setSearching(false);
+        }
+      }
+    }, 220);
+
+    return () => {
+      disposed = true;
+      window.clearTimeout(timer);
+    };
+  }, [disabled, input, ownerUsername, usernames]);
+
+  const addUser = (member: MemberSearchResult) => {
+    if (member.username === ownerUsername || usernames.includes(member.username)) {
+      setInput("");
+      setOpen(false);
+      return;
+    }
+    onChange([
+      ...users,
+      {
+        id: -Date.now(),
+        username: member.username,
+        employeeNo: member.employeeNo,
+        displayName: member.displayName,
+        departmentName: member.departmentName,
+        email: member.email,
+        permission: "view",
+        createTime: "",
+        updateTime: "",
+      },
+    ]);
     setInput("");
+    setOptions([]);
+    setOpen(false);
   };
 
   const removeUser = (username: string) => {
-    onChange(usernames.filter((value) => value !== username));
+    onChange(users.filter((user) => user.username !== username));
   };
 
   return (
@@ -517,8 +572,10 @@ function RelatedUsersEditor({
           <span
             key={user.username}
             className="inline-flex h-6 items-center gap-1 rounded-md bg-muted px-2 text-xs text-foreground"
+            title={[user.username, user.employeeNo, user.departmentName].filter(Boolean).join(" · ")}
           >
-            {user.username}
+            {user.displayName || user.username}
+            {user.employeeNo && <span className="text-muted-foreground">{user.employeeNo}</span>}
             {!disabled && (
               <button
                 type="button"
@@ -532,19 +589,56 @@ function RelatedUsersEditor({
           </span>
         ))}
         {!disabled && (
-          <input
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === ",") {
-                event.preventDefault();
-                addUser();
-              }
-            }}
-            onBlur={addUser}
-            className="h-6 min-w-[120px] flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
-            placeholder={t("memo.relatedUsers.placeholder")}
-          />
+          <div className="relative min-w-[180px] flex-1">
+            <input
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onFocus={() => {
+                if (options.length > 0) {
+                  setOpen(true);
+                }
+              }}
+              onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && options[0]) {
+                  event.preventDefault();
+                  addUser(options[0]);
+                }
+                if (event.key === "Escape") {
+                  setOpen(false);
+                }
+              }}
+              className="h-6 w-full bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
+              placeholder={t("memo.relatedUsers.placeholder")}
+            />
+            {open && (
+              <div className="absolute left-0 top-7 z-40 max-h-56 w-full min-w-[260px] overflow-auto rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
+                {searching ? (
+                  <div className="px-2 py-2 text-muted-foreground">{t("memo.relatedUsers.searching")}</div>
+                ) : options.length === 0 ? (
+                  <div className="px-2 py-2 text-muted-foreground">{t("memo.relatedUsers.noResult")}</div>
+                ) : (
+                  options.map((member) => (
+                    <button
+                      key={member.username}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => addUser(member)}
+                      className="flex w-full items-center justify-between gap-3 rounded-sm px-2 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{member.displayName}</span>
+                        <span className="block truncate text-[11px] text-muted-foreground">
+                          {member.username} · {member.employeeNo}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">{member.departmentName}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

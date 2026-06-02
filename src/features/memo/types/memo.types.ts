@@ -19,9 +19,21 @@ export interface Memo {
 export interface MemoRelatedUser {
   id: number;
   username: string;
+  employeeNo?: string;
+  displayName?: string;
+  departmentName?: string;
+  email?: string;
   permission: "view" | "edit";
   createTime: string;
   updateTime: string;
+}
+
+export interface MemberSearchResult {
+  username: string;
+  employeeNo: string;
+  displayName: string;
+  departmentName: string;
+  email: string;
 }
 
 export interface MemoGroup {
