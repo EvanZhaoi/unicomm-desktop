@@ -20,12 +20,12 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { Button, Select } from "@/components/ui";
+import { Button, RemoteMultiSelect, Select, type RemoteSelectOption } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
 import { searchMembers } from "../api/memoApi";
 import { useMemoStore } from "../store/memoStore";
-import type { Memo, MemoGroup, MemberSearchResult } from "../types/memo.types";
+import type { Memo, MemoGroup } from "../types/memo.types";
 
 const MemoRichEditor = lazy(() => import("./MemoRichEditor"));
 
@@ -486,179 +486,79 @@ function RelatedUsersEditor({
   onChange: (users: Memo["relatedUsers"]) => void;
 }) {
   const { t } = useI18n();
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const [input, setInput] = useState("");
-  const [options, setOptions] = useState<MemberSearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [open, setOpen] = useState(false);
-  const usernames = useMemo(() => users.map((user) => user.username), [users]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const closeOnOutsideClick = (event: globalThis.MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", closeOnOutsideClick);
-    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
-  }, [open]);
-
-  useEffect(() => {
-    if (disabled) {
-      return;
-    }
-
-    const keyword = input.trim();
-    if (keyword.length < 1) {
-      setOptions([]);
-      setOpen(false);
-      return;
-    }
-
-    let disposed = false;
-    const timer = window.setTimeout(async () => {
-      setSearching(true);
-      try {
-        const result = await searchMembers(keyword, 8);
-        if (!disposed) {
-          setOptions(result.filter((member) => member.username !== ownerUsername && !usernames.includes(member.username)));
-          setOpen(true);
-        }
-      } catch {
-        if (!disposed) {
-          setOptions([]);
-          setOpen(false);
-        }
-      } finally {
-        if (!disposed) {
-          setSearching(false);
-        }
-      }
-    }, 220);
-
-    return () => {
-      disposed = true;
-      window.clearTimeout(timer);
-    };
-  }, [disabled, input, ownerUsername, usernames]);
-
-  const addUser = (member: MemberSearchResult) => {
-    if (member.username === ownerUsername || usernames.includes(member.username)) {
-      setInput("");
-      setOpen(false);
-      return;
-    }
-    onChange([
-      ...users,
-      {
-        id: -Date.now(),
-        username: member.username,
-        employeeNo: member.employeeNo,
-        displayName: member.displayName,
-        departmentName: member.departmentName,
-        email: member.email,
-        permission: "view",
-        createTime: "",
-        updateTime: "",
-      },
-    ]);
-    setInput("");
-    setOptions([]);
-    setOpen(false);
+  type RelatedUserOption = RemoteSelectOption & {
+    username: string;
+    employeeNo?: string;
+    displayName?: string;
+    departmentName?: string;
+    email?: string;
   };
 
-  const removeUser = (username: string) => {
-    onChange(users.filter((user) => user.username !== username));
+  const selectedOptions: RelatedUserOption[] = users.map((user) => ({
+    value: user.username,
+    label: user.displayName || user.username,
+    description: [user.username, user.employeeNo].filter(Boolean).join(" · "),
+    meta: user.departmentName || user.employeeNo,
+    username: user.username,
+    employeeNo: user.employeeNo,
+    displayName: user.displayName,
+    departmentName: user.departmentName,
+    email: user.email,
+  }));
+
+  const searchOptions = async (keyword: string): Promise<RelatedUserOption[]> => {
+    const result = await searchMembers(keyword, 8);
+    return result.map((member) => ({
+      value: member.username,
+      label: member.displayName || member.username,
+      description: `${member.username} · ${member.employeeNo}`,
+      meta: member.departmentName,
+      username: member.username,
+      employeeNo: member.employeeNo,
+      displayName: member.displayName,
+      departmentName: member.departmentName,
+      email: member.email,
+    }));
+  };
+
+  const updateUsers = (options: RelatedUserOption[]) => {
+    onChange(
+      options.map((option) => {
+        const existing = users.find((user) => user.username === option.username);
+        return {
+          id: existing?.id ?? -Date.now(),
+          username: option.username,
+          employeeNo: option.employeeNo,
+          displayName: option.displayName,
+          departmentName: option.departmentName,
+          email: option.email,
+          permission: "view",
+          createTime: existing?.createTime ?? "",
+          updateTime: existing?.updateTime ?? "",
+        };
+      })
+    );
   };
 
   return (
-    <div ref={rootRef} className="shrink-0 border-b border-border bg-card px-4 pb-3">
-      <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(240px,320px)]">
-        <div className="flex min-h-8 flex-wrap items-center gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-xs">
+    <div className="shrink-0 border-b border-border bg-card px-4 pb-3">
+      <RemoteMultiSelect
+        value={selectedOptions}
+        disabled={disabled}
+        placeholder={t("memo.relatedUsers.placeholder")}
+        emptyText={t("memo.relatedUsers.empty")}
+        loadingText={t("memo.relatedUsers.searching")}
+        noResultText={t("memo.relatedUsers.noResult")}
+        search={searchOptions}
+        onChange={updateUsers}
+        filterOption={(option) => option.value !== ownerUsername}
+        renderPrefix={() => (
           <span className="inline-flex shrink-0 items-center gap-1 text-muted-foreground">
             <UserPlus className="h-3.5 w-3.5" />
             {t("memo.relatedUsers")}
           </span>
-          {users.length === 0 && <span className="text-muted-foreground">{t("memo.relatedUsers.empty")}</span>}
-          {users.map((user) => (
-            <span
-              key={user.username}
-              className="inline-flex h-6 items-center gap-1 rounded-md bg-muted px-2 text-xs text-foreground"
-              title={[user.username, user.employeeNo, user.departmentName].filter(Boolean).join(" · ")}
-            >
-              {user.displayName || user.username}
-              {user.employeeNo && <span className="text-muted-foreground">{user.employeeNo}</span>}
-              {!disabled && (
-                <button
-                  type="button"
-                  onClick={() => removeUser(user.username)}
-                  className="rounded-sm text-muted-foreground transition-colors hover:text-destructive"
-                  title={t("memo.relatedUsers.remove")}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </span>
-          ))}
-        </div>
-
-        {!disabled && (
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-            <input
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onFocus={() => {
-                if (input.trim()) {
-                  setOpen(true);
-                }
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && options[0]) {
-                  event.preventDefault();
-                  addUser(options[0]);
-                }
-                if (event.key === "Escape") {
-                  setOpen(false);
-                }
-              }}
-              className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs text-foreground outline-none transition-all focus:border-ring focus:ring-[3px] focus:ring-primary/10 placeholder:text-muted-foreground"
-              placeholder={t("memo.relatedUsers.placeholder")}
-            />
-            {open && input.trim() && (
-              <div className="absolute right-0 top-9 z-50 max-h-60 w-full min-w-[280px] overflow-auto rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
-                {searching ? (
-                  <div className="px-2 py-2 text-muted-foreground">{t("memo.relatedUsers.searching")}</div>
-                ) : options.length === 0 ? (
-                  <div className="px-2 py-2 text-muted-foreground">{t("memo.relatedUsers.noResult")}</div>
-                ) : (
-                  options.map((member) => (
-                    <button
-                      key={member.username}
-                      type="button"
-                      onClick={() => addUser(member)}
-                      className="flex w-full items-center justify-between gap-3 rounded-sm px-2 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">{member.displayName}</span>
-                        <span className="block truncate text-[11px] text-muted-foreground">
-                          {member.username} · {member.employeeNo}
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-[11px] text-muted-foreground">{member.departmentName}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
         )}
-      </div>
+      />
     </div>
   );
 }
