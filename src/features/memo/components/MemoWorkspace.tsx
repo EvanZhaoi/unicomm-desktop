@@ -1,24 +1,28 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   Archive,
+  Check,
+  ChevronDown,
   Columns2,
   FileCode2,
   FileText,
   Folder,
   Inbox,
+  Pin,
   Plus,
   Save,
   Search,
   Star,
+  Trash2,
   X,
 } from "lucide-react";
 import { Button, Select } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
 import { useMemoStore } from "../store/memoStore";
-import type { Memo } from "../types/memo.types";
+import type { Memo, MemoGroup } from "../types/memo.types";
 
 const MemoRichEditor = lazy(() => import("./MemoRichEditor"));
 
@@ -61,7 +65,9 @@ export function MemoWorkspace() {
     setActiveGroup,
     createMemo,
     updateSelectedMemo,
+    deleteSelectedMemo,
     selectMemo,
+    toggleTop,
     toggleFavorite,
     toggleArchive,
   } = useMemoStore();
@@ -112,6 +118,13 @@ export function MemoWorkspace() {
 
   const search = async () => {
     await fetchMemos();
+  };
+
+  const deleteDraft = async () => {
+    if (!draft || !window.confirm(t("memo.delete.confirm"))) {
+      return;
+    }
+    await deleteSelectedMemo();
   };
 
   return (
@@ -221,22 +234,15 @@ export function MemoWorkspace() {
               />
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <label className="inline-flex h-6 items-center gap-1.5 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground">
+                  <div className="inline-flex h-6 items-center gap-1.5 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground">
                     <Folder className="h-3.5 w-3.5" />
                     <span className="shrink-0">{t("memo.groups")}</span>
-                    <Select
+                    <MemoGroupDropdown
+                      groups={groups}
                       value={draft.groupId}
-                      onChange={(event) => setDraft({ ...draft, groupId: Number(event.target.value) })}
-                      className="w-[130px]"
-                      selectClassName="h-5 border-0 bg-transparent py-0 pl-1 pr-6 text-xs shadow-none hover:border-transparent focus:border-transparent focus:ring-0"
-                    >
-                      {groups.map((group) => (
-                        <option key={group.id} value={group.id}>
-                          {group.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
+                      onChange={(groupId) => setDraft({ ...draft, groupId })}
+                    />
+                  </div>
                   <div className="flex h-6 shrink-0 items-center rounded-md bg-muted p-0.5">
                     {memoStatusOptions.map((status) => (
                       <button
@@ -337,6 +343,10 @@ export function MemoWorkspace() {
                 {error && <span className="text-destructive">{error}</span>}
               </div>
               <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => toggleTop(draft.id)} disabled={isSaving}>
+                  <Pin className={cn(draft.isTop && "fill-primary text-primary")} />
+                  {draft.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => toggleArchive(draft.id)} disabled={isSaving}>
                   <Archive />
                   {t("memo.action.archive")}
@@ -349,6 +359,10 @@ export function MemoWorkspace() {
                   <Save />
                   {t("memo.action.save")}
                 </Button>
+                <Button variant="destructive" size="sm" onClick={deleteDraft} disabled={isSaving}>
+                  <Trash2 />
+                  {t("memo.action.delete")}
+                </Button>
               </div>
             </div>
           </>
@@ -357,6 +371,87 @@ export function MemoWorkspace() {
         )}
       </main>
     </div>
+  );
+}
+
+function MemoGroupDropdown({
+  groups,
+  value,
+  onChange,
+}: {
+  groups: MemoGroup[];
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const selectedGroup = groups.find((group) => group.id === value) ?? groups[0];
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="inline-flex h-5 w-[132px] items-center justify-between gap-2 rounded-sm px-1 text-left text-xs text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary/20"
+      >
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          <GroupMark group={selectedGroup} />
+          <span className="truncate">{selectedGroup?.name ?? "-"}</span>
+        </span>
+        <ChevronDown className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-6 z-30 w-44 overflow-hidden rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
+          {groups.map((group) => (
+            <button
+              key={group.id}
+              type="button"
+              onClick={() => {
+                onChange(group.id);
+                setOpen(false);
+              }}
+              className={cn(
+                "flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground",
+                group.id === value && "bg-accent text-accent-foreground"
+              )}
+            >
+              <GroupMark group={group} />
+              <span className="min-w-0 flex-1 truncate">{group.name}</span>
+              {group.id === value && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GroupMark({ group }: { group?: MemoGroup }) {
+  if (group?.icon) {
+    return <span className="shrink-0 text-[11px] leading-none">{group.icon}</span>;
+  }
+
+  return (
+    <span
+      className="h-2.5 w-2.5 shrink-0 rounded-full border border-border"
+      style={{ backgroundColor: group?.color || "var(--primary)" }}
+    />
   );
 }
 

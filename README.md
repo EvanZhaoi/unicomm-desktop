@@ -82,7 +82,7 @@ npm run tauri build
 - [x] 基础布局：侧边栏 + 应用内自定义标题栏
 - [x] 主窗口关闭原生标题栏，标题栏颜色跟随主题
 - [x] shadcn/ui 基础组件
-- [x] Memo 工作台：列表、分组筛选、状态筛选、Milkdown 可视化编辑、MD 源码/双栏模式
+- [x] Memo 工作台：列表、分组筛选、状态筛选、置顶、收藏、归档、删除、Milkdown 可视化编辑、MD 源码/双栏模式
 - [x] Memo 可视化编辑：支持 TopBar、表格、代码块、公式等常用 Markdown 排版能力
 - [x] Memo 图片插入：本地图片转 base64 后作为 Markdown 图片保存到 content
 - [x] 快速 Memo 小窗口
