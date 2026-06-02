@@ -177,13 +177,15 @@ textarea {
 }
 
 .memo-crepe-editor .milkdown {
+  --memo-editor-strong-border: #c5ced8;
+  --memo-editor-subtle-border: #d7dee7;
   --crepe-color-background: var(--card);
   --crepe-color-on-background: var(--foreground);
   --crepe-color-surface: var(--background);
   --crepe-color-surface-low: var(--muted);
   --crepe-color-on-surface: var(--foreground);
   --crepe-color-on-surface-variant: var(--muted-foreground);
-  --crepe-color-outline: var(--border);
+  --crepe-color-outline: var(--memo-editor-strong-border);
   --crepe-color-primary: var(--primary);
   --crepe-color-secondary: var(--secondary);
   --crepe-color-on-secondary: var(--secondary-foreground);
@@ -192,13 +194,18 @@ textarea {
   --crepe-color-inline-code: var(--destructive);
   --crepe-color-error: var(--destructive);
   --crepe-color-hover: var(--accent);
-  --crepe-color-selected: color-mix(in srgb, var(--primary) 18%, transparent);
+  --crepe-color-selected: color-mix(in srgb, var(--primary) 24%, transparent);
   --crepe-color-inline-area: var(--muted);
   --crepe-font-title: var(--font-app);
   --crepe-font-default: var(--font-app);
   --crepe-font-code: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   min-height: 0;
   background: transparent;
+}
+
+.dark .memo-crepe-editor .milkdown {
+  --memo-editor-strong-border: #52525b;
+  --memo-editor-subtle-border: #3f3f46;
 }
 
 .memo-crepe-editor .milkdown .milkdown-top-bar {
@@ -213,7 +220,33 @@ textarea {
   min-height: 100%;
   box-sizing: border-box;
   padding: 0.75rem;
+  caret-color: var(--primary);
   outline: none;
+}
+
+.memo-crepe-editor .milkdown .ProseMirror hr {
+  border-color: var(--memo-editor-strong-border);
+  border-top-width: 2px;
+}
+
+.memo-crepe-editor .milkdown .ProseMirror blockquote {
+  border-left-color: var(--primary);
+  border-left-width: 3px;
+}
+
+.memo-crepe-editor .milkdown .ProseMirror table,
+.memo-crepe-editor .milkdown .ProseMirror th,
+.memo-crepe-editor .milkdown .ProseMirror td {
+  border-color: var(--memo-editor-strong-border);
+}
+
+.memo-crepe-editor .milkdown .milkdown-code-block,
+.memo-crepe-editor .milkdown .ProseMirror pre {
+  border: 1px solid var(--memo-editor-subtle-border);
+}
+
+.memo-crepe-editor .milkdown .ProseMirror-selectednode {
+  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
 }
 
 .memo-crepe-editor img {
