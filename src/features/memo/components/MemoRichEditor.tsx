@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MouseEvent } from "react";
 import { Crepe } from "@milkdown/crepe";
 
 /**
@@ -29,6 +29,21 @@ interface MemoRichEditorProps {
 export default function MemoRichEditor({ value, placeholder, onChange }: MemoRichEditorProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const onChangeRef = useRef(onChange);
+
+  const focusProseMirror = () => {
+    rootRef.current?.querySelector<HTMLElement>(".ProseMirror")?.focus();
+  };
+
+  const focusEditorFromBlankArea = (event: MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+
+    if (target.closest("button, input, textarea, select, a, [contenteditable='true'], .milkdown-top-bar")) {
+      return;
+    }
+
+    // Milkdown 的可编辑节点只覆盖有内容的区域，外层空白点击需要手动转交焦点。
+    window.requestAnimationFrame(focusProseMirror);
+  };
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -76,7 +91,10 @@ export default function MemoRichEditor({ value, placeholder, onChange }: MemoRic
   }, [placeholder]);
 
   return (
-    <div className="memo-crepe-editor h-full min-h-0 overflow-y-auto rounded-md border border-input bg-card text-sm leading-7 text-foreground outline-none transition-all duration-150 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-primary/10">
+    <div
+      className="memo-crepe-editor h-full min-h-0 cursor-text overflow-y-auto rounded-md border border-input bg-card text-sm leading-7 text-foreground outline-none transition-all duration-150 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-primary/10"
+      onMouseDown={focusEditorFromBlankArea}
+    >
       <div ref={rootRef} />
     </div>
   );
