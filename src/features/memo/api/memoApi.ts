@@ -24,6 +24,10 @@ export function updateMemo(id: number, input: MemoUpdateInput): Promise<Memo> {
   return client.put<Memo, Memo>(`/memos/${id}`, input);
 }
 
+export function updateMemoRelatedUsers(id: number, relatedUsernames: string[]): Promise<Memo> {
+  return client.put<Memo, Memo>(`/memos/${id}/related-users`, { relatedUsernames });
+}
+
 export function deleteMemo(id: number): Promise<void> {
   return client.delete<void, void>(`/memos/${id}`);
 }

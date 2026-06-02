@@ -7,6 +7,8 @@ export interface RealtimeEvent {
   type: string;
   /** 事件所属用户；后续多用户推送时可用于前端过滤 */
   ownerUsername?: string;
+  /** 本次事件影响的用户；共享 Memo 更新时包含创建者和相关人 */
+  recipientUsernames?: string[];
   /** 发生变化的 Memo ID；分组事件可能为空 */
   memoId?: number | null;
   /** 发生变化或受影响的分组 ID */

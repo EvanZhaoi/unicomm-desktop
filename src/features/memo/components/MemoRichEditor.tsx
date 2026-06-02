@@ -23,10 +23,11 @@ function fileToDataUrl(file: File): Promise<string> {
 interface MemoRichEditorProps {
   value: string;
   placeholder: string;
+  readOnly?: boolean;
   onChange: (value: string) => void;
 }
 
-export default function MemoRichEditor({ value, placeholder, onChange }: MemoRichEditorProps) {
+export default function MemoRichEditor({ value, placeholder, readOnly = false, onChange }: MemoRichEditorProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const onChangeRef = useRef(onChange);
 
@@ -58,6 +59,10 @@ export default function MemoRichEditor({ value, placeholder, onChange }: MemoRic
      * Crepe 内部基于 ProseMirror 管理编辑状态。
      * 这里默认打开 Crepe 的完整编辑体验（TopBar、表格、代码块、公式等），只关闭需要服务端能力的 AI。
      */
+    const applyReadonly = () => {
+      rootRef.current?.querySelector<HTMLElement>(".ProseMirror")?.setAttribute("contenteditable", readOnly ? "false" : "true");
+    };
+
     const editor = new Crepe({
       root: rootRef.current,
       defaultValue: value,
@@ -79,16 +84,19 @@ export default function MemoRichEditor({ value, placeholder, onChange }: MemoRic
       },
     }).on((listener) => {
       listener.markdownUpdated((_, markdown) => {
+        if (readOnly) {
+          return;
+        }
         onChangeRef.current(markdown);
       });
     });
 
-    void editor.create();
+    void editor.create().then(applyReadonly);
 
     return () => {
       void editor.destroy();
     };
-  }, [placeholder]);
+  }, [placeholder, readOnly]);
 
   return (
     <div

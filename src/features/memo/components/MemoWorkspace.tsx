@@ -16,6 +16,8 @@ import {
   Search,
   Star,
   Trash2,
+  UserPlus,
+  Users,
   X,
 } from "lucide-react";
 import { Button, Select } from "@/components/ui";
@@ -79,6 +81,7 @@ export function MemoWorkspace() {
   const [draft, setDraft] = useState<Memo | null>(null);
   const [editorMode, setEditorMode] = useState<"visual" | "markdown" | "split">("visual");
   const [markdownSyncVersion, setMarkdownSyncVersion] = useState(0);
+  const isOwner = draft?.isOwner !== false;
 
   useEffect(() => {
     fetchInitialData();
@@ -100,7 +103,7 @@ export function MemoWorkspace() {
   }, [selectedMemo]);
 
   const saveDraft = async () => {
-    if (!draft) {
+    if (!draft || !isOwner) {
       return;
     }
     await updateSelectedMemo({
@@ -108,6 +111,7 @@ export function MemoWorkspace() {
       content: draft.content,
       groupId: draft.groupId,
       status: draft.status,
+      relatedUsernames: draft.relatedUsers.map((user) => user.username),
     });
   };
 
@@ -121,7 +125,7 @@ export function MemoWorkspace() {
   };
 
   const deleteDraft = async () => {
-    if (!draft || !window.confirm(t("memo.delete.confirm"))) {
+    if (!draft || !isOwner || !window.confirm(t("memo.delete.confirm"))) {
       return;
     }
     await deleteSelectedMemo();
@@ -205,6 +209,7 @@ export function MemoWorkspace() {
                     {memo.title || t("memo.title.placeholder")}
                   </div>
                   {memo.isFavorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
+                  {memo.isShared && <Users className="h-3.5 w-3.5 text-primary" />}
                 </div>
                 <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                   {memo.content || t("memo.noContent")}
@@ -229,6 +234,7 @@ export function MemoWorkspace() {
               <input
                 value={draft.title}
                 onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+                disabled={!isOwner}
                 className="w-full border-0 bg-transparent text-xl font-semibold tracking-normal text-foreground outline-none placeholder:text-muted-foreground"
                 placeholder={t("memo.title.placeholder")}
               />
@@ -241,6 +247,7 @@ export function MemoWorkspace() {
                       groups={groups}
                       value={draft.groupId}
                       onChange={(groupId) => setDraft({ ...draft, groupId })}
+                      disabled={!isOwner}
                     />
                   </div>
                   <div className="flex h-6 shrink-0 items-center rounded-md bg-muted p-0.5">
@@ -249,6 +256,7 @@ export function MemoWorkspace() {
                         key={status.value}
                         type="button"
                         onClick={() => setDraft({ ...draft, status: status.value })}
+                        disabled={!isOwner}
                         className={cn(
                           "inline-flex h-5 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-xs font-medium transition-colors hover:text-foreground",
                           draft.status === status.value
@@ -262,6 +270,12 @@ export function MemoWorkspace() {
                     ))}
                   </div>
                   <span className="truncate">{t("memo.updatedAt", { time: formatDate(draft.updateTime) })}</span>
+                  {draft.isShared && (
+                    <span className="inline-flex h-6 items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 text-primary">
+                      <Users className="h-3.5 w-3.5" />
+                      {t("memo.sharedBy", { username: draft.ownerUsername })}
+                    </span>
+                  )}
                 </div>
                 <div className="flex shrink-0 gap-0.5 rounded-md bg-muted p-0.5">
                   <button
@@ -300,6 +314,22 @@ export function MemoWorkspace() {
                 </div>
               </div>
             </div>
+            <RelatedUsersEditor
+              users={draft.relatedUsers}
+              disabled={!isOwner}
+              onChange={(usernames) =>
+                setDraft({
+                  ...draft,
+                  relatedUsers: usernames.map((username, index) => ({
+                    id: draft.relatedUsers.find((user) => user.username === username)?.id ?? -index - 1,
+                    username,
+                    permission: "view",
+                    createTime: "",
+                    updateTime: "",
+                  })),
+                })
+              }
+            />
             <div className="min-h-0 flex-1 overflow-hidden p-3">
               <div
                 className={cn(
@@ -315,6 +345,7 @@ export function MemoWorkspace() {
                       key={`${draft.id}-${draft.updateTime}-${markdownSyncVersion}`}
                       value={draft.content}
                       placeholder={t("memo.editor.placeholder")}
+                      readOnly={!isOwner}
                       onChange={(content) => setDraft({ ...draft, content })}
                     />
                   </Suspense>
@@ -330,6 +361,7 @@ export function MemoWorkspace() {
                         setDraft({ ...draft, content: event.target.value });
                         setMarkdownSyncVersion((version) => version + 1);
                       }}
+                      readOnly={!isOwner}
                       className="min-h-0 flex-1 resize-none bg-background p-3 font-mono text-sm leading-7 text-foreground outline-none placeholder:text-muted-foreground"
                       placeholder={t("memo.editor.placeholder")}
                     />
@@ -341,25 +373,26 @@ export function MemoWorkspace() {
               <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{t("memo.editor.saved")}</span>
                 {error && <span className="text-destructive">{error}</span>}
+                {!isOwner && <span>{t("memo.shared.readonly")}</span>}
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => toggleTop(draft.id)} disabled={isSaving}>
+                <Button variant="outline" size="sm" onClick={() => toggleTop(draft.id)} disabled={isSaving || !isOwner}>
                   <Pin className={cn(draft.isTop && "fill-primary text-primary")} />
                   {draft.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => toggleArchive(draft.id)} disabled={isSaving}>
+                <Button variant="outline" size="sm" onClick={() => toggleArchive(draft.id)} disabled={isSaving || !isOwner}>
                   <Archive />
                   {t("memo.action.archive")}
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => toggleFavorite(draft.id)} disabled={isSaving}>
+                <Button variant="outline" size="sm" onClick={() => toggleFavorite(draft.id)} disabled={isSaving || !isOwner}>
                   <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />
                   {t("memo.action.favorite")}
                 </Button>
-                <Button size="sm" onClick={saveDraft} disabled={isSaving}>
+                <Button size="sm" onClick={saveDraft} disabled={isSaving || !isOwner}>
                   <Save />
                   {t("memo.action.save")}
                 </Button>
-                <Button variant="destructive" size="sm" onClick={deleteDraft} disabled={isSaving}>
+                <Button variant="destructive" size="sm" onClick={deleteDraft} disabled={isSaving || !isOwner}>
                   <Trash2 />
                   {t("memo.action.delete")}
                 </Button>
@@ -378,10 +411,12 @@ function MemoGroupDropdown({
   groups,
   value,
   onChange,
+  disabled = false,
 }: {
   groups: MemoGroup[];
   value: number;
   onChange: (value: number) => void;
+  disabled?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
@@ -407,6 +442,7 @@ function MemoGroupDropdown({
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
+        disabled={disabled}
         className="inline-flex h-5 w-[132px] items-center justify-between gap-2 rounded-sm px-1 text-left text-xs text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary/20"
       >
         <span className="inline-flex min-w-0 items-center gap-1.5">
@@ -438,6 +474,79 @@ function MemoGroupDropdown({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function RelatedUsersEditor({
+  users,
+  disabled,
+  onChange,
+}: {
+  users: Memo["relatedUsers"];
+  disabled: boolean;
+  onChange: (usernames: string[]) => void;
+}) {
+  const { t } = useI18n();
+  const [input, setInput] = useState("");
+  const usernames = users.map((user) => user.username);
+
+  const addUser = () => {
+    const username = input.trim();
+    if (!username || usernames.includes(username)) {
+      setInput("");
+      return;
+    }
+    onChange([...usernames, username]);
+    setInput("");
+  };
+
+  const removeUser = (username: string) => {
+    onChange(usernames.filter((value) => value !== username));
+  };
+
+  return (
+    <div className="shrink-0 border-b border-border bg-card px-4 pb-3">
+      <div className="flex min-h-8 flex-wrap items-center gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-xs">
+        <span className="inline-flex shrink-0 items-center gap-1 text-muted-foreground">
+          <UserPlus className="h-3.5 w-3.5" />
+          {t("memo.relatedUsers")}
+        </span>
+        {users.length === 0 && <span className="text-muted-foreground">{t("memo.relatedUsers.empty")}</span>}
+        {users.map((user) => (
+          <span
+            key={user.username}
+            className="inline-flex h-6 items-center gap-1 rounded-md bg-muted px-2 text-xs text-foreground"
+          >
+            {user.username}
+            {!disabled && (
+              <button
+                type="button"
+                onClick={() => removeUser(user.username)}
+                className="rounded-sm text-muted-foreground transition-colors hover:text-destructive"
+                title={t("memo.relatedUsers.remove")}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </span>
+        ))}
+        {!disabled && (
+          <input
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === ",") {
+                event.preventDefault();
+                addUser();
+              }
+            }}
+            onBlur={addUser}
+            className="h-6 min-w-[120px] flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
+            placeholder={t("memo.relatedUsers.placeholder")}
+          />
+        )}
+      </div>
     </div>
   );
 }

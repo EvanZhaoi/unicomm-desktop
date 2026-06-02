@@ -1,5 +1,6 @@
 export interface Memo {
   id: number;
+  ownerUsername: string;
   title: string;
   content: string;
   groupId: number;
@@ -8,6 +9,17 @@ export interface Memo {
   isTop: boolean;
   isFavorite: boolean;
   isArchived: boolean;
+  isOwner: boolean;
+  isShared: boolean;
+  relatedUsers: MemoRelatedUser[];
+  createTime: string;
+  updateTime: string;
+}
+
+export interface MemoRelatedUser {
+  id: number;
+  username: string;
+  permission: "view" | "edit";
   createTime: string;
   updateTime: string;
 }
@@ -29,6 +41,7 @@ export interface MemoCreateInput {
   content?: string;
   groupId?: number;
   status?: Memo["status"];
+  relatedUsernames?: string[];
 }
 
 export interface MemoUpdateInput {
@@ -36,6 +49,7 @@ export interface MemoUpdateInput {
   content: string;
   groupId: number;
   status: Memo["status"];
+  relatedUsernames?: string[];
 }
 
 export interface MemoListParams {

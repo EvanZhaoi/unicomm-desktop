@@ -114,6 +114,13 @@ function AppContent() {
       if (event.module !== "memo") {
         return;
       }
+      if (
+        currentUser?.username &&
+        event.recipientUsernames?.length &&
+        !event.recipientUsernames.includes(currentUser.username)
+      ) {
+        return;
+      }
 
       if (refreshTimer !== null) {
         window.clearTimeout(refreshTimer);
@@ -133,7 +140,7 @@ function AppContent() {
         window.clearTimeout(refreshTimer);
       }
     };
-  }, [authStatus]);
+  }, [authStatus, currentUser?.username]);
 
   if (isQuickMemoWindow) {
     if (authStatus !== "verified" || !currentUser) {
