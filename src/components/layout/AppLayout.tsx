@@ -31,6 +31,7 @@
 import type { ReactNode } from "react";
 import { FileText, Minus, Moon, Settings, Square, Sun, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Button } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
 import { useMemoStore } from "@/features/memo/store/memoStore";
@@ -258,9 +259,15 @@ function Titlebar() {
         <span>UniComm - 企业桌面协作平台</span>
       </div>
       <div className="flex gap-1 [-webkit-app-region:no-drag]">
-        <button onClick={minimizeWindow} className="flex h-7 w-9 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground"><Minus className="h-3.5 w-3.5" /></button>
-        <button onClick={toggleMaximizeWindow} className="flex h-7 w-9 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground"><Square className="h-3 w-3" /></button>
-        <button onClick={closeWindow} className="flex h-7 w-9 items-center justify-center rounded-md transition-colors hover:bg-destructive hover:text-destructive-foreground"><X className="h-3.5 w-3.5" /></button>
+        <Button variant="ghost" size="icon" onClick={minimizeWindow} className="h-7 w-9">
+          <Minus className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={toggleMaximizeWindow} className="h-7 w-9">
+          <Square className="h-3 w-3" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={closeWindow} className="h-7 w-9 hover:bg-destructive hover:text-destructive-foreground">
+          <X className="h-3.5 w-3.5" />
+        </Button>
       </div>
     </div>
   );

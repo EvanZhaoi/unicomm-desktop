@@ -1,10 +1,8 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   Archive,
-  Check,
-  ChevronDown,
   Columns2,
   Eye,
   FileCode2,
@@ -172,14 +170,16 @@ export function MemoWorkspace() {
               placeholder={t("memo.search.placeholder")}
             />
             {keyword && (
-              <button
+              <Button
                 type="button"
                 onClick={() => setKeyword("")}
-                className="absolute right-2 top-1.5 flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1.5 h-5 w-5 text-muted-foreground"
                 title={t("memo.search")}
               >
                 <X className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -420,63 +420,27 @@ function MemoGroupDropdown({
   onChange: (value: number) => void;
   disabled?: boolean;
 }) {
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const [open, setOpen] = useState(false);
   const selectedGroup = groups.find((group) => group.id === value) ?? groups[0];
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const closeOnOutsideClick = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", closeOnOutsideClick);
-    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
-  }, [open]);
-
   return (
-    <div ref={rootRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        disabled={disabled}
-        className="inline-flex h-5 w-[132px] items-center justify-between gap-2 rounded-sm px-1 text-left text-xs text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary/20"
-      >
+    <Select value={String(value)} onValueChange={(next) => onChange(Number(next))} disabled={disabled}>
+      <SelectTrigger className="h-5 w-[132px] border-0 bg-transparent px-1 text-xs shadow-none focus:ring-2 focus:ring-primary/20">
         <span className="inline-flex min-w-0 items-center gap-1.5">
           <GroupMark group={selectedGroup} />
-          <span className="truncate">{selectedGroup?.name ?? "-"}</span>
+          <SelectValue placeholder="-" />
         </span>
-        <ChevronDown className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-6 z-30 w-44 overflow-hidden rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
-          {groups.map((group) => (
-            <button
-              key={group.id}
-              type="button"
-              onClick={() => {
-                onChange(group.id);
-                setOpen(false);
-              }}
-              className={cn(
-                "flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground",
-                group.id === value && "bg-accent text-accent-foreground"
-              )}
-            >
+      </SelectTrigger>
+      <SelectContent className="w-44">
+        {groups.map((group) => (
+          <SelectItem key={group.id} value={String(group.id)} className="text-xs">
+            <span className="inline-flex min-w-0 items-center gap-2">
               <GroupMark group={group} />
-              <span className="min-w-0 flex-1 truncate">{group.name}</span>
-              {group.id === value && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+              <span className="min-w-0 truncate">{group.name}</span>
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
