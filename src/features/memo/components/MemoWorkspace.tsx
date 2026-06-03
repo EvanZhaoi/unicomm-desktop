@@ -266,9 +266,11 @@ export function MemoWorkspace() {
               />
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <div className="inline-flex h-6 items-center gap-1.5 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground">
+                  <div
+                    className="inline-flex h-6 items-center gap-1 rounded-md border border-input bg-background pl-1.5 pr-1 text-xs text-muted-foreground"
+                    title={t("memo.groups")}
+                  >
                     <Folder className="h-3.5 w-3.5" />
-                    <span className="shrink-0">{t("memo.groups")}</span>
                     <MemoGroupDropdown
                       groups={groups}
                       value={draft.groupId}
@@ -424,8 +426,8 @@ function MemoGroupDropdown({
 
   return (
     <Select value={String(value)} onValueChange={(next) => onChange(Number(next))} disabled={disabled}>
-      <SelectTrigger className="h-5 w-[132px] border-0 bg-transparent px-1 text-xs shadow-none focus:ring-2 focus:ring-primary/20">
-        <span className="inline-flex min-w-0 items-center gap-1.5">
+      <SelectTrigger className="h-5 w-[120px] border-0 bg-transparent px-1 text-xs shadow-none focus:ring-2 focus:ring-primary/20">
+        <span className="inline-flex min-w-0 items-center gap-1">
           <GroupMark group={selectedGroup} />
           <SelectValue placeholder="-" />
         </span>
@@ -433,7 +435,7 @@ function MemoGroupDropdown({
       <SelectContent className="w-44">
         {groups.map((group) => (
           <SelectItem key={group.id} value={String(group.id)} className="text-xs">
-            <span className="inline-flex min-w-0 items-center gap-2">
+            <span className="inline-flex min-w-0 items-center gap-1">
               <GroupMark group={group} />
               <span className="min-w-0 truncate">{group.name}</span>
             </span>
@@ -571,9 +573,11 @@ function RelatedUsersEditor({
           </span>
         )}
         renderPrefix={() => (
-          <span className="inline-flex shrink-0 items-center gap-1 text-muted-foreground">
+          <span
+            className="inline-flex shrink-0 items-center text-muted-foreground"
+            title={t("memo.relatedUsers")}
+          >
             <UserPlus className="h-3.5 w-3.5" />
-            {t("memo.relatedUsers")}
           </span>
         )}
       />
