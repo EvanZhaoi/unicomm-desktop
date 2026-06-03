@@ -4,6 +4,7 @@ import type {
   MemoCreateInput,
   MemoGroup,
   MemoListParams,
+  MemoRelatedUserInput,
   MemoUpdateInput,
   MemberSearchResult,
   PageResult,
@@ -25,8 +26,8 @@ export function updateMemo(id: number, input: MemoUpdateInput): Promise<Memo> {
   return client.put<Memo, Memo>(`/memos/${id}`, input);
 }
 
-export function updateMemoRelatedUsers(id: number, relatedUsernames: string[]): Promise<Memo> {
-  return client.put<Memo, Memo>(`/memos/${id}/related-users`, { relatedUsernames });
+export function updateMemoRelatedUsers(id: number, relatedUsers: MemoRelatedUserInput[]): Promise<Memo> {
+  return client.put<Memo, Memo>(`/memos/${id}/related-users`, { relatedUsers });
 }
 
 export function deleteMemo(id: number): Promise<void> {

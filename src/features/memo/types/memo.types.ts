@@ -11,6 +11,7 @@ export interface Memo {
   isArchived: boolean;
   isOwner: boolean;
   isShared: boolean;
+  currentUserPermission: "owner" | "edit" | "view";
   relatedUsers: MemoRelatedUser[];
   createTime: string;
   updateTime: string;
@@ -54,14 +55,21 @@ export interface MemoCreateInput {
   groupId?: number;
   status?: Memo["status"];
   relatedUsernames?: string[];
+  relatedUsers?: MemoRelatedUserInput[];
 }
 
 export interface MemoUpdateInput {
   title: string;
   content: string;
-  groupId: number;
+  groupId?: number;
   status: Memo["status"];
   relatedUsernames?: string[];
+  relatedUsers?: MemoRelatedUserInput[];
+}
+
+export interface MemoRelatedUserInput {
+  username: string;
+  permission: MemoRelatedUser["permission"];
 }
 
 export interface MemoListParams {

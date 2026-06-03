@@ -6,10 +6,12 @@ import {
   Check,
   ChevronDown,
   Columns2,
+  Eye,
   FileCode2,
   FileText,
   Folder,
   Inbox,
+  Pencil,
   Pin,
   Plus,
   Save,
@@ -83,6 +85,7 @@ export function MemoWorkspace() {
   const [editorMode, setEditorMode] = useState<"visual" | "markdown" | "split">("visual");
   const [markdownSyncVersion, setMarkdownSyncVersion] = useState(0);
   const isOwner = draft?.isOwner !== false;
+  const canEdit = isOwner || draft?.currentUserPermission === "edit";
 
   useEffect(() => {
     fetchInitialData();
@@ -104,15 +107,20 @@ export function MemoWorkspace() {
   }, [selectedMemo]);
 
   const saveDraft = async () => {
-    if (!draft || !isOwner) {
+    if (!draft || !canEdit) {
       return;
     }
     await updateSelectedMemo({
       title: draft.title,
       content: draft.content,
-      groupId: draft.groupId,
+      groupId: isOwner ? draft.groupId : undefined,
       status: draft.status,
-      relatedUsernames: draft.relatedUsers.map((user) => user.username),
+      relatedUsers: isOwner
+        ? draft.relatedUsers.map((user) => ({
+            username: user.username,
+            permission: user.permission,
+          }))
+        : undefined,
     });
   };
 
@@ -235,7 +243,7 @@ export function MemoWorkspace() {
               <input
                 value={draft.title}
                 onChange={(event) => setDraft({ ...draft, title: event.target.value })}
-                disabled={!isOwner}
+                disabled={!canEdit}
                 className="w-full border-0 bg-transparent text-xl font-semibold tracking-normal text-foreground outline-none placeholder:text-muted-foreground"
                 placeholder={t("memo.title.placeholder")}
               />
@@ -257,7 +265,7 @@ export function MemoWorkspace() {
                         key={status.value}
                         type="button"
                         onClick={() => setDraft({ ...draft, status: status.value })}
-                        disabled={!isOwner}
+                        disabled={!canEdit}
                         className={cn(
                           "inline-flex h-5 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-xs font-medium transition-colors hover:text-foreground",
                           draft.status === status.value
@@ -341,7 +349,7 @@ export function MemoWorkspace() {
                       key={`${draft.id}-${draft.updateTime}-${markdownSyncVersion}`}
                       value={draft.content}
                       placeholder={t("memo.editor.placeholder")}
-                      readOnly={!isOwner}
+                      readOnly={!canEdit}
                       onChange={(content) => setDraft({ ...draft, content })}
                     />
                   </Suspense>
@@ -357,7 +365,7 @@ export function MemoWorkspace() {
                         setDraft({ ...draft, content: event.target.value });
                         setMarkdownSyncVersion((version) => version + 1);
                       }}
-                      readOnly={!isOwner}
+                      readOnly={!canEdit}
                       className="min-h-0 flex-1 resize-none bg-background p-3 font-mono text-sm leading-7 text-foreground outline-none placeholder:text-muted-foreground"
                       placeholder={t("memo.editor.placeholder")}
                     />
@@ -369,7 +377,7 @@ export function MemoWorkspace() {
               <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{t("memo.editor.saved")}</span>
                 {error && <span className="text-destructive">{error}</span>}
-                {!isOwner && <span>{t("memo.shared.readonly")}</span>}
+                {!canEdit && <span>{t("memo.shared.readonly")}</span>}
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => toggleTop(draft.id)} disabled={isSaving || !isOwner}>
@@ -384,7 +392,7 @@ export function MemoWorkspace() {
                   <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />
                   {t("memo.action.favorite")}
                 </Button>
-                <Button size="sm" onClick={saveDraft} disabled={isSaving || !isOwner}>
+                <Button size="sm" onClick={saveDraft} disabled={isSaving || !canEdit}>
                   <Save />
                   {t("memo.action.save")}
                 </Button>
@@ -492,6 +500,7 @@ function RelatedUsersEditor({
     displayName?: string;
     departmentName?: string;
     email?: string;
+    permission: Memo["relatedUsers"][number]["permission"];
   };
 
   const selectedOptions: RelatedUserOption[] = users.map((user) => ({
@@ -504,6 +513,7 @@ function RelatedUsersEditor({
     displayName: user.displayName,
     departmentName: user.departmentName,
     email: user.email,
+    permission: user.permission,
   }));
 
   const searchOptions = async (keyword: string): Promise<RelatedUserOption[]> => {
@@ -518,6 +528,7 @@ function RelatedUsersEditor({
       displayName: member.displayName,
       departmentName: member.departmentName,
       email: member.email,
+      permission: "view",
     }));
   };
 
@@ -532,7 +543,7 @@ function RelatedUsersEditor({
           displayName: option.displayName,
           departmentName: option.departmentName,
           email: option.email,
-          permission: "view",
+          permission: existing?.permission ?? option.permission ?? "view",
           createTime: existing?.createTime ?? "",
           updateTime: existing?.updateTime ?? "",
         };
@@ -552,6 +563,51 @@ function RelatedUsersEditor({
         search={searchOptions}
         onChange={updateUsers}
         filterOption={(option) => option.value !== ownerUsername}
+        renderSelected={(option, actions) => (
+          <span
+            className="inline-flex h-6 max-w-full items-center gap-1 rounded-md bg-muted px-2 text-xs text-foreground"
+            title={[option.description, option.meta].filter(Boolean).join(" · ")}
+          >
+            <span className="truncate">{option.label}</span>
+            {option.meta && <span className="shrink-0 text-muted-foreground">{option.meta}</span>}
+            {!actions.disabled && (
+              <>
+                <button
+                  type="button"
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={() =>
+                    updateUsers(
+                      selectedOptions.map((item) =>
+                        item.username === option.username
+                          ? { ...item, permission: item.permission === "edit" ? "view" : "edit" }
+                          : item
+                      )
+                    )
+                  }
+                  className={cn(
+                    "ml-1 inline-flex h-4 items-center gap-0.5 rounded-sm border px-1 text-[10px] transition-colors",
+                    option.permission === "edit"
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-border bg-background text-muted-foreground hover:text-foreground"
+                  )}
+                  title={option.permission === "edit" ? t("memo.permission.edit") : t("memo.permission.view")}
+                >
+                  {option.permission === "edit" ? <Pencil className="h-2.5 w-2.5" /> : <Eye className="h-2.5 w-2.5" />}
+                  {option.permission === "edit" ? t("memo.permission.editShort") : t("memo.permission.viewShort")}
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={actions.remove}
+                  className="shrink-0 rounded-sm text-muted-foreground transition-colors hover:text-destructive"
+                  title={t("memo.relatedUsers.remove")}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </>
+            )}
+          </span>
+        )}
         renderPrefix={() => (
           <span className="inline-flex shrink-0 items-center gap-1 text-muted-foreground">
             <UserPlus className="h-3.5 w-3.5" />

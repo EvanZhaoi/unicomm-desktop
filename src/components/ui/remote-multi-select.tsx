@@ -20,6 +20,7 @@ interface RemoteMultiSelectProps<TOption extends RemoteSelectOption> {
   search: (keyword: string) => Promise<TOption[]>;
   onChange: (value: TOption[]) => void;
   renderPrefix?: () => React.ReactNode;
+  renderSelected?: (option: TOption, actions: { remove: () => void; disabled: boolean }) => React.ReactNode;
   filterOption?: (option: TOption, selected: TOption[]) => boolean;
 }
 
@@ -34,6 +35,7 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
   search,
   onChange,
   renderPrefix,
+  renderSelected,
   filterOption,
 }: RemoteMultiSelectProps<TOption>) {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -143,25 +145,29 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
         {renderPrefix && <div className="flex h-6 shrink-0 items-center">{renderPrefix()}</div>}
         <div className="flex min-w-[120px] flex-1 flex-wrap items-center gap-1.5">
           {value.length === 0 && disabled && emptyText && <span className="text-muted-foreground">{emptyText}</span>}
-          {value.map((item) => (
-            <span
-              key={item.value}
-              className="inline-flex h-6 max-w-full items-center gap-1 rounded-md bg-muted px-2 text-xs text-foreground"
-              title={[item.description, item.meta].filter(Boolean).join(" · ")}
-            >
-              <span className="truncate">{item.label}</span>
-              {item.meta && <span className="shrink-0 text-muted-foreground">{item.meta}</span>}
-              {!disabled && (
-                <button
-                  type="button"
-                  onClick={() => removeOption(item)}
-                  className="shrink-0 rounded-sm text-muted-foreground transition-colors hover:text-destructive"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </span>
-          ))}
+          {value.map((item) =>
+            renderSelected ? (
+              <span key={item.value}>{renderSelected(item, { remove: () => removeOption(item), disabled })}</span>
+            ) : (
+              <span
+                key={item.value}
+                className="inline-flex h-6 max-w-full items-center gap-1 rounded-md bg-muted px-2 text-xs text-foreground"
+                title={[item.description, item.meta].filter(Boolean).join(" · ")}
+              >
+                <span className="truncate">{item.label}</span>
+                {item.meta && <span className="shrink-0 text-muted-foreground">{item.meta}</span>}
+                {!disabled && (
+                  <button
+                    type="button"
+                    onClick={() => removeOption(item)}
+                    className="shrink-0 rounded-sm text-muted-foreground transition-colors hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </span>
+            )
+          )}
         </div>
 
         {!disabled && (
