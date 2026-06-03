@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { emit } from "@tauri-apps/api/event";
 import { Save, X } from "lucide-react";
-import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from "@/components/ui";
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, Textarea } from "@/components/ui";
 import { hideQuickMemoWindow } from "@/desktop/shortcut/shortcutManager";
 import { useI18n } from "@/i18n/useI18n";
 import { createMemo, listMemoGroups } from "../api/memoApi";
 import type { MemoGroup } from "../types/memo.types";
+import { MemoGroupIcon } from "./MemoGroupIcon";
 
 function extractTitle(content: string): string {
   const firstLine = content.split("\n").find((line) => line.trim().length > 0);
@@ -82,12 +83,18 @@ export function QuickMemoWindow() {
             onValueChange={(value) => setGroupId(Number(value))}
           >
             <SelectTrigger className="w-full">
-              <SelectValue />
+              <span className="inline-flex min-w-0 items-center gap-1">
+                <MemoGroupIcon group={groups.find((group) => group.id === groupId)} />
+                <span className="min-w-0 truncate">{groups.find((group) => group.id === groupId)?.name}</span>
+              </span>
             </SelectTrigger>
             <SelectContent>
               {groups.map((group) => (
-                <SelectItem key={group.id} value={String(group.id)}>
-                  {group.name}
+                <SelectItem key={group.id} value={String(group.id)} hideIndicator>
+                  <span className="inline-flex min-w-0 items-center gap-1">
+                    <MemoGroupIcon group={group} />
+                    <span className="min-w-0 truncate">{group.name}</span>
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>

@@ -3,6 +3,7 @@ import type {
   Memo,
   MemoCreateInput,
   MemoGroup,
+  MemoGroupInput,
   MemoListParams,
   MemoRelatedUserInput,
   MemoUpdateInput,
@@ -48,6 +49,18 @@ export function updateMemoArchive(id: number, value: boolean): Promise<Memo> {
 
 export function listMemoGroups(): Promise<MemoGroup[]> {
   return client.get<MemoGroup[], MemoGroup[]>("/memo-groups");
+}
+
+export function createMemoGroup(input: MemoGroupInput): Promise<MemoGroup> {
+  return client.post<MemoGroup, MemoGroup>("/memo-groups", input);
+}
+
+export function updateMemoGroup(id: number, input: MemoGroupInput): Promise<MemoGroup> {
+  return client.put<MemoGroup, MemoGroup>(`/memo-groups/${id}`, input);
+}
+
+export function deleteMemoGroup(id: number): Promise<void> {
+  return client.delete<void, void>(`/memo-groups/${id}`);
 }
 
 export function searchMembers(keyword: string, limit = 10): Promise<MemberSearchResult[]> {

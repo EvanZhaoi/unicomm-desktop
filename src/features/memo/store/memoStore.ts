@@ -1,17 +1,20 @@
 import { create } from "zustand";
 import {
+  createMemoGroup,
   createMemo,
+  deleteMemoGroup,
   deleteMemo,
   listMemoGroups,
   listMemos,
   updateMemo,
   updateMemoArchive,
   updateMemoFavorite,
+  updateMemoGroup,
   updateMemoTop,
 } from "../api/memoApi";
 import { translate } from "@/i18n";
 import { useSettingStore } from "@/stores/settingStore";
-import type { Memo, MemoGroup, MemoUpdateInput } from "../types/memo.types";
+import type { Memo, MemoGroup, MemoGroupInput, MemoUpdateInput } from "../types/memo.types";
 
 interface MemoState {
   memos: Memo[];
@@ -35,6 +38,9 @@ interface MemoState {
   toggleTop: (id: number) => Promise<void>;
   toggleFavorite: (id: number) => Promise<void>;
   toggleArchive: (id: number) => Promise<void>;
+  createGroup: (input: MemoGroupInput) => Promise<void>;
+  updateGroup: (id: number, input: MemoGroupInput) => Promise<void>;
+  deleteGroup: (id: number) => Promise<void>;
 }
 
 /*
@@ -234,5 +240,53 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         group.id === updated.groupId ? { ...group, memoCount: Math.max(0, group.memoCount - 1) } : group
       ),
     }));
+  },
+
+  createGroup: async (input) => {
+    set({ isSaving: true, error: null });
+    try {
+      await createMemoGroup(input);
+      const groups = await listMemoGroups();
+      set({ groups, isSaving: false });
+    } catch (error) {
+      set({ error: errorMessage(error, localized("memo.group.errors.save")), isSaving: false });
+    }
+  },
+
+  updateGroup: async (id, input) => {
+    set({ isSaving: true, error: null });
+    try {
+      await updateMemoGroup(id, input);
+      const groups = await listMemoGroups();
+      set({ groups, isSaving: false });
+    } catch (error) {
+      set({ error: errorMessage(error, localized("memo.group.errors.save")), isSaving: false });
+    }
+  },
+
+  deleteGroup: async (id) => {
+    set({ isSaving: true, error: null });
+    try {
+      await deleteMemoGroup(id);
+      const groups = await listMemoGroups();
+      const activeGroupId = get().activeGroupId === id ? null : get().activeGroupId;
+      const result = await listMemos({
+        page: 1,
+        size: 50,
+        groupId: activeGroupId ?? undefined,
+        status: get().activeStatus ?? undefined,
+        keyword: get().keyword || undefined,
+        isArchived: false,
+      });
+      set({
+        groups,
+        activeGroupId,
+        memos: result.list,
+        selectedMemoId: result.list[0]?.id ?? null,
+        isSaving: false,
+      });
+    } catch (error) {
+      set({ error: errorMessage(error, localized("memo.group.errors.delete")), isSaving: false });
+    }
   },
 }));

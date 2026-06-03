@@ -49,6 +49,13 @@ export interface MemoGroup {
   updateTime: string;
 }
 
+export interface MemoGroupInput {
+  name: string;
+  color?: string;
+  icon?: string;
+  sortOrder?: number;
+}
+
 export interface MemoCreateInput {
   title?: string;
   content?: string;
