@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
+import { Command, CommandEmpty, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/utils/cn";
 
 export interface RemoteSelectOption {
@@ -45,21 +47,6 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const selectedValues = useMemo(() => new Set(value.map((item) => item.value)), [value]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const closeOnOutsideClick = (event: globalThis.MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", closeOnOutsideClick);
-    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
-  }, [open]);
 
   useEffect(() => {
     if (disabled) {
@@ -133,84 +120,93 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
   };
 
   return (
-    <div ref={rootRef} className={cn("relative", className)}>
-      <div
-        onMouseDown={focusInput}
-        className={cn(
-          "flex min-h-9 cursor-text flex-wrap items-start gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-xs transition-all",
-          !disabled && "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-primary/10",
-          disabled && "cursor-default opacity-80"
-        )}
-      >
-        {renderPrefix && <div className="flex h-6 shrink-0 items-center">{renderPrefix()}</div>}
-        <div className="relative flex min-w-[120px] flex-1 flex-wrap items-center gap-1.5 pr-6">
-          {value.length === 0 && disabled && emptyText && <span className="text-muted-foreground">{emptyText}</span>}
-          {value.map((item) =>
-            renderSelected ? (
-              <span key={item.value}>{renderSelected(item, { remove: () => removeOption(item), disabled })}</span>
-            ) : (
-              <span
-                key={item.value}
-                className="inline-flex h-6 max-w-full items-center gap-1 rounded-md bg-muted px-2 text-xs text-foreground"
-                title={[item.description, item.meta].filter(Boolean).join(" · ")}
-              >
-                <span className="truncate">{item.label}</span>
-                {item.meta && <span className="shrink-0 text-muted-foreground">{item.meta}</span>}
-                {!disabled && (
-                  <button
-                    type="button"
-                    onClick={() => removeOption(item)}
-                    className="shrink-0 rounded-sm text-muted-foreground transition-colors hover:text-destructive"
+    <Popover open={open && Boolean(keyword.trim())} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <div ref={rootRef} className={cn("relative", className)}>
+          <div
+            onMouseDown={focusInput}
+            className={cn(
+              "flex min-h-9 cursor-text flex-wrap items-start gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-xs transition-all",
+              !disabled && "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-primary/10",
+              disabled && "cursor-default opacity-80"
+            )}
+          >
+            {renderPrefix && <div className="flex h-6 shrink-0 items-center">{renderPrefix()}</div>}
+            <div className="relative flex min-w-[120px] flex-1 flex-wrap items-center gap-1.5 pr-6">
+              {value.length === 0 && disabled && emptyText && <span className="text-muted-foreground">{emptyText}</span>}
+              {value.map((item) =>
+                renderSelected ? (
+                  <span key={item.value}>{renderSelected(item, { remove: () => removeOption(item), disabled })}</span>
+                ) : (
+                  <span
+                    key={item.value}
+                    className="inline-flex h-6 max-w-full items-center gap-1 rounded-md bg-muted px-2 text-xs text-foreground"
+                    title={[item.description, item.meta].filter(Boolean).join(" · ")}
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </span>
-            )
-          )}
+                    <span className="truncate">{item.label}</span>
+                    {item.meta && <span className="shrink-0 text-muted-foreground">{item.meta}</span>}
+                    {!disabled && (
+                      <button
+                        type="button"
+                        onClick={() => removeOption(item)}
+                        className="shrink-0 rounded-sm text-muted-foreground transition-colors hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </span>
+                )
+              )}
 
-          {!disabled && (
-            <input
-              ref={inputRef}
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-              onFocus={() => {
-                if (keyword.trim()) {
-                  setOpen(true);
-                }
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && options[0]) {
-                  event.preventDefault();
-                  selectOption(options[0]);
-                }
-                if (event.key === "Escape") {
-                  setOpen(false);
-                }
-              }}
-              className="h-6 min-w-[140px] flex-1 border-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
-              placeholder={value.length === 0 ? placeholder : undefined}
-            />
-          )}
-          {!disabled && (
-            <Search className="pointer-events-none absolute right-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          )}
+              {!disabled && (
+                <input
+                  ref={inputRef}
+                  value={keyword}
+                  onChange={(event) => setKeyword(event.target.value)}
+                  onFocus={() => {
+                    if (keyword.trim()) {
+                      setOpen(true);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && options[0]) {
+                      event.preventDefault();
+                      selectOption(options[0]);
+                    }
+                    if (event.key === "Escape") {
+                      setOpen(false);
+                    }
+                  }}
+                  className="h-6 min-w-[140px] flex-1 border-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
+                  placeholder={value.length === 0 ? placeholder : undefined}
+                />
+              )}
+              {!disabled && (
+                <Search className="pointer-events-none absolute right-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              )}
+            </div>
+          </div>
         </div>
-      </div>
-
-      {open && keyword.trim() && (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-50 max-h-60 w-full min-w-[280px] overflow-auto rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
+      </PopoverAnchor>
+      <PopoverContent
+        align="start"
+        className="max-h-60 w-[var(--radix-popover-trigger-width)] min-w-[280px] overflow-hidden p-0"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
+        <Command shouldFilter={false}>
+          <CommandList>
           {loading ? (
             <div className="px-2 py-2 text-muted-foreground">{loadingText}</div>
           ) : options.length === 0 ? (
-            <div className="px-2 py-2 text-muted-foreground">{noResultText}</div>
+            <CommandEmpty>{noResultText}</CommandEmpty>
           ) : (
             options.map((option) => (
-              <button
+              <CommandItem
                 key={option.value}
-                type="button"
-                onClick={() => selectOption(option)}
-                className="flex w-full items-center justify-between gap-3 rounded-sm px-2 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
+                value={option.value}
+                onSelect={() => selectOption(option)}
+                className="justify-between gap-3 text-xs"
               >
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{option.label}</span>
@@ -219,11 +215,12 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
                   )}
                 </span>
                 {option.meta && <span className="shrink-0 text-[11px] text-muted-foreground">{option.meta}</span>}
-              </button>
+              </CommandItem>
             ))
           )}
-        </div>
-      )}
-    </div>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
