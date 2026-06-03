@@ -543,7 +543,7 @@ function RelatedUsersEditor({
           displayName: option.displayName,
           departmentName: option.departmentName,
           email: option.email,
-          permission: existing?.permission ?? option.permission ?? "view",
+          permission: option.permission ?? existing?.permission ?? "view",
           createTime: existing?.createTime ?? "",
           updateTime: existing?.updateTime ?? "",
         };

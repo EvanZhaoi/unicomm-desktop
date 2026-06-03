@@ -143,7 +143,7 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
         )}
       >
         {renderPrefix && <div className="flex h-6 shrink-0 items-center">{renderPrefix()}</div>}
-        <div className="flex min-w-[120px] flex-1 flex-wrap items-center gap-1.5">
+        <div className="relative flex min-w-[120px] flex-1 flex-wrap items-center gap-1.5 pr-6">
           {value.length === 0 && disabled && emptyText && <span className="text-muted-foreground">{emptyText}</span>}
           {value.map((item) =>
             renderSelected ? (
@@ -168,10 +168,8 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
               </span>
             )
           )}
-        </div>
 
-        {!disabled && (
-          <span className="relative ml-auto h-6 w-[180px] min-w-[140px] shrink-0 max-[760px]:ml-0 max-[760px]:w-full">
+          {!disabled && (
             <input
               ref={inputRef}
               value={keyword}
@@ -190,12 +188,14 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
                   setOpen(false);
                 }
               }}
-              className="h-6 w-full border-0 bg-transparent pl-1 pr-5 text-xs text-foreground outline-none placeholder:text-muted-foreground"
+              className="h-6 min-w-[140px] flex-1 border-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
               placeholder={value.length === 0 ? placeholder : undefined}
             />
+          )}
+          {!disabled && (
             <Search className="pointer-events-none absolute right-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          </span>
-        )}
+          )}
+        </div>
       </div>
 
       {open && keyword.trim() && (
