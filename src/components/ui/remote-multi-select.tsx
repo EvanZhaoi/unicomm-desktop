@@ -119,10 +119,16 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
   };
 
   return (
-    <div ref={rootRef} className={cn("grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(240px,320px)]", className)}>
-      <div className="flex min-h-8 flex-wrap items-center gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-xs">
+    <div ref={rootRef} className={cn("relative", className)}>
+      <div
+        className={cn(
+          "flex min-h-9 flex-wrap items-center gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-xs transition-all",
+          !disabled && "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-primary/10",
+          disabled && "opacity-80"
+        )}
+      >
         {renderPrefix?.()}
-        {value.length === 0 && emptyText && <span className="text-muted-foreground">{emptyText}</span>}
+        {value.length === 0 && disabled && emptyText && <span className="text-muted-foreground">{emptyText}</span>}
         {value.map((item) => (
           <span
             key={item.value}
@@ -142,11 +148,10 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
             )}
           </span>
         ))}
-      </div>
 
-      {!disabled && (
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+        {!disabled && (
+          <span className="relative min-w-[180px] flex-1">
+            <Search className="pointer-events-none absolute left-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
@@ -164,34 +169,36 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
                 setOpen(false);
               }
             }}
-            className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs text-foreground outline-none transition-all focus:border-ring focus:ring-[3px] focus:ring-primary/10 placeholder:text-muted-foreground"
-            placeholder={placeholder}
+              className="h-6 w-full border-0 bg-transparent pl-5 pr-1 text-xs text-foreground outline-none placeholder:text-muted-foreground"
+              placeholder={value.length === 0 ? placeholder : undefined}
           />
-          {open && keyword.trim() && (
-            <div className="absolute right-0 top-9 z-50 max-h-60 w-full min-w-[280px] overflow-auto rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
-              {loading ? (
-                <div className="px-2 py-2 text-muted-foreground">{loadingText}</div>
-              ) : options.length === 0 ? (
-                <div className="px-2 py-2 text-muted-foreground">{noResultText}</div>
-              ) : (
-                options.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => selectOption(option)}
-                    className="flex w-full items-center justify-between gap-3 rounded-sm px-2 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium">{option.label}</span>
-                      {option.description && (
-                        <span className="block truncate text-[11px] text-muted-foreground">{option.description}</span>
-                      )}
-                    </span>
-                    {option.meta && <span className="shrink-0 text-[11px] text-muted-foreground">{option.meta}</span>}
-                  </button>
-                ))
-              )}
-            </div>
+          </span>
+        )}
+      </div>
+
+      {open && keyword.trim() && (
+        <div className="absolute left-0 top-[calc(100%+4px)] z-50 max-h-60 w-full min-w-[280px] overflow-auto rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg">
+          {loading ? (
+            <div className="px-2 py-2 text-muted-foreground">{loadingText}</div>
+          ) : options.length === 0 ? (
+            <div className="px-2 py-2 text-muted-foreground">{noResultText}</div>
+          ) : (
+            options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => selectOption(option)}
+                className="flex w-full items-center justify-between gap-3 rounded-sm px-2 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{option.label}</span>
+                  {option.description && (
+                    <span className="block truncate text-[11px] text-muted-foreground">{option.description}</span>
+                  )}
+                </span>
+                {option.meta && <span className="shrink-0 text-[11px] text-muted-foreground">{option.meta}</span>}
+              </button>
+            ))
           )}
         </div>
       )}
