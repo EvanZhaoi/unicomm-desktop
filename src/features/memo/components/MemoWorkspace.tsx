@@ -27,6 +27,10 @@ import {
   Input,
   RemoteMultiSelect,
   Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -189,17 +193,20 @@ export function MemoWorkspace() {
         </Button>
         <div className="px-3 pb-2">
           <Select
-            value={activeGroupId ?? ""}
-            onChange={(event) => chooseGroup(event.target.value ? Number(event.target.value) : null)}
-            className="w-full"
-            selectClassName="h-7 text-xs text-muted-foreground"
+            value={activeGroupId ? String(activeGroupId) : "all"}
+            onValueChange={(value) => chooseGroup(value === "all" ? null : Number(value))}
           >
-            <option value="">{t("memo.all")}</option>
-            {groups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
+            <SelectTrigger className="h-7 w-full text-xs text-muted-foreground">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("memo.all")}</SelectItem>
+              {groups.map((group) => (
+                <SelectItem key={group.id} value={String(group.id)}>
+                  {group.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </div>
         <div className="h-[calc(100%-9.25rem)] overflow-auto">

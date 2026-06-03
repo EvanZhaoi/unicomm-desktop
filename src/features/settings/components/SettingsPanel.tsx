@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Globe2, Keyboard, RotateCcw, Save, Type } from "lucide-react";
-import { Button, Input, Select } from "@/components/ui";
+import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui";
 import { configureGlobalShortcuts } from "@/desktop/shortcut/shortcutManager";
 import { useI18n } from "@/i18n/useI18n";
 import { useSettingStore } from "@/stores/settingStore";
@@ -91,15 +91,19 @@ export function SettingsPanel() {
             </span>
             <Select
               value={language}
-              onChange={(event) => {
-                setLanguage(event.target.value as Language);
+              onValueChange={(value) => {
+                setLanguage(value as Language);
                 setMessage(t("settings.language.saved"));
                 setError(null);
               }}
-              className="min-w-40"
             >
-              <option value="zh-CN">{t("settings.language.zh")}</option>
-              <option value="ja-JP">{t("settings.language.ja")}</option>
+              <SelectTrigger className="min-w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="zh-CN">{t("settings.language.zh")}</SelectItem>
+                <SelectItem value="ja-JP">{t("settings.language.ja")}</SelectItem>
+              </SelectContent>
             </Select>
           </label>
 

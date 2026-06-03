@@ -4,7 +4,18 @@ export { Card, CardHeader, CardTitle, CardContent } from "./card";
 export { Input } from "./input";
 export { RemoteMultiSelect } from "./remote-multi-select";
 export type { RemoteSelectOption } from "./remote-multi-select";
-export { Select } from "./select";
+export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "./select";
 export { Separator } from "./separator";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
 export { Textarea } from "./textarea";

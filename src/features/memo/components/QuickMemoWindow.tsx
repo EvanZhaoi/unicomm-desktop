@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { emit } from "@tauri-apps/api/event";
 import { Save, X } from "lucide-react";
-import { Button, Select, Textarea } from "@/components/ui";
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from "@/components/ui";
 import { hideQuickMemoWindow } from "@/desktop/shortcut/shortcutManager";
 import { useI18n } from "@/i18n/useI18n";
 import { createMemo, listMemoGroups } from "../api/memoApi";
@@ -78,15 +78,19 @@ export function QuickMemoWindow() {
       <main className="flex min-h-0 flex-1 flex-col gap-3 p-3">
         {groups.length > 0 && (
           <Select
-            value={groupId}
-            onChange={(event) => setGroupId(Number(event.target.value))}
-            className="w-full"
+            value={groupId ? String(groupId) : undefined}
+            onValueChange={(value) => setGroupId(Number(value))}
           >
-            {groups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {groups.map((group) => (
+                <SelectItem key={group.id} value={String(group.id)}>
+                  {group.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         )}
 
