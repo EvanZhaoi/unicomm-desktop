@@ -29,13 +29,15 @@
  */
 
 import type { ReactNode } from "react";
-import { FileText, Minus, Moon, Settings, Square, Sun, User, X } from "lucide-react";
+import { FileText, Inbox, Minus, Moon, Settings, Square, Sun, User, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Button } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
 import { useMemoStore } from "@/features/memo/store/memoStore";
 import type { Memo } from "@/features/memo/types/memo.types";
+import { MemoGroupIcon } from "@/features/memo/components/MemoGroupIcon";
+import { MemoGroupManager } from "@/features/memo/components/MemoGroupManager";
 import { useSettingsStore } from "@/stores/settings.store";
 import type { DesktopUserInfo } from "@/features/auth/types/auth.types";
 
@@ -63,8 +65,21 @@ interface SidebarProps {
  */
 export function Sidebar({ collapsed = false, activeView, onViewChange, currentUser }: SidebarProps) {
   const { t } = useI18n();
-  const { memos, activeStatus, setActiveStatus, fetchMemos } = useMemoStore();
+  const {
+    memos,
+    groups,
+    activeGroupId,
+    activeStatus,
+    isSaving,
+    setActiveGroup,
+    setActiveStatus,
+    fetchMemos,
+    createGroup,
+    updateGroup,
+    deleteGroup,
+  } = useMemoStore();
   const { theme, setTheme } = useSettingsStore();
+  const totalMemoCount = groups.reduce((total, group) => total + group.memoCount, 0);
 
   const statusFilters: Array<{ label: string; value: Memo["status"] | null }> = [
     { label: t("memo.all"), value: null },
@@ -75,6 +90,11 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
 
   const chooseStatus = async (status: Memo["status"] | null) => {
     setActiveStatus(status);
+    await fetchMemos();
+  };
+
+  const chooseGroup = async (groupId: number | null) => {
+    setActiveGroup(groupId);
     await fetchMemos();
   };
 
@@ -93,9 +113,8 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
           <h1 className="text-center text-sm font-semibold tracking-normal text-foreground">UC</h1>
         )}
       </div>
-      <nav className="flex-1 space-y-2 overflow-y-auto p-2">
-        <div className="space-y-1">
-          {!collapsed && <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.shortcuts")}</div>}
+      <nav className="flex-1 overflow-y-auto p-2">
+        <div className="rounded-lg border border-border/70 bg-background/60 p-1">
           <NavItem
             icon={<FileText className="h-4 w-4" />}
             label={t("nav.memo")}
@@ -105,9 +124,13 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
             onClick={() => onViewChange("memo")}
           />
         </div>
-        <div className="space-y-1">
-          {!collapsed && <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.status")}</div>}
-          {!collapsed && (
+
+        {!collapsed && (
+          <div className="mt-4 space-y-3">
+            <div className="space-y-1">
+              <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("nav.status")}
+              </div>
             <div className="mx-1 grid grid-cols-2 gap-1 rounded-md bg-muted p-1">
               {statusFilters.map((filter) => (
                 <button
@@ -122,8 +145,54 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
                 </button>
               ))}
             </div>
-          )}
-        </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between px-2 pb-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("memo.groups")}
+                </span>
+                <MemoGroupManager
+                  groups={groups}
+                  isSaving={isSaving}
+                  onCreate={createGroup}
+                  onUpdate={updateGroup}
+                  onDelete={deleteGroup}
+                />
+              </div>
+              <div className="max-h-56 space-y-1 overflow-auto pr-1">
+                <button
+                  type="button"
+                  onClick={() => chooseGroup(null)}
+                  className={cn(
+                    "flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                    activeGroupId === null && "bg-accent font-medium text-foreground"
+                  )}
+                >
+                  <Inbox className="h-3.5 w-3.5 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate text-left">{t("memo.all")}</span>
+                  <span className="shrink-0 text-[10px]">{totalMemoCount}</span>
+                </button>
+                {groups.map((group) => (
+                  <button
+                    key={group.id}
+                    type="button"
+                    onClick={() => chooseGroup(group.id)}
+                    className={cn(
+                      "flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                      activeGroupId === group.id && "bg-accent font-medium text-foreground"
+                    )}
+                    title={group.name}
+                  >
+                    <MemoGroupIcon group={group} className="h-3.5 w-3.5" />
+                    <span className="min-w-0 flex-1 truncate text-left">{group.name}</span>
+                    <span className="shrink-0 text-[10px]">{group.memoCount}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
       <div className="border-t border-border p-2">
         <div className={cn("mb-2 flex gap-0.5 rounded-md bg-muted p-0.5", collapsed && "mx-auto w-9 flex-col")}>

@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   Archive,
-  Check,
   Columns2,
   Eye,
   FileCode2,
@@ -34,13 +33,12 @@ import {
   Textarea,
   type RemoteSelectOption,
 } from "@/components/ui";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
 import { searchMembers } from "../api/memoApi";
 import { useMemoStore } from "../store/memoStore";
-import type { Memo, MemoGroup, MemoGroupInput } from "../types/memo.types";
-import { MemoGroupIcon, memoGroupColorOptions, memoGroupIconOptions } from "./MemoGroupIcon";
+import type { Memo, MemoGroup } from "../types/memo.types";
+import { MemoGroupIcon } from "./MemoGroupIcon";
 
 const MemoRichEditor = lazy(() => import("./MemoRichEditor"));
 
@@ -72,7 +70,6 @@ export function MemoWorkspace() {
     memos,
     groups,
     selectedMemoId,
-    activeGroupId,
     keyword,
     isLoading,
     isSaving,
@@ -80,7 +77,6 @@ export function MemoWorkspace() {
     fetchInitialData,
     fetchMemos,
     setKeyword,
-    setActiveGroup,
     createMemo,
     updateSelectedMemo,
     deleteSelectedMemo,
@@ -88,9 +84,6 @@ export function MemoWorkspace() {
     toggleTop,
     toggleFavorite,
     toggleArchive,
-    createGroup,
-    updateGroup,
-    deleteGroup,
   } = useMemoStore();
 
   const selectedMemo = useMemo(
@@ -102,8 +95,6 @@ export function MemoWorkspace() {
   const [markdownSyncVersion, setMarkdownSyncVersion] = useState(0);
   const isOwner = draft?.isOwner !== false;
   const canEdit = isOwner || draft?.currentUserPermission === "edit";
-  const totalMemoCount = groups.reduce((total, group) => total + group.memoCount, 0);
-
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
@@ -139,11 +130,6 @@ export function MemoWorkspace() {
           }))
         : undefined,
     });
-  };
-
-  const chooseGroup = async (groupId: number | null) => {
-    setActiveGroup(groupId);
-    await fetchMemos();
   };
 
   const search = async () => {
@@ -196,50 +182,6 @@ export function MemoWorkspace() {
           <Plus className="h-4 w-4" />
           {t("memo.new")}
         </Button>
-        <div className="shrink-0 border-b border-border px-3 pb-2">
-          <div className="mb-1.5 flex items-center justify-between">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t("memo.groups")}
-            </div>
-            <MemoGroupManager
-              groups={groups}
-              isSaving={isSaving}
-              onCreate={createGroup}
-              onUpdate={updateGroup}
-              onDelete={deleteGroup}
-            />
-          </div>
-          <div className="max-h-32 space-y-1 overflow-auto pr-1">
-            <button
-              type="button"
-              onClick={() => chooseGroup(null)}
-              className={cn(
-                "flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                activeGroupId === null && "bg-accent font-medium text-foreground"
-              )}
-            >
-              <Inbox className="h-3.5 w-3.5 shrink-0" />
-              <span className="min-w-0 flex-1 truncate text-left">{t("memo.all")}</span>
-              <span className="shrink-0 text-[10px]">{totalMemoCount}</span>
-            </button>
-            {groups.map((group) => (
-              <button
-                key={group.id}
-                type="button"
-                onClick={() => chooseGroup(group.id)}
-                className={cn(
-                  "flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                  activeGroupId === group.id && "bg-accent font-medium text-foreground"
-                )}
-                title={group.name}
-              >
-                <MemoGroupIcon group={group} className="h-3.5 w-3.5" />
-                <span className="min-w-0 flex-1 truncate text-left">{group.name}</span>
-                <span className="shrink-0 text-[10px]">{group.memoCount}</span>
-              </button>
-            ))}
-          </div>
-        </div>
         <div className="min-h-0 flex-1 overflow-auto">
           {isLoading ? (
             <EmptyMemoState icon={<Search className="h-5 w-5" />} title={t("memo.loading")} />
@@ -473,189 +415,6 @@ function MemoGroupDropdown({
         ))}
       </SelectContent>
     </Select>
-  );
-}
-
-function MemoGroupManager({
-  groups,
-  isSaving,
-  onCreate,
-  onUpdate,
-  onDelete,
-}: {
-  groups: MemoGroup[];
-  isSaving: boolean;
-  onCreate: (input: MemoGroupInput) => Promise<void>;
-  onUpdate: (id: number, input: MemoGroupInput) => Promise<void>;
-  onDelete: (id: number) => Promise<void>;
-}) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<MemoGroup | null>(null);
-  const [name, setName] = useState("");
-  const [icon, setIcon] = useState("folder");
-  const [color, setColor] = useState(memoGroupColorOptions[0]);
-
-  const resetForm = () => {
-    setEditingGroup(null);
-    setName("");
-    setIcon("folder");
-    setColor(memoGroupColorOptions[0]);
-  };
-
-  const editGroup = (group: MemoGroup) => {
-    setEditingGroup(group);
-    setName(group.name);
-    setIcon(group.icon || "folder");
-    setColor(group.color || memoGroupColorOptions[0]);
-  };
-
-  const saveGroup = async () => {
-    const nextName = name.trim();
-    if (!nextName) {
-      return;
-    }
-
-    const input: MemoGroupInput = {
-      name: nextName,
-      icon,
-      color,
-      sortOrder: editingGroup?.sortOrder,
-    };
-
-    if (editingGroup) {
-      await onUpdate(editingGroup.id, input);
-    } else {
-      await onCreate(input);
-    }
-    resetForm();
-  };
-
-  const removeGroup = async (group: MemoGroup) => {
-    if (group.isDefault || !window.confirm(t("memo.group.delete.confirm", { name: group.name }))) {
-      return;
-    }
-    await onDelete(group.id);
-    if (editingGroup?.id === group.id) {
-      resetForm();
-    }
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button size="icon" variant="outline" className="h-7 w-7 shrink-0" title={t("memo.group.manage")}>
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-[340px] p-3">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <div className="text-sm font-semibold text-foreground">{t("memo.group.manage")}</div>
-          <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={resetForm}>
-            <Plus className="h-3.5 w-3.5" />
-            {t("memo.group.new")}
-          </Button>
-        </div>
-
-        <div className="mb-3 max-h-36 overflow-auto rounded-md border border-border">
-          {groups.map((group) => (
-            <div key={group.id} className="flex items-center gap-2 border-b border-border px-2 py-1.5 last:border-b-0">
-              <MemoGroupIcon group={group} />
-              <button
-                type="button"
-                className="min-w-0 flex-1 truncate text-left text-xs text-foreground hover:text-primary"
-                onClick={() => editGroup(group)}
-                title={group.name}
-              >
-                {group.name}
-              </button>
-              <span className="shrink-0 text-[11px] text-muted-foreground">{group.memoCount}</span>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6"
-                onClick={() => editGroup(group)}
-                title={t("memo.group.edit")}
-              >
-                <Pencil className="h-3 w-3" />
-              </Button>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                disabled={group.isDefault || isSaving}
-                onClick={() => removeGroup(group)}
-                title={t("memo.group.delete")}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-2">
-          <Input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className="h-8 text-xs"
-            placeholder={t("memo.group.name.placeholder")}
-          />
-
-          <div className="grid grid-cols-6 gap-1">
-            {memoGroupIconOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={cn(
-                  "flex h-8 items-center justify-center rounded-md border border-border transition-colors hover:border-primary/60 hover:bg-accent",
-                  icon === option.value && "border-primary bg-primary/10"
-                )}
-                onClick={() => setIcon(option.value)}
-                title={option.value}
-              >
-                <MemoGroupIcon icon={option.value} color={color} />
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1">
-            {memoGroupColorOptions.map((option) => (
-              <button
-                key={option}
-                type="button"
-                className={cn(
-                  "flex h-6 w-6 items-center justify-center rounded-md border border-border",
-                  color === option && "ring-2 ring-primary/30"
-                )}
-                style={{ backgroundColor: option }}
-                onClick={() => setColor(option)}
-                title={option}
-              >
-                {color === option && <Check className="h-3.5 w-3.5 text-white" />}
-              </button>
-            ))}
-            <input
-              type="color"
-              value={color}
-              onChange={(event) => setColor(event.target.value)}
-              className="h-6 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0"
-              title={t("memo.group.color.custom")}
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <Button type="button" size="sm" variant="outline" onClick={resetForm}>
-              {t("memo.group.cancel")}
-            </Button>
-            <Button type="button" size="sm" disabled={isSaving || !name.trim()} onClick={saveGroup}>
-              {editingGroup ? t("memo.group.save") : t("memo.group.create")}
-            </Button>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
   );
 }
 
