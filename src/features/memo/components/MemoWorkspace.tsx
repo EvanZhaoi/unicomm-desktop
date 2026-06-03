@@ -102,6 +102,7 @@ export function MemoWorkspace() {
   const [markdownSyncVersion, setMarkdownSyncVersion] = useState(0);
   const isOwner = draft?.isOwner !== false;
   const canEdit = isOwner || draft?.currentUserPermission === "edit";
+  const totalMemoCount = groups.reduce((total, group) => total + group.memoCount, 0);
 
   useEffect(() => {
     fetchInitialData();
@@ -158,8 +159,8 @@ export function MemoWorkspace() {
 
   return (
     <div className="grid h-full grid-cols-[280px_minmax(0,1fr)] overflow-hidden bg-background">
-      <section className="min-h-0 border-r border-border bg-card">
-        <div className="border-b border-border p-3">
+      <section className="flex min-h-0 flex-col border-r border-border bg-card">
+        <div className="shrink-0 border-b border-border p-3">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -190,47 +191,56 @@ export function MemoWorkspace() {
         <Button
           onClick={createMemo}
           disabled={isSaving}
-          className="mx-3 my-2.5 w-[calc(100%-1.5rem)]"
+          className="mx-3 my-2.5 w-[calc(100%-1.5rem)] shrink-0"
         >
           <Plus className="h-4 w-4" />
           {t("memo.new")}
         </Button>
-        <div className="flex items-center gap-1 px-3 pb-2">
-          <Select
-            value={activeGroupId ? String(activeGroupId) : "all"}
-            onValueChange={(value) => chooseGroup(value === "all" ? null : Number(value))}
-          >
-            <SelectTrigger className="h-7 min-w-0 flex-1 text-xs text-muted-foreground">
-              <span className="inline-flex min-w-0 items-center gap-1">
-                {activeGroupId && <MemoGroupIcon group={groups.find((group) => group.id === activeGroupId)} />}
-                <span className="min-w-0 truncate">
-                  {activeGroupId ? groups.find((group) => group.id === activeGroupId)?.name : t("memo.all")}
-                </span>
-              </span>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" hideIndicator>
-                {t("memo.all")}
-              </SelectItem>
-              {groups.map((group) => (
-                <SelectItem key={group.id} value={String(group.id)} hideIndicator>
-                  <span className="inline-flex min-w-0 items-center gap-1">
-                    <MemoGroupIcon group={group} />
-                    <span className="min-w-0 truncate">{group.name}</span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <MemoGroupManager
-            groups={groups}
-            isSaving={isSaving}
-            onCreate={createGroup}
-            onUpdate={updateGroup}
-            onDelete={deleteGroup}
-          />
+        <div className="shrink-0 border-b border-border px-3 pb-2">
+          <div className="mb-1.5 flex items-center justify-between">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t("memo.groups")}
+            </div>
+            <MemoGroupManager
+              groups={groups}
+              isSaving={isSaving}
+              onCreate={createGroup}
+              onUpdate={updateGroup}
+              onDelete={deleteGroup}
+            />
+          </div>
+          <div className="max-h-32 space-y-1 overflow-auto pr-1">
+            <button
+              type="button"
+              onClick={() => chooseGroup(null)}
+              className={cn(
+                "flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                activeGroupId === null && "bg-accent font-medium text-foreground"
+              )}
+            >
+              <Inbox className="h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 flex-1 truncate text-left">{t("memo.all")}</span>
+              <span className="shrink-0 text-[10px]">{totalMemoCount}</span>
+            </button>
+            {groups.map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                onClick={() => chooseGroup(group.id)}
+                className={cn(
+                  "flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                  activeGroupId === group.id && "bg-accent font-medium text-foreground"
+                )}
+                title={group.name}
+              >
+                <MemoGroupIcon group={group} className="h-3.5 w-3.5" />
+                <span className="min-w-0 flex-1 truncate text-left">{group.name}</span>
+                <span className="shrink-0 text-[10px]">{group.memoCount}</span>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="h-[calc(100%-9.25rem)] overflow-auto">
+        <div className="min-h-0 flex-1 overflow-auto">
           {isLoading ? (
             <EmptyMemoState icon={<Search className="h-5 w-5" />} title={t("memo.loading")} />
           ) : memos.length === 0 ? (
@@ -446,17 +456,17 @@ function MemoGroupDropdown({
 
   return (
     <Select value={String(value)} onValueChange={(next) => onChange(Number(next))} disabled={disabled}>
-      <SelectTrigger className="h-5 w-[150px] max-w-[38vw] border-0 bg-transparent px-1 text-xs shadow-none focus:ring-2 focus:ring-primary/20">
-        <span className="inline-flex min-w-0 items-center gap-1">
-          <MemoGroupIcon group={selectedGroup} />
+      <SelectTrigger className="h-5 w-[150px] max-w-[38vw] border-0 bg-transparent px-1 text-xs shadow-none focus:ring-2 focus:ring-primary/20 [&>span]:flex [&>span]:items-center">
+        <span className="inline-flex h-full min-w-0 items-center gap-1.5 leading-none">
+          <MemoGroupIcon group={selectedGroup} className="h-3.5 w-3.5" />
           <span className="min-w-0 truncate">{selectedGroup?.name ?? "-"}</span>
         </span>
       </SelectTrigger>
       <SelectContent className="w-44">
         {groups.map((group) => (
           <SelectItem key={group.id} value={String(group.id)} className="text-xs" hideIndicator>
-            <span className="inline-flex min-w-0 items-center gap-1">
-              <MemoGroupIcon group={group} />
+            <span className="inline-flex min-w-0 items-center gap-1.5 leading-none">
+              <MemoGroupIcon group={group} className="h-3.5 w-3.5" />
               <span className="min-w-0 truncate">{group.name}</span>
             </span>
           </SelectItem>
@@ -719,7 +729,7 @@ function RelatedUsersEditor({
   };
 
   return (
-    <div className="shrink-0 border-b border-border bg-card px-4 pb-3">
+    <div className="shrink-0 border-b border-border bg-card px-4 pb-3 pt-2">
       <RemoteMultiSelect
         value={selectedOptions}
         disabled={disabled}

@@ -179,6 +179,7 @@ function AppContent() {
       sidebarCollapsed={sidebarCollapsed}
       activeView={activeView}
       onViewChange={setActiveView}
+      currentUser={currentUser}
     >
       {activeView === "memo" ? <MemoWorkspace /> : <SettingsPanel />}
     </AppLayout>

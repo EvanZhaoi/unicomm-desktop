@@ -29,7 +29,7 @@
  */
 
 import type { ReactNode } from "react";
-import { FileText, Minus, Moon, Settings, Square, Sun, X } from "lucide-react";
+import { FileText, Minus, Moon, Settings, Square, Sun, User, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Button } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
@@ -37,6 +37,7 @@ import { cn } from "@/utils/cn";
 import { useMemoStore } from "@/features/memo/store/memoStore";
 import type { Memo } from "@/features/memo/types/memo.types";
 import { useSettingsStore } from "@/stores/settings.store";
+import type { DesktopUserInfo } from "@/features/auth/types/auth.types";
 
 export type AppView = "memo" | "settings";
 
@@ -48,6 +49,7 @@ interface SidebarProps {
   collapsed?: boolean;
   activeView: AppView;
   onViewChange: (view: AppView) => void;
+  currentUser?: DesktopUserInfo | null;
 }
 
 /**
@@ -59,7 +61,7 @@ interface SidebarProps {
  * 
  * @param props.collapsed - true 时侧边栏宽度变为 64px，仅显示图标
  */
-export function Sidebar({ collapsed = false, activeView, onViewChange }: SidebarProps) {
+export function Sidebar({ collapsed = false, activeView, onViewChange, currentUser }: SidebarProps) {
   const { t } = useI18n();
   const { memos, activeStatus, setActiveStatus, fetchMemos } = useMemoStore();
   const { theme, setTheme } = useSettingsStore();
@@ -122,20 +124,9 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
             </div>
           )}
         </div>
-        <div className="space-y-1">
-          {!collapsed && <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("nav.settings")}</div>}
-          <NavItem
-            icon={<Settings className="h-4 w-4" />}
-            label={t("nav.settings")}
-            collapsed={collapsed}
-            active={activeView === "settings"}
-            onClick={() => onViewChange("settings")}
-          />
-        </div>
       </nav>
-      {!collapsed && (
-        <div className="border-t border-border p-3">
-          <div className="mb-2 flex gap-0.5 rounded-md bg-muted p-0.5">
+      <div className="border-t border-border p-2">
+        <div className={cn("mb-2 flex gap-0.5 rounded-md bg-muted p-0.5", collapsed && "mx-auto w-9 flex-col")}>
             <button
               title="Light"
               onClick={() => setTheme("light")}
@@ -157,12 +148,34 @@ export function Sidebar({ collapsed = false, activeView, onViewChange }: Sidebar
               <Moon className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span>{t("nav.ready")}</span>
+        <NavItem
+          icon={<Settings className="h-4 w-4" />}
+          label={t("nav.settings")}
+          collapsed={collapsed}
+          active={activeView === "settings"}
+          onClick={() => onViewChange("settings")}
+        />
+        <div className={cn("mt-2 flex items-center gap-2 rounded-md px-2 py-1.5", collapsed && "justify-center px-0")}>
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            {currentUser?.displayName ? (
+              <span className="text-xs font-semibold">{currentUser.displayName.slice(0, 1).toUpperCase()}</span>
+            ) : (
+              <User className="h-3.5 w-3.5" />
+            )}
           </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <div className="truncate text-xs font-medium text-foreground">
+                {currentUser?.displayName || currentUser?.username || "-"}
+              </div>
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="truncate">{currentUser?.departmentName || t("nav.ready")}</span>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </aside>
   );
 }
@@ -283,6 +296,7 @@ interface AppLayoutProps {
   sidebarCollapsed?: boolean;
   activeView: AppView;
   onViewChange: (view: AppView) => void;
+  currentUser?: DesktopUserInfo | null;
 }
 
 /**
@@ -298,12 +312,13 @@ export function AppLayout({
   sidebarCollapsed,
   activeView,
   onViewChange,
+  currentUser,
 }: AppLayoutProps) {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <Titlebar />
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <Sidebar collapsed={sidebarCollapsed} activeView={activeView} onViewChange={onViewChange} />
+        <Sidebar collapsed={sidebarCollapsed} activeView={activeView} onViewChange={onViewChange} currentUser={currentUser} />
         <main className="min-w-0 flex-1 overflow-hidden">{children}</main>
       </div>
     </div>
