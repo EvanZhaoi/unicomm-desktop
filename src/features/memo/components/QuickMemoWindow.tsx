@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { emit } from "@tauri-apps/api/event";
 import { Save, X } from "lucide-react";
-import { Button, Select } from "@/components/ui";
+import { Button, Select, Textarea } from "@/components/ui";
 import { hideQuickMemoWindow } from "@/desktop/shortcut/shortcutManager";
 import { useI18n } from "@/i18n/useI18n";
 import { createMemo, listMemoGroups } from "../api/memoApi";
@@ -90,7 +90,7 @@ export function QuickMemoWindow() {
           </Select>
         )}
 
-        <textarea
+        <Textarea
           ref={editorRef}
           value={content}
           onChange={(event) => setContent(event.target.value)}
@@ -100,7 +100,7 @@ export function QuickMemoWindow() {
               save();
             }
           }}
-          className="min-h-0 flex-1 resize-none rounded-md border border-input bg-background p-3 text-sm leading-6 outline-none focus:ring-1 focus:ring-ring"
+          className="min-h-0 flex-1 resize-none leading-6"
           placeholder={t("quickMemo.placeholder")}
         />
 

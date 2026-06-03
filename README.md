@@ -13,6 +13,7 @@ Tauri 2 + React 19 企业协同桌面应用
 - **TanStack Query 5.x** - 服务端状态
 - **React Router 7.x** - 路由
 - **Milkdown Crepe 7.x** - Memo 可视化 Markdown 编辑器
+- **shadcn/ui + Radix UI** - 前端基础组件体系
 - **Alibaba PuHuiTi 3.0** - 中日文界面首选字体
 
 ## 项目结构
@@ -96,6 +97,14 @@ npm run tauri build
 ### 开发中 🚧
 - [ ] 通知
 - [ ] 剪贴板
+
+## 前端组件体系
+
+- 基础交互组件采用 shadcn/ui 风格，组件源码放在 `src/components/ui/`
+- 主题、圆角、边框、焦点态继续复用 `src/styles/globals.css` 中的 CSS 变量
+- 优先使用 `Button`、`Input`、`Textarea`、`Tabs`、`Badge` 等公共组件，避免在业务页面重复手写基础控件
+- 复杂控件按功能逐步迁移到 Radix/shadcn 组合，避免一次性重写影响 Memo 保存、相关人权限、快捷键等已实现功能
+- 暂保留兼容原生 `<select>` 的 `Select` 包装组件；后续如改为 Radix Select，需要逐个迁移调用方的 `<option>` 写法
 
 ## 字体与语言
 

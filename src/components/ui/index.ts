@@ -1,5 +1,11 @@
 export { Button, buttonVariants } from "./button";
+export { Badge, badgeVariants } from "./badge";
 export { Card, CardHeader, CardTitle, CardContent } from "./card";
+export { Input } from "./input";
 export { RemoteMultiSelect } from "./remote-multi-select";
 export type { RemoteSelectOption } from "./remote-multi-select";
 export { Select } from "./select";
+export { Separator } from "./separator";
+export { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
+export { Textarea } from "./textarea";
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Globe2, Keyboard, RotateCcw, Save, Type } from "lucide-react";
-import { Button, Select } from "@/components/ui";
+import { Button, Input, Select } from "@/components/ui";
 import { configureGlobalShortcuts } from "@/desktop/shortcut/shortcutManager";
 import { useI18n } from "@/i18n/useI18n";
 import { useSettingStore } from "@/stores/settingStore";
@@ -130,10 +130,10 @@ export function SettingsPanel() {
               <span className="block text-sm font-medium text-foreground">{t("settings.shortcuts.showMain")}</span>
               <span className="mt-1 block text-xs text-muted-foreground">{t("settings.shortcuts.showMainHint")}</span>
             </span>
-            <input
+            <Input
               value={showMain}
               onChange={(event) => setShowMain(event.target.value)}
-              className="h-8 min-w-40 rounded-sm border border-input bg-background px-3 text-sm outline-none transition-all duration-150 focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+              className="min-w-40"
               placeholder="Ctrl+Alt+M"
             />
           </label>
@@ -143,10 +143,10 @@ export function SettingsPanel() {
               <span className="block text-sm font-medium text-foreground">{t("settings.shortcuts.quickMemo")}</span>
               <span className="mt-1 block text-xs text-muted-foreground">{t("settings.shortcuts.quickMemoHint")}</span>
             </span>
-            <input
+            <Input
               value={quickMemo}
               onChange={(event) => setQuickMemo(event.target.value)}
-              className="h-8 min-w-40 rounded-sm border border-input bg-background px-3 text-sm outline-none transition-all duration-150 focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+              className="min-w-40"
               placeholder="Ctrl+Alt+N"
             />
           </label>

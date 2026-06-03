@@ -22,7 +22,17 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { Button, RemoteMultiSelect, Select, type RemoteSelectOption } from "@/components/ui";
+import {
+  Button,
+  Input,
+  RemoteMultiSelect,
+  Select,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  Textarea,
+  type RemoteSelectOption,
+} from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
 import { searchMembers } from "../api/memoApi";
@@ -146,7 +156,7 @@ export function MemoWorkspace() {
         <div className="border-b border-border p-3">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
-            <input
+            <Input
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
               onKeyDown={(event) => {
@@ -154,7 +164,7 @@ export function MemoWorkspace() {
                   search();
                 }
               }}
-              className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-9 text-sm outline-none transition-all duration-150 focus:border-ring focus:ring-[3px] focus:ring-primary/10"
+              className="pl-8 pr-9"
               placeholder={t("memo.search.placeholder")}
             />
             {keyword && (
@@ -169,14 +179,14 @@ export function MemoWorkspace() {
             )}
           </div>
         </div>
-        <button
+        <Button
           onClick={createMemo}
           disabled={isSaving}
-          className="mx-3 my-2.5 flex w-[calc(100%-1.5rem)] items-center justify-center gap-1 rounded-md bg-primary px-3 py-2 text-[13px] font-medium text-primary-foreground shadow-sm transition-colors duration-150 hover:bg-primary/90 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
+          className="mx-3 my-2.5 w-[calc(100%-1.5rem)]"
         >
           <Plus className="h-4 w-4" />
           {t("memo.new")}
-        </button>
+        </Button>
         <div className="px-3 pb-2">
           <Select
             value={activeGroupId ?? ""}
@@ -240,11 +250,11 @@ export function MemoWorkspace() {
         {draft ? (
           <>
             <div className="shrink-0 border-b border-border bg-card p-4">
-              <input
+              <Input
                 value={draft.title}
                 onChange={(event) => setDraft({ ...draft, title: event.target.value })}
                 disabled={!canEdit}
-                className="w-full border-0 bg-transparent text-xl font-semibold tracking-normal text-foreground outline-none placeholder:text-muted-foreground"
+                className="h-auto border-0 bg-transparent px-0 py-0 text-xl font-semibold tracking-normal shadow-none focus-visible:border-transparent focus-visible:ring-0"
                 placeholder={t("memo.title.placeholder")}
               />
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
@@ -286,41 +296,22 @@ export function MemoWorkspace() {
                     </span>
                   )}
                 </div>
-                <div className="flex shrink-0 gap-0.5 rounded-md bg-muted p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setEditorMode("visual")}
-                    className={cn(
-                      "inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-md px-2.5 text-xs font-medium transition-colors hover:text-foreground",
-                      editorMode === "visual" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                    )}
-                  >
+                <Tabs value={editorMode} onValueChange={(value) => setEditorMode(value as typeof editorMode)}>
+                  <TabsList className="h-7">
+                    <TabsTrigger value="visual" className="h-6 gap-1 px-2.5">
                     <FileText className="h-3 w-3" />
                     {t("memo.editor.visual")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditorMode("markdown")}
-                    className={cn(
-                      "inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-md px-2.5 text-xs font-medium transition-colors hover:text-foreground",
-                      editorMode === "markdown" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                    )}
-                  >
+                    </TabsTrigger>
+                    <TabsTrigger value="markdown" className="h-6 gap-1 px-2.5">
                     <FileCode2 className="h-3 w-3" />
                     {t("memo.editor.markdown")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditorMode("split")}
-                    className={cn(
-                      "inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-md px-2.5 text-xs font-medium transition-colors hover:text-foreground",
-                      editorMode === "split" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                    )}
-                  >
+                    </TabsTrigger>
+                    <TabsTrigger value="split" className="h-6 gap-1 px-2.5">
                     <Columns2 className="h-3 w-3" />
                     {t("memo.editor.split")}
-                  </button>
-                </div>
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
             </div>
             <RelatedUsersEditor
@@ -359,14 +350,14 @@ export function MemoWorkspace() {
                     <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-3 text-xs font-medium text-muted-foreground">
                       <span>{t("memo.editor.markdown")}</span>
                     </div>
-                    <textarea
+                    <Textarea
                       value={draft.content}
                       onChange={(event) => {
                         setDraft({ ...draft, content: event.target.value });
                         setMarkdownSyncVersion((version) => version + 1);
                       }}
                       readOnly={!canEdit}
-                      className="min-h-0 flex-1 resize-none bg-background p-3 font-mono text-sm leading-7 text-foreground outline-none placeholder:text-muted-foreground"
+                      className="min-h-0 flex-1 resize-none rounded-none border-0 bg-background font-mono leading-7 shadow-none focus-visible:border-transparent focus-visible:ring-0"
                       placeholder={t("memo.editor.placeholder")}
                     />
                   </section>
