@@ -426,15 +426,15 @@ function MemoGroupDropdown({
 
   return (
     <Select value={String(value)} onValueChange={(next) => onChange(Number(next))} disabled={disabled}>
-      <SelectTrigger className="h-5 w-[120px] border-0 bg-transparent px-1 text-xs shadow-none focus:ring-2 focus:ring-primary/20">
+      <SelectTrigger className="h-5 w-[150px] max-w-[38vw] border-0 bg-transparent px-1 text-xs shadow-none focus:ring-2 focus:ring-primary/20">
         <span className="inline-flex min-w-0 items-center gap-1">
           <GroupMark group={selectedGroup} />
-          <SelectValue placeholder="-" />
+          <span className="min-w-0 truncate">{selectedGroup?.name ?? "-"}</span>
         </span>
       </SelectTrigger>
       <SelectContent className="w-44">
         {groups.map((group) => (
-          <SelectItem key={group.id} value={String(group.id)} className="text-xs">
+          <SelectItem key={group.id} value={String(group.id)} className="text-xs" hideIndicator>
             <span className="inline-flex min-w-0 items-center gap-1">
               <GroupMark group={group} />
               <span className="min-w-0 truncate">{group.name}</span>
@@ -587,7 +587,11 @@ function RelatedUsersEditor({
 
 function GroupMark({ group }: { group?: MemoGroup }) {
   if (group?.icon) {
-    return <span className="shrink-0 text-[11px] leading-none">{group.icon}</span>;
+    return (
+      <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center text-[12px] leading-none">
+        {group.icon}
+      </span>
+    );
   }
 
   return (
