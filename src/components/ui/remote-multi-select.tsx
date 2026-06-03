@@ -37,6 +37,7 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
   filterOption,
 }: RemoteMultiSelectProps<TOption>) {
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [keyword, setKeyword] = useState("");
   const [options, setOptions] = useState<TOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -118,20 +119,29 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
     onChange(value.filter((item) => item.value !== option.value));
   };
 
+  const focusInput = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (disabled) {
+      return;
+    }
+    const target = event.target as HTMLElement;
+    if (target.closest("button")) {
+      return;
+    }
+    inputRef.current?.focus();
+  };
+
   return (
     <div ref={rootRef} className={cn("relative", className)}>
       <div
+        onMouseDown={focusInput}
         className={cn(
-          "grid min-h-9 items-start gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-xs transition-all max-[760px]:grid-cols-[auto_minmax(0,1fr)]",
-          renderPrefix
-            ? "grid-cols-[auto_minmax(0,1fr)_minmax(160px,220px)]"
-            : "grid-cols-[minmax(0,1fr)_minmax(160px,220px)]",
+          "flex min-h-9 cursor-text flex-wrap items-start gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-xs transition-all",
           !disabled && "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-primary/10",
-          disabled && "opacity-80"
+          disabled && "cursor-default opacity-80"
         )}
       >
         {renderPrefix && <div className="flex h-6 shrink-0 items-center">{renderPrefix()}</div>}
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <div className="flex min-w-[120px] flex-1 flex-wrap items-center gap-1.5">
           {value.length === 0 && disabled && emptyText && <span className="text-muted-foreground">{emptyText}</span>}
           {value.map((item) => (
             <span
@@ -155,8 +165,9 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
         </div>
 
         {!disabled && (
-          <span className="relative h-6 min-w-0 max-[760px]:col-span-2 max-[760px]:w-full">
+          <span className="relative ml-auto h-6 w-[180px] min-w-[140px] shrink-0 max-[760px]:ml-0 max-[760px]:w-full">
             <input
+              ref={inputRef}
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
               onFocus={() => {
