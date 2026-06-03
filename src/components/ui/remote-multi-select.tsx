@@ -122,56 +122,61 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
     <div ref={rootRef} className={cn("relative", className)}>
       <div
         className={cn(
-          "flex min-h-9 flex-wrap items-center gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-xs transition-all",
+          "grid min-h-9 items-start gap-2 rounded-md border border-input bg-background px-2 py-1.5 text-xs transition-all max-[760px]:grid-cols-[auto_minmax(0,1fr)]",
+          renderPrefix
+            ? "grid-cols-[auto_minmax(0,1fr)_minmax(160px,220px)]"
+            : "grid-cols-[minmax(0,1fr)_minmax(160px,220px)]",
           !disabled && "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-primary/10",
           disabled && "opacity-80"
         )}
       >
-        {renderPrefix?.()}
-        {value.length === 0 && disabled && emptyText && <span className="text-muted-foreground">{emptyText}</span>}
-        {value.map((item) => (
-          <span
-            key={item.value}
-            className="inline-flex h-6 items-center gap-1 rounded-md bg-muted px-2 text-xs text-foreground"
-            title={[item.description, item.meta].filter(Boolean).join(" · ")}
-          >
-            {item.label}
-            {item.meta && <span className="text-muted-foreground">{item.meta}</span>}
-            {!disabled && (
-              <button
-                type="button"
-                onClick={() => removeOption(item)}
-                className="rounded-sm text-muted-foreground transition-colors hover:text-destructive"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
-          </span>
-        ))}
+        {renderPrefix && <div className="flex h-6 shrink-0 items-center">{renderPrefix()}</div>}
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          {value.length === 0 && disabled && emptyText && <span className="text-muted-foreground">{emptyText}</span>}
+          {value.map((item) => (
+            <span
+              key={item.value}
+              className="inline-flex h-6 max-w-full items-center gap-1 rounded-md bg-muted px-2 text-xs text-foreground"
+              title={[item.description, item.meta].filter(Boolean).join(" · ")}
+            >
+              <span className="truncate">{item.label}</span>
+              {item.meta && <span className="shrink-0 text-muted-foreground">{item.meta}</span>}
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={() => removeOption(item)}
+                  className="shrink-0 rounded-sm text-muted-foreground transition-colors hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
 
         {!disabled && (
-          <span className="relative min-w-[180px] flex-1">
-            <Search className="pointer-events-none absolute left-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-            onFocus={() => {
-              if (keyword.trim()) {
-                setOpen(true);
-              }
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && options[0]) {
-                event.preventDefault();
-                selectOption(options[0]);
-              }
-              if (event.key === "Escape") {
-                setOpen(false);
-              }
-            }}
-              className="h-6 w-full border-0 bg-transparent pl-5 pr-1 text-xs text-foreground outline-none placeholder:text-muted-foreground"
+          <span className="relative h-6 min-w-0 max-[760px]:col-span-2 max-[760px]:w-full">
+            <input
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              onFocus={() => {
+                if (keyword.trim()) {
+                  setOpen(true);
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && options[0]) {
+                  event.preventDefault();
+                  selectOption(options[0]);
+                }
+                if (event.key === "Escape") {
+                  setOpen(false);
+                }
+              }}
+              className="h-6 w-full border-0 bg-transparent pl-1 pr-5 text-xs text-foreground outline-none placeholder:text-muted-foreground"
               placeholder={value.length === 0 ? placeholder : undefined}
-          />
+            />
+            <Search className="pointer-events-none absolute right-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           </span>
         )}
       </div>
