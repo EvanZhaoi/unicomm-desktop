@@ -29,7 +29,7 @@
  */
 
 import type { ReactNode } from "react";
-import { Bell, FileText, Inbox, Minus, Moon, Settings, Square, Star, Sun, Tag, User, X } from "lucide-react";
+import { Bell, FileText, Inbox, Minus, Moon, Settings, Share2, Square, Star, Sun, Tag, User, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Button } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
@@ -142,24 +142,33 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
             onClick={() => chooseScope("all")}
           />
           <NavItem
-            icon={<Star className="h-4 w-4" />}
-            label={t("memo.view.favorite")}
+            icon={<Share2 className="h-4 w-4" />}
+            label={t("memo.view.related")}
             collapsed={collapsed}
-            active={activeView === "memo" && activeScope === "favorite"}
-            onClick={() => chooseScope("favorite")}
-          />
-          <NavItem
-            icon={<Bell className="h-4 w-4" />}
-            label={t("nav.notify")}
-            badge={unreadNotifyCount > 0 ? String(unreadNotifyCount) : undefined}
-            collapsed={collapsed}
-            active={activeView === "notify"}
-            onClick={() => onViewChange("notify")}
+            active={activeView === "memo" && activeScope === "related"}
+            onClick={() => chooseScope("related")}
           />
         </div>
 
         {!collapsed && (
           <div className="mt-4 space-y-3">
+            <div className="space-y-1">
+              <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("memo.view.favorite")}
+              </div>
+              <button
+                type="button"
+                onClick={() => chooseScope(activeScope === "favorite" ? "all" : "favorite")}
+                className={cn(
+                  "flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                  activeScope === "favorite" && "bg-accent font-medium text-foreground"
+                )}
+              >
+                <Star className={cn("h-3.5 w-3.5 shrink-0", activeScope === "favorite" && "fill-primary text-primary")} />
+                <span className="min-w-0 flex-1 truncate text-left">{t("memo.view.favorite")}</span>
+              </button>
+            </div>
+
             <div className="space-y-1">
               <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("nav.status")}
@@ -262,7 +271,35 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
         )}
       </nav>
       <div className="border-t border-border p-2">
-        <div className={cn("mb-2 flex gap-0.5 rounded-md bg-muted p-0.5", collapsed && "mx-auto w-9 flex-col")}>
+        <div className={cn("mb-2 flex items-center gap-1", collapsed && "flex-col")}>
+          <div className={cn("flex rounded-md bg-muted p-0.5", collapsed && "w-9")}>
+            <button
+              title={t("nav.notify")}
+              onClick={() => onViewChange("notify")}
+              className={cn(
+                "relative flex h-8 w-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground",
+                activeView === "notify" && "bg-card text-foreground shadow-sm"
+              )}
+            >
+              <Bell className="h-3.5 w-3.5" />
+              {unreadNotifyCount > 0 && (
+                <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-destructive" />
+              )}
+            </button>
+          </div>
+          <div className={cn("flex rounded-md bg-muted p-0.5", collapsed && "w-9")}>
+            <button
+              title={t("nav.settings")}
+              onClick={() => onViewChange("settings")}
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground",
+                activeView === "settings" && "bg-card text-foreground shadow-sm"
+              )}
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className={cn("flex flex-1 gap-0.5 rounded-md bg-muted p-0.5", collapsed && "w-9 flex-col")}>
             <button
               title="Light"
               onClick={() => setTheme("light")}
@@ -284,13 +321,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
               <Moon className="h-3.5 w-3.5" />
             </button>
           </div>
-        <NavItem
-          icon={<Settings className="h-4 w-4" />}
-          label={t("nav.settings")}
-          collapsed={collapsed}
-          active={activeView === "settings"}
-          onClick={() => onViewChange("settings")}
-        />
+        </div>
         <div className={cn("mt-2 flex items-center gap-2 rounded-md px-2 py-1.5", collapsed && "justify-center px-0")}>
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
             {currentUser?.displayName ? (

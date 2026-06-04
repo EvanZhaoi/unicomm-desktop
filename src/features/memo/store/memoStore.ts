@@ -17,7 +17,7 @@ import { translate } from "@/i18n";
 import { useSettingStore } from "@/stores/settingStore";
 import type { Memo, MemoGroup, MemoGroupInput, MemoTag, MemoTagInput, MemoUpdateInput } from "../types/memo.types";
 
-export type MemoScope = "all" | "favorite";
+export type MemoScope = "all" | "related" | "favorite";
 
 interface MemoState {
   memos: Memo[];
@@ -73,6 +73,7 @@ function listParams(state: MemoState) {
     tagId: state.activeTagId ?? undefined,
     status: state.activeStatus ?? undefined,
     keyword: state.keyword || undefined,
+    isShared: state.activeScope === "related" ? true : undefined,
     isFavorite: state.activeScope === "favorite" ? true : undefined,
   };
 }

@@ -100,6 +100,7 @@ export interface MemoListParams {
   groupId?: number;
   tagId?: number;
   keyword?: string;
+  isShared?: boolean;
   isFavorite?: boolean;
   status?: Memo["status"];
 }
