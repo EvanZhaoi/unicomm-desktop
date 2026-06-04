@@ -85,8 +85,11 @@ npm run tauri build
 - [x] shadcn/ui 基础组件
 - [x] Memo 工作台：列表、分组筛选、标签筛选、状态筛选、置顶、收藏、删除、Milkdown 可视化编辑、MD 源码/双栏模式
 - [x] Memo 标签：支持创建标签、选择标签、保存 Memo 标签关系和按标签筛选
+- [x] Memo 与我相关视图：只显示别人共享给当前用户的 Memo
+- [x] Memo 相关人权限：相关人支持只读和可编辑标题/正文/状态两种权限
 - [x] Memo 可视化编辑：支持 TopBar、表格、代码块、公式等常用 Markdown 排版能力
 - [x] Memo 图片插入：本地图片转 base64 后作为 Markdown 图片保存到 content
+- [x] 侧边栏图标区：通知、设置、亮暗主题切换和当前人员信息
 - [x] 快速 Memo 小窗口
 - [x] 系统托盘与后台运行
 - [x] 全局快捷键
@@ -96,7 +99,7 @@ npm run tauri build
 - [x] WebSocket 实时连接与 Memo 变更刷新
 
 ### 开发中 🚧
-- [ ] 通知
+- [ ] 通知模块完善（桌面通知、通知持久化）
 - [ ] 剪贴板
 
 ## 前端组件体系
@@ -154,6 +157,13 @@ npm run tauri build
 - 主窗口默认尺寸为 1440x800，最小宽度为 1024，兼顾双栏编辑和低分辨率设备
 - 快速 Memo 使用独立 Tauri 窗口，默认隐藏，由全局快捷键唤出
 - 主窗口关闭时隐藏到后台，系统托盘菜单支持显示、隐藏、退出
+
+## Tauri IPC 与安全
+
+- 桌面端运行时可能看到对 `ipc.localhost` 的请求，这是 Tauri 内部 IPC 通道，不是外部网站
+- 前端通过 `@tauri-apps/api` 使用该通道调用 Rust 命令、窗口控制、事件、托盘、快捷键等桌面能力
+- 当前开发配置中 `src-tauri/tauri.conf.json` 的 `security.csp` 为 `null`，便于本地调试；发布 Windows 安装包前需要配置 CSP
+- 不应在拥有 Tauri IPC 权限的窗口中加载不可信远程页面；后续新增窗口或外链能力时，需要同步检查 capabilities 和 CSP
 
 ## 认证流程
 
