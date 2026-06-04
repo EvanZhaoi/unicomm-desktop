@@ -6,6 +6,8 @@ import type {
   MemoGroupInput,
   MemoListParams,
   MemoRelatedUserInput,
+  MemoTag,
+  MemoTagInput,
   MemoUpdateInput,
   MemberSearchResult,
   PageResult,
@@ -57,6 +59,22 @@ export function updateMemoGroup(id: number, input: MemoGroupInput): Promise<Memo
 
 export function deleteMemoGroup(id: number): Promise<void> {
   return client.delete<void, void>(`/memo-groups/${id}`);
+}
+
+export function listMemoTags(): Promise<MemoTag[]> {
+  return client.get<MemoTag[], MemoTag[]>("/memo-tags");
+}
+
+export function createMemoTag(input: MemoTagInput): Promise<MemoTag> {
+  return client.post<MemoTag, MemoTag>("/memo-tags", input);
+}
+
+export function updateMemoTag(id: number, input: MemoTagInput): Promise<MemoTag> {
+  return client.put<MemoTag, MemoTag>(`/memo-tags/${id}`, input);
+}
+
+export function deleteMemoTag(id: number): Promise<void> {
+  return client.delete<void, void>(`/memo-tags/${id}`);
 }
 
 export function searchMembers(keyword: string, limit = 10): Promise<MemberSearchResult[]> {

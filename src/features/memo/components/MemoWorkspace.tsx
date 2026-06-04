@@ -13,6 +13,7 @@ import {
   Save,
   Search,
   Star,
+  Tag,
   Trash2,
   UserPlus,
   Users,
@@ -36,8 +37,8 @@ import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
 import { searchMembers } from "../api/memoApi";
 import { useMemoStore } from "../store/memoStore";
-import type { Memo, MemoGroup } from "../types/memo.types";
-import { MemoGroupIcon } from "./MemoGroupIcon";
+import type { Memo, MemoGroup, MemoTag } from "../types/memo.types";
+import { MemoGroupIcon, memoGroupColorOptions } from "./MemoGroupIcon";
 
 const MemoRichEditor = lazy(() => import("./MemoRichEditor"));
 
@@ -68,6 +69,7 @@ export function MemoWorkspace() {
   const {
     memos,
     groups,
+    tags,
     selectedMemoId,
     keyword,
     isLoading,
@@ -82,6 +84,7 @@ export function MemoWorkspace() {
     selectMemo,
     toggleTop,
     toggleFavorite,
+    createTag,
   } = useMemoStore();
 
   const selectedMemo = useMemo(
@@ -127,6 +130,7 @@ export function MemoWorkspace() {
             permission: user.permission,
           }))
         : undefined,
+      tagIds: isOwner ? draft.tags.map((tag) => tag.id) : undefined,
     });
   };
 
@@ -211,6 +215,19 @@ export function MemoWorkspace() {
                 <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                   {memo.content || t("memo.noContent")}
                 </div>
+                {memo.tags.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {memo.tags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="inline-flex h-4 max-w-full items-center rounded-sm px-1.5 text-[10px] font-medium text-white"
+                        style={{ backgroundColor: tag.color }}
+                      >
+                        <span className="max-w-[72px] truncate">{tag.name}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
                   <span>{formatDate(memo.updateTime)}</span>
                   <span className="inline-flex items-center gap-1">
@@ -293,6 +310,13 @@ export function MemoWorkspace() {
                 </Tabs>
               </div>
             </div>
+            <MemoTagsEditor
+              tags={tags}
+              selectedTags={draft.tags}
+              disabled={!isOwner}
+              onChange={(nextTags) => setDraft({ ...draft, tags: nextTags })}
+              onCreate={createTag}
+            />
             <RelatedUsersEditor
               users={draft.relatedUsers}
               ownerUsername={draft.ownerUsername}
@@ -409,6 +433,116 @@ function MemoGroupDropdown({
         ))}
       </SelectContent>
     </Select>
+  );
+}
+
+function MemoTagsEditor({
+  tags,
+  selectedTags,
+  disabled,
+  onChange,
+  onCreate,
+}: {
+  tags: MemoTag[];
+  selectedTags: MemoTag[];
+  disabled: boolean;
+  onChange: (tags: MemoTag[]) => void;
+  onCreate: (input: { name: string; color?: string }) => Promise<MemoTag | null>;
+}) {
+  const { t } = useI18n();
+  const [name, setName] = useState("");
+  const [color, setColor] = useState(memoGroupColorOptions[0]);
+  const selectedIds = new Set(selectedTags.map((tag) => tag.id));
+
+  const toggleTag = (tag: MemoTag) => {
+    if (disabled) {
+      return;
+    }
+    if (selectedIds.has(tag.id)) {
+      onChange(selectedTags.filter((item) => item.id !== tag.id));
+      return;
+    }
+    if (selectedTags.length >= 10) {
+      return;
+    }
+    onChange([...selectedTags, tag]);
+  };
+
+  const createAndSelect = async () => {
+    const nextName = name.trim();
+    if (!nextName || disabled) {
+      return;
+    }
+    const created = await onCreate({ name: nextName, color });
+    if (created && !selectedIds.has(created.id)) {
+      onChange([...selectedTags, created].slice(0, 10));
+      setName("");
+    }
+  };
+
+  return (
+    <div className="shrink-0 border-b border-border bg-card px-4 py-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="inline-flex h-6 items-center text-muted-foreground" title={t("memo.tags")}>
+          <Tag className="h-3.5 w-3.5" />
+        </span>
+        {tags.map((tag) => {
+          const selected = selectedIds.has(tag.id);
+          return (
+            <button
+              key={tag.id}
+              type="button"
+              onClick={() => toggleTag(tag)}
+              disabled={disabled}
+              className={cn(
+                "inline-flex h-6 max-w-[120px] items-center gap-1 rounded-md border px-2 text-xs transition-colors",
+                selected
+                  ? "border-transparent text-white"
+                  : "border-border bg-background text-muted-foreground hover:text-foreground"
+              )}
+              style={selected ? { backgroundColor: tag.color } : undefined}
+              title={tag.name}
+            >
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: tag.color }} />
+              <span className="truncate">{tag.name}</span>
+            </button>
+          );
+        })}
+        {!disabled && (
+          <div className="ml-1 inline-flex h-6 items-center gap-1 rounded-md border border-input bg-background px-1">
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  createAndSelect();
+                }
+              }}
+              className="h-5 w-24 bg-transparent px-1 text-xs outline-none placeholder:text-muted-foreground"
+              placeholder={t("memo.tag.placeholder")}
+              maxLength={20}
+            />
+            <select
+              value={color}
+              onChange={(event) => setColor(event.target.value)}
+              className="h-5 w-5 rounded-sm border-0 bg-transparent p-0 text-transparent outline-none"
+              title={t("memo.tag.color")}
+            >
+              {memoGroupColorOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
+            <Button type="button" size="icon" variant="ghost" className="h-5 w-5" onClick={createAndSelect}>
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

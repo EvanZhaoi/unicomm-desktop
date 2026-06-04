@@ -29,7 +29,7 @@
  */
 
 import type { ReactNode } from "react";
-import { Bell, FileText, Inbox, Minus, Moon, Settings, Square, Star, Sun, User, X } from "lucide-react";
+import { Bell, FileText, Inbox, Minus, Moon, Settings, Square, Star, Sun, Tag, User, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Button } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
@@ -69,11 +69,14 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
   const { t } = useI18n();
   const {
     groups,
+    tags,
     activeGroupId,
+    activeTagId,
     activeScope,
     activeStatus,
     isSaving,
     setActiveGroup,
+    setActiveTag,
     setActiveScope,
     setActiveStatus,
     fetchMemos,
@@ -99,6 +102,11 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
 
   const chooseGroup = async (groupId: number | null) => {
     setActiveGroup(groupId);
+    await fetchMemos();
+  };
+
+  const chooseTag = async (tagId: number | null) => {
+    setActiveTag(tagId);
     await fetchMemos();
   };
 
@@ -170,6 +178,40 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
                 </button>
               ))}
             </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("memo.tags")}
+              </div>
+              <div className="max-h-36 space-y-1 overflow-auto pr-1">
+                <button
+                  type="button"
+                  onClick={() => chooseTag(null)}
+                  className={cn(
+                    "flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                    activeTagId === null && "bg-accent font-medium text-foreground"
+                  )}
+                >
+                  <Tag className="h-3.5 w-3.5 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate text-left">{t("memo.all")}</span>
+                </button>
+                {tags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => chooseTag(tag.id)}
+                    className={cn(
+                      "flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                      activeTagId === tag.id && "bg-accent font-medium text-foreground"
+                    )}
+                    title={tag.name}
+                  >
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: tag.color }} />
+                    <span className="min-w-0 flex-1 truncate text-left">{tag.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-1">

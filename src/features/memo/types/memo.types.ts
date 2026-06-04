@@ -12,6 +12,7 @@ export interface Memo {
   isShared: boolean;
   currentUserPermission: "owner" | "edit" | "view";
   relatedUsers: MemoRelatedUser[];
+  tags: MemoTag[];
   createTime: string;
   updateTime: string;
 }
@@ -55,6 +56,19 @@ export interface MemoGroupInput {
   sortOrder?: number;
 }
 
+export interface MemoTag {
+  id: number;
+  name: string;
+  color: string;
+  createTime: string;
+  updateTime: string;
+}
+
+export interface MemoTagInput {
+  name: string;
+  color?: string;
+}
+
 export interface MemoCreateInput {
   title?: string;
   content?: string;
@@ -62,6 +76,7 @@ export interface MemoCreateInput {
   status?: Memo["status"];
   relatedUsernames?: string[];
   relatedUsers?: MemoRelatedUserInput[];
+  tagIds?: number[];
 }
 
 export interface MemoUpdateInput {
@@ -71,6 +86,7 @@ export interface MemoUpdateInput {
   status: Memo["status"];
   relatedUsernames?: string[];
   relatedUsers?: MemoRelatedUserInput[];
+  tagIds?: number[];
 }
 
 export interface MemoRelatedUserInput {
@@ -82,6 +98,7 @@ export interface MemoListParams {
   page?: number;
   size?: number;
   groupId?: number;
+  tagId?: number;
   keyword?: string;
   isFavorite?: boolean;
   status?: Memo["status"];

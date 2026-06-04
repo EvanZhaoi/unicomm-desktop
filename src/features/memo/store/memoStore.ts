@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import {
   createMemoGroup,
+  createMemoTag,
   createMemo,
   deleteMemoGroup,
   deleteMemo,
   listMemoGroups,
+  listMemoTags,
   listMemos,
   updateMemo,
   updateMemoFavorite,
@@ -13,15 +15,17 @@ import {
 } from "../api/memoApi";
 import { translate } from "@/i18n";
 import { useSettingStore } from "@/stores/settingStore";
-import type { Memo, MemoGroup, MemoGroupInput, MemoUpdateInput } from "../types/memo.types";
+import type { Memo, MemoGroup, MemoGroupInput, MemoTag, MemoTagInput, MemoUpdateInput } from "../types/memo.types";
 
 export type MemoScope = "all" | "favorite";
 
 interface MemoState {
   memos: Memo[];
   groups: MemoGroup[];
+  tags: MemoTag[];
   selectedMemoId: number | null;
   activeGroupId: number | null;
+  activeTagId: number | null;
   activeStatus: Memo["status"] | null;
   activeScope: MemoScope;
   keyword: string;
@@ -32,6 +36,7 @@ interface MemoState {
   fetchMemos: () => Promise<void>;
   setKeyword: (keyword: string) => void;
   setActiveGroup: (groupId: number | null) => void;
+  setActiveTag: (tagId: number | null) => void;
   setActiveStatus: (status: Memo["status"] | null) => void;
   setActiveScope: (scope: MemoScope) => void;
   createMemo: () => Promise<void>;
@@ -43,6 +48,7 @@ interface MemoState {
   createGroup: (input: MemoGroupInput) => Promise<void>;
   updateGroup: (id: number, input: MemoGroupInput) => Promise<void>;
   deleteGroup: (id: number) => Promise<void>;
+  createTag: (input: MemoTagInput) => Promise<MemoTag | null>;
 }
 
 /*
@@ -64,6 +70,7 @@ function listParams(state: MemoState) {
     page: 1,
     size: 50,
     groupId: state.activeGroupId ?? undefined,
+    tagId: state.activeTagId ?? undefined,
     status: state.activeStatus ?? undefined,
     keyword: state.keyword || undefined,
     isFavorite: state.activeScope === "favorite" ? true : undefined,
@@ -73,8 +80,10 @@ function listParams(state: MemoState) {
 export const useMemoStore = create<MemoState>((set, get) => ({
   memos: [],
   groups: [],
+  tags: [],
   selectedMemoId: null,
   activeGroupId: null,
+  activeTagId: null,
   activeStatus: null,
   activeScope: "all",
   keyword: "",
@@ -86,10 +95,11 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       // 首屏需要分组和 Memo 列表一起加载；默认选中第一条 Memo，保证编辑区有稳定目标。
-      const groups = await listMemoGroups();
+      const [groups, tags] = await Promise.all([listMemoGroups(), listMemoTags()]);
       const result = await listMemos(listParams(get()));
       set({
         groups,
+        tags,
         memos: result.list,
         selectedMemoId: result.list[0]?.id ?? null,
         isLoading: false,
@@ -125,6 +135,10 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ activeGroupId: groupId });
   },
 
+  setActiveTag: (tagId) => {
+    set({ activeTagId: tagId });
+  },
+
   setActiveStatus: (status) => {
     set({ activeStatus: status });
   },
@@ -136,7 +150,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
   createMemo: async () => {
     set({ isSaving: true, error: null });
     try {
-      const { activeGroupId, activeStatus, groups } = get();
+      const { activeGroupId, activeStatus, activeTagId, groups } = get();
       // 未选择分组时使用第一个分组。后端也会保证默认分组存在，这里是为了前端请求更明确。
       const fallbackGroupId = activeGroupId ?? groups[0]?.id;
       const memo = await createMemo({
@@ -144,12 +158,14 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         content: "",
         groupId: fallbackGroupId,
         status: activeStatus ?? "normal",
+        tagIds: activeTagId ? [activeTagId] : [],
       });
-      const refreshedGroups = await listMemoGroups();
+      const [refreshedGroups, refreshedTags] = await Promise.all([listMemoGroups(), listMemoTags()]);
       set((state) => ({
         // 创建成功后先把新 Memo 放到当前列表顶部，随后 WebSocket 事件也可能触发一次全量刷新。
         memos: [memo, ...state.memos],
         groups: refreshedGroups,
+        tags: refreshedTags,
         activeScope: "all",
         selectedMemoId: memo.id,
         isSaving: false,
@@ -168,8 +184,10 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isSaving: true, error: null });
     try {
       const memo = await updateMemo(selectedMemoId, input);
+      const tags = await listMemoTags();
       set((state) => ({
         memos: state.memos.map((item) => (item.id === memo.id ? memo : item)),
+        tags,
         isSaving: false,
       }));
     } catch (error) {
@@ -186,13 +204,14 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isSaving: true, error: null });
     try {
       await deleteMemo(selectedMemoId);
-      const refreshedGroups = await listMemoGroups();
+      const [refreshedGroups, refreshedTags] = await Promise.all([listMemoGroups(), listMemoTags()]);
       set((state) => {
         // 删除后重新选择列表第一条，保持编辑器始终指向有效 Memo。
         const memos = state.memos.filter((memo) => memo.id !== selectedMemoId);
         return {
           memos,
           groups: refreshedGroups,
+          tags: refreshedTags,
           selectedMemoId: memos[0]?.id ?? null,
           isSaving: false,
         };
@@ -274,6 +293,19 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       });
     } catch (error) {
       set({ error: errorMessage(error, localized("memo.group.errors.delete")), isSaving: false });
+    }
+  },
+
+  createTag: async (input) => {
+    set({ isSaving: true, error: null });
+    try {
+      const tag = await createMemoTag(input);
+      const tags = await listMemoTags();
+      set({ tags, isSaving: false });
+      return tag;
+    } catch (error) {
+      set({ error: errorMessage(error, localized("memo.tag.errors.save")), isSaving: false });
+      return null;
     }
   },
 }));
