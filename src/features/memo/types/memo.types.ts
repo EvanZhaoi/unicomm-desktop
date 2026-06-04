@@ -8,7 +8,6 @@ export interface Memo {
   status: "normal" | "todo" | "done";
   isTop: boolean;
   isFavorite: boolean;
-  isArchived: boolean;
   isOwner: boolean;
   isShared: boolean;
   currentUserPermission: "owner" | "edit" | "view";
@@ -84,7 +83,6 @@ export interface MemoListParams {
   size?: number;
   groupId?: number;
   keyword?: string;
-  isArchived?: boolean;
   isFavorite?: boolean;
   status?: Memo["status"];
 }

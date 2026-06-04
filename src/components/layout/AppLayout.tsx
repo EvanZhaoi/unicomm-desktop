@@ -29,7 +29,7 @@
  */
 
 import type { ReactNode } from "react";
-import { Archive, Bell, FileText, Inbox, Minus, Moon, Settings, Square, Star, Sun, User, X } from "lucide-react";
+import { Bell, FileText, Inbox, Minus, Moon, Settings, Square, Star, Sun, User, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Button } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
@@ -139,13 +139,6 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
             collapsed={collapsed}
             active={activeView === "memo" && activeScope === "favorite"}
             onClick={() => chooseScope("favorite")}
-          />
-          <NavItem
-            icon={<Archive className="h-4 w-4" />}
-            label={t("memo.view.archived")}
-            collapsed={collapsed}
-            active={activeView === "memo" && activeScope === "archived"}
-            onClick={() => chooseScope("archived")}
           />
           <NavItem
             icon={<Bell className="h-4 w-4" />}

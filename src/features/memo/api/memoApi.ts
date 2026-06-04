@@ -43,10 +43,6 @@ export function updateMemoFavorite(id: number, value: boolean): Promise<Memo> {
   return client.patch<Memo, Memo>(`/memos/${id}/favorite`, { value });
 }
 
-export function updateMemoArchive(id: number, value: boolean): Promise<Memo> {
-  return client.patch<Memo, Memo>(`/memos/${id}/archive`, { value });
-}
-
 export function listMemoGroups(): Promise<MemoGroup[]> {
   return client.get<MemoGroup[], MemoGroup[]>("/memo-groups");
 }

@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
-  Archive,
   Columns2,
   Eye,
   FileCode2,
@@ -83,7 +82,6 @@ export function MemoWorkspace() {
     selectMemo,
     toggleTop,
     toggleFavorite,
-    toggleArchive,
   } = useMemoStore();
 
   const selectedMemo = useMemo(
@@ -355,10 +353,6 @@ export function MemoWorkspace() {
                 <Button variant="outline" size="sm" onClick={() => toggleTop(draft.id)} disabled={isSaving || !isOwner}>
                   <Pin className={cn(draft.isTop && "fill-primary text-primary")} />
                   {draft.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => toggleArchive(draft.id)} disabled={isSaving || !isOwner}>
-                  <Archive />
-                  {draft.isArchived ? t("memo.action.restore") : t("memo.action.archive")}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => toggleFavorite(draft.id)} disabled={isSaving || !isOwner}>
                   <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />

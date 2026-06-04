@@ -2,7 +2,6 @@ import type { ComponentType, SVGProps } from "react";
 import {
   Activity,
   AlarmClock,
-  Archive,
   Banknote,
   Bell,
   BookOpen,
@@ -78,7 +77,7 @@ export const memoGroupIconOptions: Array<{ value: string; Icon: IconComponent }>
   { value: "education", Icon: GraduationCap },
   { value: "maintenance", Icon: Wrench },
   { value: "project", Icon: Hammer },
-  { value: "archive", Icon: Archive },
+  { value: "records", Icon: ClipboardList },
   { value: "urgent", Icon: AlarmClock },
   { value: "health", Icon: Activity },
 ];

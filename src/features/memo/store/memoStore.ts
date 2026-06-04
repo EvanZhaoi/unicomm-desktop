@@ -7,7 +7,6 @@ import {
   listMemoGroups,
   listMemos,
   updateMemo,
-  updateMemoArchive,
   updateMemoFavorite,
   updateMemoGroup,
   updateMemoTop,
@@ -16,7 +15,7 @@ import { translate } from "@/i18n";
 import { useSettingStore } from "@/stores/settingStore";
 import type { Memo, MemoGroup, MemoGroupInput, MemoUpdateInput } from "../types/memo.types";
 
-export type MemoScope = "all" | "favorite" | "archived";
+export type MemoScope = "all" | "favorite";
 
 interface MemoState {
   memos: Memo[];
@@ -41,7 +40,6 @@ interface MemoState {
   selectMemo: (id: number | null) => void;
   toggleTop: (id: number) => Promise<void>;
   toggleFavorite: (id: number) => Promise<void>;
-  toggleArchive: (id: number) => Promise<void>;
   createGroup: (input: MemoGroupInput) => Promise<void>;
   updateGroup: (id: number, input: MemoGroupInput) => Promise<void>;
   deleteGroup: (id: number) => Promise<void>;
@@ -50,7 +48,7 @@ interface MemoState {
 /*
  * Memo store 负责把后端 API 结果整理成界面可直接消费的状态。
  *
- * 这里不缓存归档列表，也不在 WebSocket 事件里直接拼对象。
+ * 这里不在 WebSocket 事件里直接拼对象。
  * 当前策略是：用户操作时局部更新，提高即时反馈；远端事件或初始化时重新拉取列表，保证最终一致。
  */
 function errorMessage(error: unknown, fallback: string): string {
@@ -68,7 +66,6 @@ function listParams(state: MemoState) {
     groupId: state.activeGroupId ?? undefined,
     status: state.activeStatus ?? undefined,
     keyword: state.keyword || undefined,
-    isArchived: state.activeScope === "archived",
     isFavorite: state.activeScope === "favorite" ? true : undefined,
   };
 }
@@ -235,24 +232,6 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         state.activeScope === "favorite" && !updated.isFavorite && state.selectedMemoId === id
           ? state.memos.find((item) => item.id !== id)?.id ?? null
           : state.selectedMemoId,
-    }));
-  },
-
-  toggleArchive: async (id) => {
-    const memo = get().memos.find((item) => item.id === id);
-    if (!memo) {
-      return;
-    }
-    await updateMemoArchive(id, !memo.isArchived);
-    const refreshedGroups = await listMemoGroups();
-    const result = await listMemos(listParams(get()));
-    set((state) => ({
-      memos: result.list,
-      selectedMemoId:
-        state.selectedMemoId && result.list.some((item) => item.id === state.selectedMemoId)
-          ? state.selectedMemoId
-          : result.list[0]?.id ?? null,
-      groups: refreshedGroups,
     }));
   },
 
