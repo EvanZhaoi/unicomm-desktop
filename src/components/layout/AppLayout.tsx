@@ -29,7 +29,7 @@
  */
 
 import type { ReactNode } from "react";
-import { FileText, Inbox, Minus, Moon, Settings, Square, Sun, User, X } from "lucide-react";
+import { Bell, FileText, Inbox, Minus, Moon, Settings, Square, Sun, User, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Button } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
@@ -38,10 +38,11 @@ import { useMemoStore } from "@/features/memo/store/memoStore";
 import type { Memo } from "@/features/memo/types/memo.types";
 import { MemoGroupIcon } from "@/features/memo/components/MemoGroupIcon";
 import { MemoGroupManager } from "@/features/memo/components/MemoGroupManager";
+import { useNotifyStore } from "@/features/notify/store/notifyStore";
 import { useSettingsStore } from "@/stores/settings.store";
 import type { DesktopUserInfo } from "@/features/auth/types/auth.types";
 
-export type AppView = "memo" | "settings";
+export type AppView = "memo" | "notify" | "settings";
 
 /**
  * 侧边栏组件属性
@@ -78,6 +79,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
     updateGroup,
     deleteGroup,
   } = useMemoStore();
+  const unreadNotifyCount = useNotifyStore((state) => state.notifications.filter((item) => !item.read).length);
   const { theme, setTheme } = useSettingsStore();
   const totalMemoCount = groups.reduce((total, group) => total + group.memoCount, 0);
 
@@ -122,6 +124,14 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
             collapsed={collapsed}
             active={activeView === "memo"}
             onClick={() => onViewChange("memo")}
+          />
+          <NavItem
+            icon={<Bell className="h-4 w-4" />}
+            label={t("nav.notify")}
+            badge={unreadNotifyCount > 0 ? String(unreadNotifyCount) : undefined}
+            collapsed={collapsed}
+            active={activeView === "notify"}
+            onClick={() => onViewChange("notify")}
           />
         </div>
 

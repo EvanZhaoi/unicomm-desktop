@@ -46,17 +46,19 @@ import { useAuthStore } from "./features/auth/store/authStore";
 import { useSettingsStore } from "./stores/settings.store";
 
 // 布局组件
-import { AppLayout } from "./components/layout";
+import { AppLayout, type AppView } from "./components/layout";
 // 认证状态视图（未认证时显示）
 import { AuthStatusView } from "./features/auth/components/AuthStatusView";
 import { MemoWorkspace } from "./features/memo/components/MemoWorkspace";
 import { QuickMemoWindow } from "./features/memo/components/QuickMemoWindow";
 import { SettingsPanel } from "./features/settings/components/SettingsPanel";
+import { NotificationCenter } from "./features/notify/components/NotificationCenter";
 import { configureGlobalShortcuts } from "./desktop/shortcut/shortcutManager";
 import { useSettingStore } from "./stores/settingStore";
 import { useI18n } from "./i18n/useI18n";
 import { realtimeService } from "./services/realtime";
 import { useMemoStore } from "./features/memo/store/memoStore";
+import { useNotifyStore } from "./features/notify/store/notifyStore";
 
 /**
  * 应用内容组件
@@ -72,7 +74,7 @@ function AppContent() {
   const { sidebarCollapsed } = useSettingsStore();
   const { shortcuts, language } = useSettingStore();
   const { t } = useI18n();
-  const [activeView, setActiveView] = useState<"memo" | "settings">("memo");
+  const [activeView, setActiveView] = useState<AppView>("memo");
   const [isQuickMemoWindow] = useState(() => {
     try {
       return getCurrentWindow().label === "quick-memo";
@@ -125,6 +127,8 @@ function AppContent() {
       if (refreshTimer !== null) {
         window.clearTimeout(refreshTimer);
       }
+
+      useNotifyStore.getState().addRealtimeEvent(event);
 
       refreshTimer = window.setTimeout(() => {
         useMemoStore.getState().fetchInitialData();
@@ -181,7 +185,9 @@ function AppContent() {
       onViewChange={setActiveView}
       currentUser={currentUser}
     >
-      {activeView === "memo" ? <MemoWorkspace /> : <SettingsPanel />}
+      {activeView === "memo" && <MemoWorkspace />}
+      {activeView === "notify" && <NotificationCenter />}
+      {activeView === "settings" && <SettingsPanel />}
     </AppLayout>
   );
 }
