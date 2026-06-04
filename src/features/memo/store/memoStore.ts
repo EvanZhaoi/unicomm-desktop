@@ -16,12 +16,15 @@ import { translate } from "@/i18n";
 import { useSettingStore } from "@/stores/settingStore";
 import type { Memo, MemoGroup, MemoGroupInput, MemoUpdateInput } from "../types/memo.types";
 
+export type MemoScope = "all" | "favorite" | "archived";
+
 interface MemoState {
   memos: Memo[];
   groups: MemoGroup[];
   selectedMemoId: number | null;
   activeGroupId: number | null;
   activeStatus: Memo["status"] | null;
+  activeScope: MemoScope;
   keyword: string;
   isLoading: boolean;
   isSaving: boolean;
@@ -31,6 +34,7 @@ interface MemoState {
   setKeyword: (keyword: string) => void;
   setActiveGroup: (groupId: number | null) => void;
   setActiveStatus: (status: Memo["status"] | null) => void;
+  setActiveScope: (scope: MemoScope) => void;
   createMemo: () => Promise<void>;
   updateSelectedMemo: (input: MemoUpdateInput) => Promise<void>;
   deleteSelectedMemo: () => Promise<void>;
@@ -57,12 +61,25 @@ function localized(key: Parameters<typeof translate>[0]): string {
   return translate(key, useSettingStore.getState().language);
 }
 
+function listParams(state: MemoState) {
+  return {
+    page: 1,
+    size: 50,
+    groupId: state.activeGroupId ?? undefined,
+    status: state.activeStatus ?? undefined,
+    keyword: state.keyword || undefined,
+    isArchived: state.activeScope === "archived",
+    isFavorite: state.activeScope === "favorite" ? true : undefined,
+  };
+}
+
 export const useMemoStore = create<MemoState>((set, get) => ({
   memos: [],
   groups: [],
   selectedMemoId: null,
   activeGroupId: null,
   activeStatus: null,
+  activeScope: "all",
   keyword: "",
   isLoading: false,
   isSaving: false,
@@ -72,16 +89,8 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       // 首屏需要分组和 Memo 列表一起加载；默认选中第一条 Memo，保证编辑区有稳定目标。
-      const { activeGroupId, activeStatus, keyword } = get();
       const groups = await listMemoGroups();
-      const result = await listMemos({
-        page: 1,
-        size: 50,
-        groupId: activeGroupId ?? undefined,
-        status: activeStatus ?? undefined,
-        keyword: keyword || undefined,
-        isArchived: false,
-      });
+      const result = await listMemos(listParams(get()));
       set({
         groups,
         memos: result.list,
@@ -96,16 +105,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
   fetchMemos: async () => {
     set({ isLoading: true, error: null });
     try {
-      const { activeGroupId, activeStatus, keyword } = get();
-      // 列表查询始终排除归档数据；归档入口后续可以单独做成筛选视图。
-      const result = await listMemos({
-        page: 1,
-        size: 50,
-        groupId: activeGroupId ?? undefined,
-        status: activeStatus ?? undefined,
-        keyword: keyword || undefined,
-        isArchived: false,
-      });
+      const result = await listMemos(listParams(get()));
       set((state) => ({
         memos: result.list,
         // 如果当前选中的 Memo 仍在新列表里，就保持选中；否则自动选中第一条，避免右侧编辑器悬空。
@@ -132,6 +132,10 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ activeStatus: status });
   },
 
+  setActiveScope: (scope) => {
+    set({ activeScope: scope });
+  },
+
   createMemo: async () => {
     set({ isSaving: true, error: null });
     try {
@@ -149,6 +153,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         // 创建成功后先把新 Memo 放到当前列表顶部，随后 WebSocket 事件也可能触发一次全量刷新。
         memos: [memo, ...state.memos],
         groups: refreshedGroups,
+        activeScope: "all",
         selectedMemoId: memo.id,
         isSaving: false,
       }));
@@ -222,7 +227,14 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     }
     const updated = await updateMemoFavorite(id, !memo.isFavorite);
     set((state) => ({
-      memos: state.memos.map((item) => (item.id === id ? updated : item)),
+      memos:
+        state.activeScope === "favorite" && !updated.isFavorite
+          ? state.memos.filter((item) => item.id !== id)
+          : state.memos.map((item) => (item.id === id ? updated : item)),
+      selectedMemoId:
+        state.activeScope === "favorite" && !updated.isFavorite && state.selectedMemoId === id
+          ? state.memos.find((item) => item.id !== id)?.id ?? null
+          : state.selectedMemoId,
     }));
   },
 
@@ -231,14 +243,16 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     if (!memo) {
       return;
     }
-    const updated = await updateMemoArchive(id, !memo.isArchived);
+    await updateMemoArchive(id, !memo.isArchived);
+    const refreshedGroups = await listMemoGroups();
+    const result = await listMemos(listParams(get()));
     set((state) => ({
-      // 当前列表只展示未归档 Memo，因此归档成功后立即从列表中移除。
-      memos: state.memos.filter((item) => item.id !== id),
-      selectedMemoId: state.selectedMemoId === id ? state.memos.find((item) => item.id !== id)?.id ?? null : state.selectedMemoId,
-      groups: state.groups.map((group) =>
-        group.id === updated.groupId ? { ...group, memoCount: Math.max(0, group.memoCount - 1) } : group
-      ),
+      memos: result.list,
+      selectedMemoId:
+        state.selectedMemoId && result.list.some((item) => item.id === state.selectedMemoId)
+          ? state.selectedMemoId
+          : result.list[0]?.id ?? null,
+      groups: refreshedGroups,
     }));
   },
 
@@ -270,14 +284,8 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       await deleteMemoGroup(id);
       const groups = await listMemoGroups();
       const activeGroupId = get().activeGroupId === id ? null : get().activeGroupId;
-      const result = await listMemos({
-        page: 1,
-        size: 50,
-        groupId: activeGroupId ?? undefined,
-        status: get().activeStatus ?? undefined,
-        keyword: get().keyword || undefined,
-        isArchived: false,
-      });
+      set({ activeGroupId });
+      const result = await listMemos(listParams(get()));
       set({
         groups,
         activeGroupId,

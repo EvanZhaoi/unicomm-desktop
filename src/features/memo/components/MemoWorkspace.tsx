@@ -358,7 +358,7 @@ export function MemoWorkspace() {
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => toggleArchive(draft.id)} disabled={isSaving || !isOwner}>
                   <Archive />
-                  {t("memo.action.archive")}
+                  {draft.isArchived ? t("memo.action.restore") : t("memo.action.archive")}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => toggleFavorite(draft.id)} disabled={isSaving || !isOwner}>
                   <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />

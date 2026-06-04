@@ -29,12 +29,13 @@
  */
 
 import type { ReactNode } from "react";
-import { Bell, FileText, Inbox, Minus, Moon, Settings, Square, Sun, User, X } from "lucide-react";
+import { Archive, Bell, FileText, Inbox, Minus, Moon, Settings, Square, Star, Sun, User, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Button } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
 import { useMemoStore } from "@/features/memo/store/memoStore";
+import type { MemoScope } from "@/features/memo/store/memoStore";
 import type { Memo } from "@/features/memo/types/memo.types";
 import { MemoGroupIcon } from "@/features/memo/components/MemoGroupIcon";
 import { MemoGroupManager } from "@/features/memo/components/MemoGroupManager";
@@ -67,12 +68,13 @@ interface SidebarProps {
 export function Sidebar({ collapsed = false, activeView, onViewChange, currentUser }: SidebarProps) {
   const { t } = useI18n();
   const {
-    memos,
     groups,
     activeGroupId,
+    activeScope,
     activeStatus,
     isSaving,
     setActiveGroup,
+    setActiveScope,
     setActiveStatus,
     fetchMemos,
     createGroup,
@@ -100,6 +102,12 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
     await fetchMemos();
   };
 
+  const chooseScope = async (scope: MemoScope) => {
+    setActiveScope(scope);
+    onViewChange("memo");
+    await fetchMemos();
+  };
+
   return (
     <aside
       className={cn(
@@ -119,11 +127,25 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
         <div className="rounded-lg border border-border/70 bg-background/60 p-1">
           <NavItem
             icon={<FileText className="h-4 w-4" />}
-            label={t("nav.memo")}
-            badge={String(memos.length)}
+            label={t("memo.view.all")}
+            badge={String(totalMemoCount)}
             collapsed={collapsed}
-            active={activeView === "memo"}
-            onClick={() => onViewChange("memo")}
+            active={activeView === "memo" && activeScope === "all"}
+            onClick={() => chooseScope("all")}
+          />
+          <NavItem
+            icon={<Star className="h-4 w-4" />}
+            label={t("memo.view.favorite")}
+            collapsed={collapsed}
+            active={activeView === "memo" && activeScope === "favorite"}
+            onClick={() => chooseScope("favorite")}
+          />
+          <NavItem
+            icon={<Archive className="h-4 w-4" />}
+            label={t("memo.view.archived")}
+            collapsed={collapsed}
+            active={activeView === "memo" && activeScope === "archived"}
+            onClick={() => chooseScope("archived")}
           />
           <NavItem
             icon={<Bell className="h-4 w-4" />}
