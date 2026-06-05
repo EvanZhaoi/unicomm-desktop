@@ -44,7 +44,7 @@ function describeRealtimeEvent(event: RealtimeEvent): { title: string; body: str
         body: localized("notify.memo.deleted.body").replace("{id}", memoId),
         level: "warning",
       };
-    case "memo.relatedUsers.updated":
+    case "memo.related.updated":
       return {
         title: localized("notify.memo.shared.title"),
         body: localized("notify.memo.shared.body").replace("{id}", memoId),
