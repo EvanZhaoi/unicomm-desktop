@@ -8,13 +8,13 @@ import type { MemoGroup, MemoGroupInput } from "../types/memo.types";
 import { MemoGroupIcon, memoGroupColorOptions, memoGroupIconOptions } from "./MemoGroupIcon";
 
 export function MemoGroupManager({
-  groups,
+  group,
   isSaving,
   onCreate,
   onUpdate,
   onDelete,
 }: {
-  groups: MemoGroup[];
+  group?: MemoGroup;
   isSaving: boolean;
   onCreate: (input: MemoGroupInput) => Promise<void>;
   onUpdate: (id: number, input: MemoGroupInput) => Promise<void>;
@@ -22,23 +22,22 @@ export function MemoGroupManager({
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<MemoGroup | null>(null);
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("folder");
   const [color, setColor] = useState(memoGroupColorOptions[0]);
+  const isEditing = Boolean(group);
 
   const resetForm = () => {
-    setEditingGroup(null);
-    setName("");
-    setIcon("folder");
-    setColor(memoGroupColorOptions[0]);
+    setName(group?.name ?? "");
+    setIcon(group?.icon || "folder");
+    setColor(group?.color || memoGroupColorOptions[0]);
   };
 
-  const editGroup = (group: MemoGroup) => {
-    setEditingGroup(group);
-    setName(group.name);
-    setIcon(group.icon || "folder");
-    setColor(group.color || memoGroupColorOptions[0]);
+  const changeOpen = (nextOpen: boolean) => {
+    if (nextOpen) {
+      resetForm();
+    }
+    setOpen(nextOpen);
   };
 
   const saveGroup = async () => {
@@ -51,79 +50,51 @@ export function MemoGroupManager({
       name: nextName,
       icon,
       color,
-      sortOrder: editingGroup?.sortOrder,
+      sortOrder: group?.sortOrder,
     };
 
-    if (editingGroup) {
-      await onUpdate(editingGroup.id, input);
+    if (group) {
+      await onUpdate(group.id, input);
     } else {
       await onCreate(input);
     }
-    resetForm();
+    setOpen(false);
   };
 
-  const removeGroup = async (group: MemoGroup) => {
+  const removeGroup = async () => {
+    if (!group) {
+      return;
+    }
     if (group.isDefault || !window.confirm(t("memo.group.delete.confirm", { name: group.name }))) {
       return;
     }
     await onDelete(group.id);
-    if (editingGroup?.id === group.id) {
-      resetForm();
-    }
+    setOpen(false);
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={changeOpen}>
       <PopoverTrigger asChild>
-        <Button size="icon" variant="outline" className="h-7 w-7 shrink-0" title={t("memo.group.manage")}>
-          <Pencil className="h-3.5 w-3.5" />
+        <Button
+          size="icon"
+          variant={isEditing ? "ghost" : "outline"}
+          className={cn("h-7 w-7 shrink-0", isEditing && "text-muted-foreground hover:text-foreground")}
+          title={isEditing ? t("memo.group.edit") : t("memo.group.new")}
+        >
+          {isEditing ? <Pencil className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[340px] p-3">
+      <PopoverContent align={isEditing ? "end" : "start"} className="w-[340px] p-3">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <div className="text-sm font-semibold text-foreground">{t("memo.group.manage")}</div>
-          <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={resetForm}>
-            <Plus className="h-3.5 w-3.5" />
-            {t("memo.group.new")}
-          </Button>
-        </div>
-
-        <div className="mb-3 max-h-36 overflow-auto rounded-md border border-border">
-          {groups.map((group) => (
-            <div key={group.id} className="flex items-center gap-2 border-b border-border px-2 py-1.5 last:border-b-0">
+          <div className="text-sm font-semibold text-foreground">
+            {isEditing ? t("memo.group.edit") : t("memo.group.new")}
+          </div>
+          {group && (
+            <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
               <MemoGroupIcon group={group} />
-              <button
-                type="button"
-                className="min-w-0 flex-1 truncate text-left text-xs text-foreground hover:text-primary"
-                onClick={() => editGroup(group)}
-                title={group.name}
-              >
-                {group.name}
-              </button>
-              <span className="shrink-0 text-[11px] text-muted-foreground">{group.memoCount}</span>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6"
-                onClick={() => editGroup(group)}
-                title={t("memo.group.edit")}
-              >
-                <Pencil className="h-3 w-3" />
-              </Button>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                disabled={group.isDefault || isSaving}
-                onClick={() => removeGroup(group)}
-                title={t("memo.group.delete")}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
+              <span className="max-w-36 truncate">{group.name}</span>
             </div>
-          ))}
+          )}
         </div>
 
         <div className="space-y-2">
@@ -177,11 +148,24 @@ export function MemoGroupManager({
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-1">
-            <Button type="button" size="sm" variant="outline" onClick={resetForm}>
+            {group && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="mr-auto text-destructive hover:text-destructive"
+                disabled={group.isDefault || isSaving}
+                onClick={removeGroup}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {t("memo.group.delete")}
+              </Button>
+            )}
+            <Button type="button" size="sm" variant="outline" onClick={() => setOpen(false)}>
               {t("memo.group.cancel")}
             </Button>
             <Button type="button" size="sm" disabled={isSaving || !name.trim()} onClick={saveGroup}>
-              {editingGroup ? t("memo.group.save") : t("memo.group.create")}
+              {isEditing ? t("memo.group.save") : t("memo.group.create")}
             </Button>
           </div>
         </div>

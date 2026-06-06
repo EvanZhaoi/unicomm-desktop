@@ -60,10 +60,13 @@ function localized(key: Parameters<typeof translate>[0]): string {
 }
 
 function listParams(state: MemoState) {
+  // “与我相关”展示别人共享给当前用户的 Memo。共享 Memo 的 groupId 属于创建者，
+  // 不能沿用当前用户左侧分组筛选，否则会把合法共享数据过滤掉。
+  const groupId = state.activeScope === "related" ? undefined : state.activeGroupId ?? undefined;
   return {
     page: 1,
     size: 50,
-    groupId: state.activeGroupId ?? undefined,
+    groupId,
     status: state.activeStatus ?? undefined,
     keyword: state.keyword || undefined,
     isShared: state.activeScope === "related" ? true : undefined,
@@ -131,7 +134,10 @@ export const useMemoStore = create<MemoState>((set, get) => ({
   },
 
   setActiveScope: (scope) => {
-    set({ activeScope: scope });
+    set((state) => ({
+      activeScope: scope,
+      activeGroupId: scope === "related" ? null : state.activeGroupId,
+    }));
   },
 
   createMemo: async () => {

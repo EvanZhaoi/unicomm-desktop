@@ -69,6 +69,7 @@ export function MemoWorkspace() {
     memos,
     groups,
     selectedMemoId,
+    activeScope,
     keyword,
     isLoading,
     isSaving,
@@ -174,14 +175,16 @@ export function MemoWorkspace() {
             )}
           </div>
         </div>
-        <Button
-          onClick={createMemo}
-          disabled={isSaving}
-          className="mx-3 my-2.5 w-[calc(100%-1.5rem)] shrink-0"
-        >
-          <Plus className="h-4 w-4" />
-          {t("memo.new")}
-        </Button>
+        {activeScope !== "related" && (
+          <Button
+            onClick={createMemo}
+            disabled={isSaving}
+            className="mx-3 my-2.5 w-[calc(100%-1.5rem)] shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            {t("memo.new")}
+          </Button>
+        )}
         <div className="min-h-0 flex-1 overflow-auto">
           {isLoading ? (
             <EmptyMemoState icon={<Search className="h-5 w-5" />} title={t("memo.loading")} />

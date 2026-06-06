@@ -187,7 +187,6 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
                   {t("memo.groups")}
                 </span>
                 <MemoGroupManager
-                  groups={groups}
                   isSaving={isSaving}
                   onCreate={createGroup}
                   onUpdate={updateGroup}
@@ -208,20 +207,31 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
                   <span className="shrink-0 text-[10px]">{totalMemoCount}</span>
                 </button>
                 {groups.map((group) => (
-                  <button
+                  <div
                     key={group.id}
-                    type="button"
-                    onClick={() => chooseGroup(group.id)}
                     className={cn(
-                      "flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                      "group flex h-7 w-full items-center rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
                       activeGroupId === group.id && "bg-accent font-medium text-foreground"
                     )}
-                    title={group.name}
                   >
-                    <MemoGroupIcon group={group} className="h-3.5 w-3.5" />
-                    <span className="min-w-0 flex-1 truncate text-left">{group.name}</span>
-                    <span className="shrink-0 text-[10px]">{group.memoCount}</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => chooseGroup(group.id)}
+                      className="flex min-w-0 flex-1 items-center gap-2 px-2"
+                      title={group.name}
+                    >
+                      <MemoGroupIcon group={group} className="h-3.5 w-3.5" />
+                      <span className="min-w-0 flex-1 truncate text-left">{group.name}</span>
+                      <span className="shrink-0 text-[10px]">{group.memoCount}</span>
+                    </button>
+                    <MemoGroupManager
+                      group={group}
+                      isSaving={isSaving}
+                      onCreate={createGroup}
+                      onUpdate={updateGroup}
+                      onDelete={deleteGroup}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
