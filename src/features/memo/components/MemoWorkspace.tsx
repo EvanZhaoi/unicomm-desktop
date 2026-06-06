@@ -91,8 +91,10 @@ export function MemoWorkspace() {
   const [draft, setDraft] = useState<Memo | null>(null);
   const [editorMode, setEditorMode] = useState<"visual" | "markdown" | "split">("visual");
   const [markdownSyncVersion, setMarkdownSyncVersion] = useState(0);
-  const isOwner = draft?.isOwner !== false;
-  const canEdit = isOwner || draft?.currentUserPermission === "edit";
+  const currentPermission = draft?.currentUserPermission ?? "view";
+  const isOwner = currentPermission === "owner" || draft?.isOwner === true;
+  const canEdit = isOwner || currentPermission === "edit";
+  const canManage = isOwner;
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
@@ -119,9 +121,9 @@ export function MemoWorkspace() {
     await updateSelectedMemo({
       title: draft.title,
       content: draft.content,
-      groupId: isOwner ? draft.groupId : undefined,
+      groupId: canManage ? draft.groupId : undefined,
       status: draft.status,
-      relatedUsers: isOwner
+      relatedUsers: canManage
         ? draft.relatedUsers.map((user) => ({
             username: user.username,
             permission: user.permission,
@@ -207,6 +209,12 @@ export function MemoWorkspace() {
                   </div>
                   {memo.isFavorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
                   {memo.isShared && <Users className="h-3.5 w-3.5 text-primary" />}
+                  {memo.isShared && (
+                    <PermissionBadge
+                      permission={memo.currentUserPermission}
+                      compact
+                    />
+                  )}
                 </div>
                 <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                   {memo.content || t("memo.noContent")}
@@ -245,7 +253,7 @@ export function MemoWorkspace() {
                       groups={groups}
                       value={draft.groupId}
                       onChange={(groupId) => setDraft({ ...draft, groupId })}
-                      disabled={!isOwner}
+                      disabled={!canManage}
                     />
                   </div>
                   <div className="flex h-6 shrink-0 items-center rounded-md bg-muted p-0.5">
@@ -274,6 +282,7 @@ export function MemoWorkspace() {
                       {t("memo.sharedBy", { username: draft.ownerUsername })}
                     </span>
                   )}
+                  <PermissionBadge permission={currentPermission} />
                 </div>
                 <Tabs value={editorMode} onValueChange={(value) => setEditorMode(value as typeof editorMode)}>
                   <TabsList className="h-7">
@@ -296,7 +305,7 @@ export function MemoWorkspace() {
             <RelatedUsersEditor
               users={draft.relatedUsers}
               ownerUsername={draft.ownerUsername}
-              disabled={!isOwner}
+              disabled={!canManage}
               onChange={(relatedUsers) =>
                 setDraft({
                   ...draft,
@@ -347,25 +356,34 @@ export function MemoWorkspace() {
               <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{t("memo.editor.saved")}</span>
                 {error && <span className="text-destructive">{error}</span>}
-                {!canEdit && <span>{t("memo.shared.readonly")}</span>}
+                {!canEdit && <span>{t("memo.permission.viewHint")}</span>}
+                {canEdit && !canManage && <span>{t("memo.permission.editHint")}</span>}
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => toggleTop(draft.id)} disabled={isSaving || !isOwner}>
-                  <Pin className={cn(draft.isTop && "fill-primary text-primary")} />
-                  {draft.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => toggleFavorite(draft.id)} disabled={isSaving || !isOwner}>
-                  <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />
-                  {t("memo.action.favorite")}
-                </Button>
-                <Button size="sm" onClick={saveDraft} disabled={isSaving || !canEdit}>
-                  <Save />
-                  {t("memo.action.save")}
-                </Button>
-                <Button variant="destructive" size="sm" onClick={deleteDraft} disabled={isSaving || !isOwner}>
-                  <Trash2 />
-                  {t("memo.action.delete")}
-                </Button>
+                {canManage && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => toggleTop(draft.id)} disabled={isSaving}>
+                      <Pin className={cn(draft.isTop && "fill-primary text-primary")} />
+                      {draft.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => toggleFavorite(draft.id)} disabled={isSaving}>
+                      <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />
+                      {t("memo.action.favorite")}
+                    </Button>
+                  </>
+                )}
+                {canEdit && (
+                  <Button size="sm" onClick={saveDraft} disabled={isSaving}>
+                    <Save />
+                    {t("memo.action.save")}
+                  </Button>
+                )}
+                {canManage && (
+                  <Button variant="destructive" size="sm" onClick={deleteDraft} disabled={isSaving}>
+                    <Trash2 />
+                    {t("memo.action.delete")}
+                  </Button>
+                )}
               </div>
             </div>
           </>
@@ -409,6 +427,44 @@ function MemoGroupDropdown({
         ))}
       </SelectContent>
     </Select>
+  );
+}
+
+function PermissionBadge({
+  permission,
+  compact = false,
+}: {
+  permission: Memo["currentUserPermission"];
+  compact?: boolean;
+}) {
+  const { t } = useI18n();
+  const normalized = permission === "owner" || permission === "edit" ? permission : "view";
+  const label =
+    normalized === "owner"
+      ? t(compact ? "memo.permission.ownerShort" : "memo.permission.owner")
+      : normalized === "edit"
+        ? t(compact ? "memo.permission.editShort" : "memo.permission.edit")
+        : t(compact ? "memo.permission.viewShort" : "memo.permission.view");
+  const title =
+    normalized === "owner"
+      ? t("memo.permission.manageHint")
+      : normalized === "edit"
+        ? t("memo.permission.editHint")
+        : t("memo.permission.viewHint");
+
+  return (
+    <span
+      className={cn(
+        "inline-flex h-5 shrink-0 items-center gap-1 rounded-md border px-1.5 text-[10px] font-medium",
+        normalized === "owner" && "border-primary/30 bg-primary/10 text-primary",
+        normalized === "edit" && "border-blue-500/30 bg-blue-500/10 text-blue-600",
+        normalized === "view" && "border-border bg-muted text-muted-foreground"
+      )}
+      title={title}
+    >
+      {normalized === "edit" ? <Pencil className="h-2.5 w-2.5" /> : <Eye className="h-2.5 w-2.5" />}
+      {label}
+    </span>
   );
 }
 
@@ -500,7 +556,9 @@ function RelatedUsersEditor({
           >
             <span className="truncate">{option.label}</span>
             {option.meta && <span className="shrink-0 text-muted-foreground">{option.meta}</span>}
-            {!actions.disabled && (
+            {actions.disabled ? (
+              <PermissionBadge permission={option.permission} compact />
+            ) : (
               <>
                 <button
                   type="button"
