@@ -366,12 +366,12 @@ export function MemoWorkspace() {
                       <Pin className={cn(draft.isTop && "fill-primary text-primary")} />
                       {draft.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => toggleFavorite(draft.id)} disabled={isSaving}>
-                      <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />
-                      {t("memo.action.favorite")}
-                    </Button>
                   </>
                 )}
+                <Button variant="outline" size="sm" onClick={() => toggleFavorite(draft.id)} disabled={isSaving}>
+                  <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />
+                  {t("memo.action.favorite")}
+                </Button>
                 {canEdit && (
                   <Button size="sm" onClick={saveDraft} disabled={isSaving}>
                     <Save />
