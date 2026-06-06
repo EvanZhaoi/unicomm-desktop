@@ -123,7 +123,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
           <h1 className="text-center text-sm font-semibold tracking-normal text-foreground">UC</h1>
         )}
       </div>
-      <nav className="flex-1 overflow-y-auto p-2">
+      <nav className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
         <div className="rounded-lg border border-border/70 bg-background/60 p-1">
           <NavItem
             icon={<FileText className="h-4 w-4" />}
@@ -143,8 +143,8 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
         </div>
 
         {!collapsed && (
-          <div className="mt-4 space-y-3">
-            <div className="space-y-1">
+          <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3">
+            <div className="shrink-0 space-y-1">
               <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("memo.view.favorite")}
               </div>
@@ -161,7 +161,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
               </button>
             </div>
 
-            <div className="space-y-1">
+            <div className="shrink-0 space-y-1">
               <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("nav.status")}
               </div>
@@ -181,8 +181,8 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
             </div>
             </div>
 
-            <div className="space-y-1">
-              <div className="flex items-center justify-between px-2 pb-1">
+            <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border/60 bg-muted/25 p-1">
+              <div className="flex shrink-0 items-center justify-between px-2 pb-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {t("memo.groups")}
                 </span>
@@ -193,19 +193,19 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
                   onDelete={deleteGroup}
                 />
               </div>
-              <div className="max-h-56 space-y-1 overflow-auto pr-1">
-                <button
-                  type="button"
-                  onClick={() => chooseGroup(null)}
-                  className={cn(
-                    "flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                    activeGroupId === null && "bg-accent font-medium text-foreground"
-                  )}
-                >
-                  <Inbox className="h-3.5 w-3.5 shrink-0" />
-                  <span className="min-w-0 flex-1 truncate text-left">{t("memo.all")}</span>
-                  <span className="shrink-0 text-[10px]">{totalMemoCount}</span>
-                </button>
+              <button
+                type="button"
+                onClick={() => chooseGroup(null)}
+                className={cn(
+                  "mb-1 flex h-7 w-full shrink-0 items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                  activeGroupId === null && "bg-accent font-medium text-foreground"
+                )}
+              >
+                <Inbox className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-left">{t("memo.all")}</span>
+                <span className="shrink-0 text-[10px]">{totalMemoCount}</span>
+              </button>
+              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
                 {groups.map((group) => (
                   <div
                     key={group.id}
