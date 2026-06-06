@@ -248,17 +248,19 @@ export function MemoWorkspace() {
               />
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <div
-                    className="inline-flex h-6 items-center rounded-md border border-input bg-background px-1 text-xs text-muted-foreground"
-                    title={t("memo.groups")}
-                  >
-                    <MemoGroupDropdown
-                      groups={groups}
-                      value={draft.groupId}
-                      onChange={(groupId) => setDraft({ ...draft, groupId })}
-                      disabled={!canManage}
-                    />
-                  </div>
+                  {!draft.isShared && (
+                    <div
+                      className="inline-flex h-6 items-center rounded-md border border-input bg-background px-1 text-xs text-muted-foreground"
+                      title={t("memo.groups")}
+                    >
+                      <MemoGroupDropdown
+                        groups={groups}
+                        value={draft.groupId}
+                        onChange={(groupId) => setDraft({ ...draft, groupId })}
+                        disabled={!canManage}
+                      />
+                    </div>
+                  )}
                   <div className="flex h-6 shrink-0 items-center rounded-md bg-muted p-0.5">
                     {memoStatusOptions.map((status) => (
                       <button

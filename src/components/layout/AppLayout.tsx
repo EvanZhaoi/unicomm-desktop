@@ -143,7 +143,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
         </div>
 
         {!collapsed && (
-          <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3">
+          <div className="mt-4 flex min-h-0 flex-1 flex-col rounded-lg border border-border/70 bg-background/55 p-1">
             <div className="shrink-0 space-y-1">
               <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("memo.view.favorite")}
@@ -161,7 +161,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
               </button>
             </div>
 
-            <div className="shrink-0 space-y-1">
+            <div className="mt-3 shrink-0 space-y-1">
               <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("nav.status")}
               </div>
@@ -181,80 +181,67 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
             </div>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border/70 bg-background/55 p-1">
-              <div className="flex shrink-0 items-center justify-between px-2 pb-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("memo.groups")}
-                </span>
-                <MemoGroupManager
-                  isSaving={isSaving}
-                  onCreate={createGroup}
-                  onUpdate={updateGroup}
-                  onDelete={deleteGroup}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => chooseGroup(null)}
-                className={cn(
-                  "mb-1 flex h-7 w-full shrink-0 items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                  activeGroupId === null && "bg-accent font-medium text-foreground"
-                )}
-              >
-                <Inbox className="h-3.5 w-3.5 shrink-0" />
-                <span className="min-w-0 flex-1 truncate text-left">{t("memo.all")}</span>
-                <span className="shrink-0 text-[10px]">{totalMemoCount}</span>
-              </button>
-              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
-                {groups.map((group) => (
-                  <div
-                    key={group.id}
-                    className={cn(
-                      "group flex h-7 w-full items-center rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                      activeGroupId === group.id && "bg-accent font-medium text-foreground"
-                    )}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => chooseGroup(group.id)}
-                      className="flex min-w-0 flex-1 items-center gap-2 px-2"
-                      title={group.name}
+            {activeScope !== "related" && (
+              <div className="mt-3 flex min-h-0 flex-1 flex-col rounded-md bg-muted/35 p-1">
+                <div className="flex shrink-0 items-center justify-between px-2 pb-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("memo.groups")}
+                  </span>
+                  <MemoGroupManager
+                    isSaving={isSaving}
+                    onCreate={createGroup}
+                    onUpdate={updateGroup}
+                    onDelete={deleteGroup}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => chooseGroup(null)}
+                  className={cn(
+                    "mb-1 flex h-7 w-full shrink-0 items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                    activeGroupId === null && "bg-accent font-medium text-foreground"
+                  )}
+                >
+                  <Inbox className="h-3.5 w-3.5 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate text-left">{t("memo.all")}</span>
+                  <span className="shrink-0 text-[10px]">{totalMemoCount}</span>
+                </button>
+                <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+                  {groups.map((group) => (
+                    <div
+                      key={group.id}
+                      className={cn(
+                        "group flex h-7 w-full items-center rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                        activeGroupId === group.id && "bg-accent font-medium text-foreground"
+                      )}
                     >
-                      <MemoGroupIcon group={group} className="h-3.5 w-3.5" />
-                      <span className="min-w-0 flex-1 truncate text-left">{group.name}</span>
-                      <span className="shrink-0 text-[10px]">{group.memoCount}</span>
-                    </button>
-                    <MemoGroupManager
-                      group={group}
-                      isSaving={isSaving}
-                      onCreate={createGroup}
-                      onUpdate={updateGroup}
-                      onDelete={deleteGroup}
-                    />
-                  </div>
-                ))}
+                      <button
+                        type="button"
+                        onClick={() => chooseGroup(group.id)}
+                        className="flex min-w-0 flex-1 items-center gap-2 px-2"
+                        title={group.name}
+                      >
+                        <MemoGroupIcon group={group} className="h-3.5 w-3.5" />
+                        <span className="min-w-0 flex-1 truncate text-left">{group.name}</span>
+                        <span className="shrink-0 text-[10px]">{group.memoCount}</span>
+                      </button>
+                      <MemoGroupManager
+                        group={group}
+                        isSaving={isSaving}
+                        onCreate={createGroup}
+                        onUpdate={updateGroup}
+                        onDelete={deleteGroup}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </nav>
       <div className="border-t border-border p-2">
         <div className={cn("mb-2 flex items-center gap-1", collapsed && "flex-col")}>
-          <div className={cn("flex rounded-md bg-muted p-0.5", collapsed && "w-9")}>
-            <button
-              title={t("nav.notify")}
-              onClick={() => onViewChange("notify")}
-              className={cn(
-                "relative flex h-8 w-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground",
-                activeView === "notify" && "bg-card text-foreground shadow-sm"
-              )}
-            >
-              <Bell className="h-3.5 w-3.5" />
-              {unreadNotifyCount > 0 && (
-                <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-destructive" />
-              )}
-            </button>
-          </div>
           <div className={cn("flex rounded-md bg-muted p-0.5", collapsed && "w-9")}>
             <button
               title={t("nav.settings")}
@@ -309,7 +296,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
             )}
           </div>
           {!collapsed && (
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="truncate text-xs font-medium text-foreground">
                 {currentUser?.displayName || currentUser?.username || "-"}
               </div>
@@ -319,6 +306,19 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
               </div>
             </div>
           )}
+          <button
+            title={t("nav.notify")}
+            onClick={() => onViewChange("notify")}
+            className={cn(
+              "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+              activeView === "notify" && "bg-accent text-foreground"
+            )}
+          >
+            <Bell className="h-3.5 w-3.5" />
+            {unreadNotifyCount > 0 && (
+              <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-destructive" />
+            )}
+          </button>
         </div>
       </div>
     </aside>
