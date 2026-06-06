@@ -88,6 +88,7 @@ npm run tauri build
 - [x] Memo 相关人权限：相关人支持只读和可编辑标题/正文/状态两种权限
 - [x] Memo 可视化编辑：支持 TopBar、表格、代码块、公式等常用 Markdown 排版能力
 - [x] Memo 图片插入：本地图片转 base64 后作为 Markdown 图片保存到 content
+- [x] Memo 图形渲染：支持 Mermaid 流程图、甘特图、时序图等图形代码块
 - [x] 侧边栏图标区：通知、设置、亮暗主题切换和当前人员信息
 - [x] 快速 Memo 小窗口
 - [x] 系统托盘与后台运行
@@ -145,6 +146,18 @@ npm run tauri build
 - 双栏模式左侧为可视化编辑区，右侧为 MD 源码区；低分辨率下上下分区显示
 - 图片当前通过 Crepe 上传回调转为 base64 data URL，并以 Markdown 图片语法保存到 `content`
 - 后续接入服务端上传接口时，可以把图片上传回调替换为“上传文件并返回 URL”的实现，业务数据结构不需要调整
+- Mermaid 图形通过 `mermaid` 代码块保存，视觉区会渲染为 SVG。示例：
+
+````markdown
+```mermaid
+gantt
+    title Memo 开发计划
+    dateFormat  YYYY-MM-DD
+    section Memo
+    相关人权限 :done, 2026-06-01, 3d
+    实时同步   :active, 2026-06-04, 5d
+```
+````
 
 ## 窗口与桌面能力
 

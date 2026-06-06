@@ -245,6 +245,41 @@ textarea {
   border: 1px solid var(--memo-editor-subtle-border);
 }
 
+.memo-crepe-editor .memo-mermaid-diagram {
+  margin: 0.75rem 0;
+  overflow-x: auto;
+  border: 1px solid var(--memo-editor-subtle-border);
+  border-radius: var(--radius-md);
+  background: var(--background);
+  padding: 0.75rem;
+  cursor: default;
+}
+
+.memo-crepe-editor .memo-mermaid-diagram svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.memo-crepe-editor .memo-mermaid-loading {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+.memo-crepe-editor .memo-mermaid-diagram-error {
+  border-color: color-mix(in srgb, var(--destructive) 42%, var(--memo-editor-subtle-border));
+  background: color-mix(in srgb, var(--destructive) 7%, var(--background));
+}
+
+.memo-crepe-editor .memo-mermaid-diagram-error pre {
+  margin: 0;
+  white-space: pre-wrap;
+  border: 0;
+  color: var(--destructive);
+  font-size: 0.75rem;
+}
+
 .memo-crepe-editor .milkdown .ProseMirror-selectednode {
   outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
 }

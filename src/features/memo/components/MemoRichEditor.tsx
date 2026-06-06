@@ -1,5 +1,7 @@
 import { useEffect, useRef, type MouseEvent } from "react";
 import { Crepe } from "@milkdown/crepe";
+import { diagram } from "@milkdown/plugin-diagram";
+import mermaid from "mermaid";
 
 /**
  * 现阶段图片直接以 data URL 写入 Markdown，确保不依赖服务端也能保存和回显。
@@ -18,6 +20,57 @@ function fileToDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error ?? new Error("Failed to read image"));
     reader.readAsDataURL(file);
   });
+}
+
+let mermaidRenderIndex = 0;
+
+function getMermaidTheme() {
+  return document.documentElement.classList.contains("dark") ? "dark" : "default";
+}
+
+/**
+ * Milkdown 的 diagram 插件负责把 ```mermaid 代码块转换成 diagram 节点。
+ * 这里负责把节点中的 Mermaid 源码渲染为 SVG，让可视化编辑区直接展示流程图、甘特图等图形。
+ */
+async function renderMermaidDiagrams(root: HTMLElement) {
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    theme: getMermaidTheme(),
+  });
+
+  const diagramNodes = Array.from(root.querySelectorAll<HTMLElement>('[data-type="diagram"]'));
+  await Promise.all(
+    diagramNodes.map(async (node) => {
+      const source = node.dataset.value || node.textContent || "";
+      const trimmedSource = source.trim();
+      if (!trimmedSource || node.dataset.renderedMermaid === source) {
+        return;
+      }
+
+      node.classList.add("memo-mermaid-diagram");
+      node.dataset.renderedMermaid = source;
+      node.innerHTML = `<div class="memo-mermaid-loading">Rendering diagram...</div>`;
+
+      try {
+        const id = `memo-mermaid-${Date.now()}-${mermaidRenderIndex++}`;
+        const { svg } = await mermaid.render(id, trimmedSource);
+        node.innerHTML = svg;
+      } catch (error) {
+        node.classList.add("memo-mermaid-diagram-error");
+        node.innerHTML = `<pre>${escapeHtml(error instanceof Error ? error.message : "Invalid Mermaid diagram")}</pre>`;
+      }
+    })
+  );
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 interface MemoRichEditorProps {
@@ -82,8 +135,21 @@ export default function MemoRichEditor({ value, placeholder, readOnly = false, o
           maxWidth: 960,
         },
       },
-    }).on((listener) => {
+    });
+
+    editor.editor.use(diagram);
+
+    const scheduleDiagramRender = () => {
+      window.setTimeout(() => {
+        if (rootRef.current) {
+          void renderMermaidDiagrams(rootRef.current);
+        }
+      }, 80);
+    };
+
+    editor.on((listener) => {
       listener.markdownUpdated((_, markdown) => {
+        scheduleDiagramRender();
         if (readOnly) {
           return;
         }
@@ -91,9 +157,22 @@ export default function MemoRichEditor({ value, placeholder, readOnly = false, o
       });
     });
 
-    void editor.create().then(applyReadonly);
+    const observer = new MutationObserver(scheduleDiagramRender);
+
+    void editor.create().then(() => {
+      applyReadonly();
+      scheduleDiagramRender();
+      if (rootRef.current) {
+        observer.observe(rootRef.current, {
+          attributes: true,
+          childList: true,
+          subtree: true,
+        });
+      }
+    });
 
     return () => {
+      observer.disconnect();
       void editor.destroy();
     };
   }, [placeholder, readOnly]);
