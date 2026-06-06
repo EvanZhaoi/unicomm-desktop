@@ -29,7 +29,7 @@
  */
 
 import type { ReactNode } from "react";
-import { Bell, FileText, Inbox, Minus, Moon, Settings, Share2, Square, Star, Sun, User, X } from "lucide-react";
+import { Bell, FileText, Inbox, Minus, Monitor, Moon, Settings, Share2, Square, Star, Sun, User, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Button } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
@@ -124,7 +124,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
         )}
       </div>
       <nav className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
-        <div className="rounded-lg border border-border/70 bg-background/60 p-1">
+        <div className="rounded-lg border border-primary/15 bg-primary/5 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
           <NavItem
             icon={<FileText className="h-4 w-4" />}
             label={t("memo.view.all")}
@@ -181,7 +181,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
             </div>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border/60 bg-muted/25 p-1">
+            <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border/70 bg-background/55 p-1">
               <div className="flex shrink-0 items-center justify-between px-2 pb-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {t("memo.groups")}
@@ -268,6 +268,16 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
             </button>
           </div>
           <div className={cn("flex flex-1 gap-0.5 rounded-md bg-muted p-0.5", collapsed && "w-9 flex-col")}>
+            <button
+              title="System"
+              onClick={() => setTheme("system")}
+              className={cn(
+                "flex h-8 flex-1 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground",
+                theme === "system" && "bg-card text-foreground shadow-sm"
+              )}
+            >
+              <Monitor className="h-3.5 w-3.5" />
+            </button>
             <button
               title="Light"
               onClick={() => setTheme("light")}
