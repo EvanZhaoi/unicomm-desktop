@@ -7,14 +7,12 @@
  * ## 职责
  * 1. 获取 DOM 中的 `#root` 容器
  * 2. 使用 `createRoot` 创建 React 18 的并发根节点
- * 3. 渲染 App 组件（外层包裹 StrictMode）
- * 
- * ## StrictMode 说明
- * React StrictMode 在开发环境下会：
- * - 双重调用组件渲染（检测副作用问题）
- * - 檢測不安全的生命周期方法
- * - 检测意外的副作用
- * 生产环境会自动禁用这些检查。
+ * 3. 渲染 App 组件
+ *
+ * ## 桌面端副作用说明
+ * Tauri 命令、全局快捷键和事件监听都是真实桌面副作用。
+ * React StrictMode 会在开发环境重复执行挂载副作用，容易让网络面板出现重复请求，
+ * 也可能重复注册桌面监听；这里保持单次挂载，避免调试体验和桌面行为产生偏差。
  * 
  * ## 入口文件流程
  * ```
@@ -28,7 +26,6 @@
  * @module main
  */
 
-import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 // Milkdown Crepe 提供富文本编辑器基础样式；globals.css 会继续覆盖主题变量。
 import "@milkdown/crepe/theme/common/style.css";
@@ -42,10 +39,6 @@ import App from "./App";
  * 渲染入口
  * 
  * 获取 DOM 容器并挂载 React 应用。
- * 使用 StrictMode 包裹以启用开发环境检查。
+ * 桌面端直接渲染 App，避免开发环境重复执行 Tauri 副作用。
  */
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-);
+createRoot(document.getElementById("root")!).render(<App />);

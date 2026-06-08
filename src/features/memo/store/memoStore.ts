@@ -13,7 +13,14 @@ import {
 } from "../api/memoApi";
 import { translate } from "@/i18n";
 import { useSettingStore } from "@/stores/settingStore";
-import type { Memo, MemoGroup, MemoGroupInput, MemoUpdateInput } from "../types/memo.types";
+import type {
+  Memo,
+  MemoGroup,
+  MemoGroupInput,
+  MemoListParams,
+  MemoUpdateInput,
+  PageResult,
+} from "../types/memo.types";
 
 export type MemoScope = "all" | "related" | "favorite";
 
@@ -61,13 +68,73 @@ function localized(key: Parameters<typeof translate>[0]): string {
   return translate(key, useSettingStore.getState().language);
 }
 
+const MEMO_PAGE_SIZE = 100;
+const memoListRequests = new Map<string, Promise<PageResult<Memo>>>();
+let initialDataRequest: Promise<void> | null = null;
+let groupsRequest: Promise<MemoGroup[]> | null = null;
+
+function memoListRequestKey(params: MemoListParams): string {
+  return JSON.stringify({
+    page: params.page ?? 1,
+    size: params.size ?? MEMO_PAGE_SIZE,
+    groupId: params.groupId ?? null,
+    status: params.status ?? null,
+    keyword: params.keyword ?? "",
+    isShared: params.isShared ?? null,
+    isFavorite: params.isFavorite ?? null,
+  });
+}
+
+async function listAllMemos(params: MemoListParams): Promise<PageResult<Memo>> {
+  const firstPage = await listMemos({ ...params, page: 1, size: MEMO_PAGE_SIZE });
+  if (firstPage.pages <= 1) {
+    return firstPage;
+  }
+
+  const restPages = await Promise.all(
+    Array.from({ length: firstPage.pages - 1 }, (_, index) =>
+      listMemos({ ...params, page: index + 2, size: MEMO_PAGE_SIZE })
+    )
+  );
+
+  return {
+    ...firstPage,
+    list: [firstPage.list, ...restPages.map((page) => page.list)].flat(),
+  };
+}
+
+function requestMemoList(params: MemoListParams): Promise<PageResult<Memo>> {
+  const requestKey = memoListRequestKey(params);
+  const runningRequest = memoListRequests.get(requestKey);
+  if (runningRequest) {
+    return runningRequest;
+  }
+
+  const request = listAllMemos(params).finally(() => {
+    memoListRequests.delete(requestKey);
+  });
+  memoListRequests.set(requestKey, request);
+  return request;
+}
+
+function requestMemoGroups(): Promise<MemoGroup[]> {
+  if (groupsRequest) {
+    return groupsRequest;
+  }
+
+  groupsRequest = listMemoGroups().finally(() => {
+    groupsRequest = null;
+  });
+  return groupsRequest;
+}
+
 function listParams(state: MemoState) {
   // “与我相关”展示别人共享给当前用户的 Memo。共享 Memo 的 groupId 属于创建者，
   // 不能沿用当前用户左侧分组筛选，否则会把合法共享数据过滤掉。
   const groupId = state.activeScope === "related" ? undefined : state.activeGroupId ?? undefined;
   return {
     page: 1,
-    size: 50,
+    size: MEMO_PAGE_SIZE,
     groupId,
     status: state.activeStatus ?? undefined,
     keyword: state.keyword || undefined,
@@ -89,29 +156,38 @@ export const useMemoStore = create<MemoState>((set, get) => ({
   error: null,
 
   fetchInitialData: async () => {
-    set((state) => ({ isLoading: state.memos.length === 0, error: null }));
-    try {
-      // 首屏需要分组和 Memo 列表一起加载；默认选中第一条 Memo，保证编辑区有稳定目标。
-      const groups = await listMemoGroups();
-      const result = await listMemos(listParams(get()));
-      set((state) => ({
-        groups,
-        memos: result.list,
-        selectedMemoId:
-          state.selectedMemoId && result.list.some((memo) => memo.id === state.selectedMemoId)
-            ? state.selectedMemoId
-            : result.list[0]?.id ?? null,
-        isLoading: false,
-      }));
-    } catch (error) {
-      set({ error: errorMessage(error, localized("memo.errors.load")), isLoading: false });
+    if (initialDataRequest) {
+      return initialDataRequest;
     }
+
+    initialDataRequest = (async () => {
+      set((state) => ({ isLoading: state.memos.length === 0, error: null }));
+      try {
+        // 首屏需要分组和完整 Memo 列表一起加载；并发触发时复用同一个请求，避免刷新时重复调用。
+        const [groups, result] = await Promise.all([requestMemoGroups(), requestMemoList(listParams(get()))]);
+        set((state) => ({
+          groups,
+          memos: result.list,
+          selectedMemoId:
+            state.selectedMemoId && result.list.some((memo) => memo.id === state.selectedMemoId)
+              ? state.selectedMemoId
+              : result.list[0]?.id ?? null,
+          isLoading: false,
+        }));
+      } catch (error) {
+        set({ error: errorMessage(error, localized("memo.errors.load")), isLoading: false });
+      }
+    })().finally(() => {
+      initialDataRequest = null;
+    });
+
+    return initialDataRequest;
   },
 
   fetchMemos: async () => {
     set((state) => ({ isLoading: state.memos.length === 0, error: null }));
     try {
-      const result = await listMemos(listParams(get()));
+      const result = await requestMemoList(listParams(get()));
       set((state) => ({
         memos: result.list,
         // 如果当前选中的 Memo 仍在新列表里，就保持选中；否则自动选中第一条，避免右侧编辑器悬空。
@@ -128,7 +204,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
 
   fetchGroups: async () => {
     try {
-      const groups = await listMemoGroups();
+      const groups = await requestMemoGroups();
       set({ groups });
     } catch (error) {
       set({ error: errorMessage(error, localized("memo.errors.load")) });
@@ -166,7 +242,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         groupId: fallbackGroupId,
         status: activeStatus ?? "normal",
       });
-      const refreshedGroups = await listMemoGroups();
+      const refreshedGroups = await requestMemoGroups();
       set((state) => ({
         // 创建成功后先把新 Memo 放到当前列表顶部，随后 WebSocket 事件也可能触发一次全量刷新。
         memos: [memo, ...state.memos],
@@ -216,7 +292,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isSaving: true, error: null });
     try {
       await deleteMemoApi(id);
-      const refreshedGroups = await listMemoGroups();
+      const refreshedGroups = await requestMemoGroups();
       set((state) => {
         // 删除后重新选择列表第一条，保持编辑器始终指向有效 Memo。
         const memos = state.memos.filter((memo) => memo.id !== id);
@@ -293,10 +369,10 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isSaving: true, error: null });
     try {
       await deleteMemoGroup(id);
-      const groups = await listMemoGroups();
+      const groups = await requestMemoGroups();
       const activeGroupId = get().activeGroupId === id ? null : get().activeGroupId;
       set({ activeGroupId });
-      const result = await listMemos(listParams(get()));
+      const result = await requestMemoList(listParams(get()));
       set({
         groups,
         activeGroupId,
