@@ -87,6 +87,7 @@ export default function MemoRichEditor({ value, placeholder, readOnly = false, o
   const currentMarkdownRef = useRef(value);
   const onChangeRef = useRef(onChange);
   const diagramRenderTimerRef = useRef<number | null>(null);
+  const suppressProgrammaticChangeRef = useRef(false);
 
   const focusProseMirror = () => {
     rootRef.current?.querySelector<HTMLElement>(".ProseMirror")?.focus();
@@ -157,6 +158,11 @@ export default function MemoRichEditor({ value, placeholder, readOnly = false, o
 
     editor.on((listener) => {
       listener.markdownUpdated((_, markdown) => {
+        if (suppressProgrammaticChangeRef.current) {
+          scheduleDiagramRender();
+          return;
+        }
+
         currentMarkdownRef.current = markdown;
         scheduleDiagramRender();
         if (readOnly) {
@@ -199,7 +205,11 @@ export default function MemoRichEditor({ value, placeholder, readOnly = false, o
     }
 
     currentMarkdownRef.current = value;
+    suppressProgrammaticChangeRef.current = true;
     editor.editor.action(replaceAll(value));
+    window.setTimeout(() => {
+      suppressProgrammaticChangeRef.current = false;
+    }, 0);
 
     if (diagramRenderTimerRef.current) {
       window.clearTimeout(diagramRenderTimerRef.current);

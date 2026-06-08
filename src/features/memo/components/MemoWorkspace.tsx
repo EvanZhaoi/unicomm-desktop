@@ -385,8 +385,8 @@ export function MemoWorkspace() {
                       key={draft.id}
                       value={editorMode === "split" ? markdownPreviewContent : draft.content}
                       placeholder={t("memo.editor.placeholder")}
-                      readOnly={!canEdit}
-                      onChange={updateContentFromVisualEditor}
+                      readOnly={editorMode === "split" || !canEdit}
+                      onChange={editorMode === "split" ? () => undefined : updateContentFromVisualEditor}
                     />
                   </Suspense>
                 )}
