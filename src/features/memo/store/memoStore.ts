@@ -3,7 +3,7 @@ import {
   createMemoGroup,
   createMemo,
   deleteMemoGroup,
-  deleteMemo,
+  deleteMemo as deleteMemoApi,
   listMemoGroups,
   listMemos,
   updateMemo,
@@ -37,6 +37,7 @@ interface MemoState {
   createMemo: () => Promise<void>;
   updateSelectedMemo: (input: MemoUpdateInput) => Promise<void>;
   deleteSelectedMemo: () => Promise<void>;
+  deleteMemoById: (id: number) => Promise<void>;
   selectMemo: (id: number | null) => void;
   toggleTop: (id: number) => Promise<void>;
   toggleFavorite: (id: number) => Promise<void>;
@@ -192,15 +193,24 @@ export const useMemoStore = create<MemoState>((set, get) => ({
 
     set({ isSaving: true, error: null });
     try {
-      await deleteMemo(selectedMemoId);
+      await get().deleteMemoById(selectedMemoId);
+    } catch (error) {
+      set({ error: errorMessage(error, localized("memo.errors.delete")), isSaving: false });
+    }
+  },
+
+  deleteMemoById: async (id) => {
+    set({ isSaving: true, error: null });
+    try {
+      await deleteMemoApi(id);
       const refreshedGroups = await listMemoGroups();
       set((state) => {
         // 删除后重新选择列表第一条，保持编辑器始终指向有效 Memo。
-        const memos = state.memos.filter((memo) => memo.id !== selectedMemoId);
+        const memos = state.memos.filter((memo) => memo.id !== id);
         return {
           memos,
           groups: refreshedGroups,
-          selectedMemoId: memos[0]?.id ?? null,
+          selectedMemoId: state.selectedMemoId === id ? memos[0]?.id ?? null : state.selectedMemoId,
           isSaving: false,
         };
       });
@@ -220,7 +230,9 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     }
     const updated = await updateMemoTop(id, !memo.isTop);
     set((state) => ({
-      memos: state.memos.map((item) => (item.id === id ? updated : item)),
+      memos: state.memos
+        .map((item) => (item.id === id ? updated : item))
+        .sort((left, right) => Number(right.isTop) - Number(left.isTop) || right.updateTime.localeCompare(left.updateTime)),
     }));
   },
 

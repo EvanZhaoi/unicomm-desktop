@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   Columns2,
@@ -80,6 +80,7 @@ export function MemoWorkspace() {
     createMemo,
     updateSelectedMemo,
     deleteSelectedMemo,
+    deleteMemoById,
     selectMemo,
     toggleTop,
     toggleFavorite,
@@ -93,6 +94,7 @@ export function MemoWorkspace() {
   const [editorMode, setEditorMode] = useState<"visual" | "markdown" | "split">("visual");
   const [markdownDraft, setMarkdownDraft] = useState("");
   const [markdownPreviewContent, setMarkdownPreviewContent] = useState("");
+  const [contextMenu, setContextMenu] = useState<{ memo: Memo; x: number; y: number } | null>(null);
   const previewSyncTimerRef = useRef<number | null>(null);
   const currentPermission = draft?.currentUserPermission ?? "view";
   const isOwner = currentPermission === "owner" || draft?.isOwner === true;
@@ -123,6 +125,18 @@ export function MemoWorkspace() {
       if (previewSyncTimerRef.current) {
         window.clearTimeout(previewSyncTimerRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    const closeContextMenu = () => setContextMenu(null);
+    window.addEventListener("click", closeContextMenu);
+    window.addEventListener("resize", closeContextMenu);
+    window.addEventListener("scroll", closeContextMenu, true);
+    return () => {
+      window.removeEventListener("click", closeContextMenu);
+      window.removeEventListener("resize", closeContextMenu);
+      window.removeEventListener("scroll", closeContextMenu, true);
     };
   }, []);
 
@@ -185,6 +199,29 @@ export function MemoWorkspace() {
     });
   };
 
+  useEffect(() => {
+    const saveWithShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        void saveDraft();
+      }
+    };
+
+    window.addEventListener("keydown", saveWithShortcut);
+    return () => window.removeEventListener("keydown", saveWithShortcut);
+  }, [draft, canEdit]);
+
+  const openMemoContextMenu = (event: MouseEvent<HTMLButtonElement>, memo: Memo) => {
+    event.preventDefault();
+    event.stopPropagation();
+    selectMemo(memo.id);
+    setContextMenu({
+      memo,
+      x: event.clientX,
+      y: event.clientY,
+    });
+  };
+
   const search = async () => {
     await fetchMemos();
   };
@@ -197,7 +234,10 @@ export function MemoWorkspace() {
   };
 
   return (
-    <div className="grid h-full grid-cols-[280px_minmax(0,1fr)] overflow-hidden bg-background">
+    <div
+      className="grid h-full grid-cols-[280px_minmax(0,1fr)] overflow-hidden bg-background"
+      onContextMenu={(event) => event.preventDefault()}
+    >
       <section className="flex min-h-0 flex-col border-r border-border bg-card">
         <div className="shrink-0 border-b border-border p-3">
           <div className="relative flex-1">
@@ -251,6 +291,7 @@ export function MemoWorkspace() {
                   selectedMemoId === memo.id && "border-l-primary bg-accent"
                 )}
                 onClick={() => selectMemo(memo.id)}
+                onContextMenu={(event) => openMemoContextMenu(event, memo)}
               >
                 <div className="flex items-center gap-2">
                   {memo.isTop && <span className="text-xs text-primary">📌</span>}
@@ -414,14 +455,10 @@ export function MemoWorkspace() {
                 {canEdit && !canManage && <span>{t("memo.permission.editHint")}</span>}
               </div>
               <div className="flex items-center gap-2">
-                {canManage && (
-                  <>
-                    <Button variant="outline" size="sm" onClick={() => toggleTop(draft.id)} disabled={isSaving}>
-                      <Pin className={cn(draft.isTop && "fill-primary text-primary")} />
-                      {draft.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
-                    </Button>
-                  </>
-                )}
+                <Button variant="outline" size="sm" onClick={() => toggleTop(draft.id)} disabled={isSaving}>
+                  <Pin className={cn(draft.isTop && "fill-primary text-primary")} />
+                  {draft.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => toggleFavorite(draft.id)} disabled={isSaving}>
                   <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />
                   {t("memo.action.favorite")}
@@ -445,6 +482,92 @@ export function MemoWorkspace() {
           <EmptyMemoState icon={<FileText className="h-6 w-6" />} title={t("memo.selectOrCreate")} />
         )}
       </main>
+      {contextMenu && (
+        <MemoContextMenu
+          memo={contextMenu.memo}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          isSaving={isSaving}
+          onClose={() => setContextMenu(null)}
+          onToggleTop={async () => {
+            await toggleTop(contextMenu.memo.id);
+          }}
+          onToggleFavorite={async () => {
+            await toggleFavorite(contextMenu.memo.id);
+          }}
+          onDelete={async () => {
+            if (window.confirm(t("memo.delete.confirm"))) {
+              await deleteMemoById(contextMenu.memo.id);
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function MemoContextMenu({
+  memo,
+  x,
+  y,
+  isSaving,
+  onClose,
+  onToggleTop,
+  onToggleFavorite,
+  onDelete,
+}: {
+  memo: Memo;
+  x: number;
+  y: number;
+  isSaving: boolean;
+  onClose: () => void;
+  onToggleTop: () => Promise<void>;
+  onToggleFavorite: () => Promise<void>;
+  onDelete: () => Promise<void>;
+}) {
+  const { t } = useI18n();
+  const menuLeft = Math.min(x, window.innerWidth - 160);
+  const menuTop = Math.min(y, window.innerHeight - 112);
+
+  const runAction = async (action: () => Promise<void>) => {
+    onClose();
+    await action();
+  };
+
+  return (
+    <div
+      className="fixed z-50 min-w-36 overflow-hidden rounded-md border border-border bg-popover p-1 text-sm text-popover-foreground shadow-lg"
+      style={{ left: Math.max(8, menuLeft), top: Math.max(8, menuTop) }}
+      onClick={(event) => event.stopPropagation()}
+      onContextMenu={(event) => event.preventDefault()}
+    >
+      <button
+        type="button"
+        disabled={isSaving}
+        onClick={() => void runAction(onToggleTop)}
+        className="flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Pin className={cn("h-3.5 w-3.5", memo.isTop && "fill-primary text-primary")} />
+        {memo.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
+      </button>
+      <button
+        type="button"
+        disabled={isSaving}
+        onClick={() => void runAction(onToggleFavorite)}
+        className="flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Star className={cn("h-3.5 w-3.5", memo.isFavorite && "fill-primary text-primary")} />
+        {t("memo.action.favorite")}
+      </button>
+      <button
+        type="button"
+        disabled={isSaving || !memo.isOwner}
+        onClick={() => void runAction(onDelete)}
+        className="flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+        {t("memo.action.delete")}
+      </button>
     </div>
   );
 }
