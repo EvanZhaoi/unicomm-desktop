@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -91,7 +91,9 @@ export function MemoWorkspace() {
   );
   const [draft, setDraft] = useState<Memo | null>(null);
   const [editorMode, setEditorMode] = useState<"visual" | "markdown" | "split">("visual");
-  const [markdownSyncVersion, setMarkdownSyncVersion] = useState(0);
+  const [markdownDraft, setMarkdownDraft] = useState("");
+  const [markdownPreviewContent, setMarkdownPreviewContent] = useState("");
+  const previewSyncTimerRef = useRef<number | null>(null);
   const currentPermission = draft?.currentUserPermission ?? "view";
   const isOwner = currentPermission === "owner" || draft?.isOwner === true;
   const canEdit = isOwner || currentPermission === "edit";
@@ -112,8 +114,58 @@ export function MemoWorkspace() {
 
   useEffect(() => {
     setDraft(selectedMemo ? { ...selectedMemo } : null);
-    setMarkdownSyncVersion((version) => version + 1);
+    setMarkdownDraft(selectedMemo?.content ?? "");
+    setMarkdownPreviewContent(selectedMemo?.content ?? "");
   }, [selectedMemo]);
+
+  useEffect(() => {
+    return () => {
+      if (previewSyncTimerRef.current) {
+        window.clearTimeout(previewSyncTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (editorMode === "visual" && draft) {
+      setMarkdownPreviewContent(draft.content);
+    }
+  }, [draft, editorMode]);
+
+  const updateDraftContent = (content: string) => {
+    setDraft((current) => (current ? { ...current, content } : current));
+  };
+
+  const updateContentFromVisualEditor = (content: string) => {
+    updateDraftContent(content);
+    setMarkdownDraft(content);
+    setMarkdownPreviewContent(content);
+  };
+
+  const updateContentFromMarkdownSource = (content: string) => {
+    setMarkdownDraft(content);
+    updateDraftContent(content);
+
+    // 双栏模式里源码输入可能是临时的不完整 Markdown，延迟同步能避免每个字符都重建左侧预览。
+    if (previewSyncTimerRef.current) {
+      window.clearTimeout(previewSyncTimerRef.current);
+    }
+    previewSyncTimerRef.current = window.setTimeout(() => {
+      previewSyncTimerRef.current = null;
+      setMarkdownPreviewContent(content);
+    }, 400);
+  };
+
+  const changeEditorMode = (nextMode: typeof editorMode) => {
+    setEditorMode(nextMode);
+    if (nextMode !== "markdown") {
+      if (previewSyncTimerRef.current) {
+        window.clearTimeout(previewSyncTimerRef.current);
+        previewSyncTimerRef.current = null;
+      }
+      setMarkdownPreviewContent(draft?.content ?? markdownDraft);
+    }
+  };
 
   const saveDraft = async () => {
     if (!draft || !canEdit) {
@@ -289,7 +341,7 @@ export function MemoWorkspace() {
                   )}
                   <PermissionBadge permission={currentPermission} />
                 </div>
-                <Tabs value={editorMode} onValueChange={(value) => setEditorMode(value as typeof editorMode)}>
+                <Tabs value={editorMode} onValueChange={(value) => changeEditorMode(value as typeof editorMode)}>
                   <TabsList className="h-7">
                     <TabsTrigger value="visual" className="h-6 gap-1 px-2.5">
                     <FileText className="h-3 w-3" />
@@ -330,11 +382,11 @@ export function MemoWorkspace() {
                 {editorMode !== "markdown" && (
                   <Suspense fallback={<EmptyMemoState icon={<FileText className="h-5 w-5" />} title={t("memo.loading")} />}>
                     <MemoRichEditor
-                      key={`${draft.id}-${draft.updateTime}-${markdownSyncVersion}`}
-                      value={draft.content}
+                      key={draft.id}
+                      value={editorMode === "split" ? markdownPreviewContent : draft.content}
                       placeholder={t("memo.editor.placeholder")}
                       readOnly={!canEdit}
-                      onChange={(content) => setDraft({ ...draft, content })}
+                      onChange={updateContentFromVisualEditor}
                     />
                   </Suspense>
                 )}
@@ -344,11 +396,8 @@ export function MemoWorkspace() {
                       <span>{t("memo.editor.markdown")}</span>
                     </div>
                     <Textarea
-                      value={draft.content}
-                      onChange={(event) => {
-                        setDraft({ ...draft, content: event.target.value });
-                        setMarkdownSyncVersion((version) => version + 1);
-                      }}
+                      value={markdownDraft}
+                      onChange={(event) => updateContentFromMarkdownSource(event.target.value)}
                       readOnly={!canEdit}
                       className="min-h-0 flex-1 resize-none rounded-none border-0 bg-background font-mono leading-7 shadow-none focus-visible:border-transparent focus-visible:ring-0"
                       placeholder={t("memo.editor.placeholder")}

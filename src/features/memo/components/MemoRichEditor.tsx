@@ -1,6 +1,7 @@
 import { useEffect, useRef, type MouseEvent } from "react";
 import { Crepe } from "@milkdown/crepe";
 import { diagram } from "@milkdown/plugin-diagram";
+import { replaceAll } from "@milkdown/utils";
 import mermaid from "mermaid";
 
 /**
@@ -82,7 +83,10 @@ interface MemoRichEditorProps {
 
 export default function MemoRichEditor({ value, placeholder, readOnly = false, onChange }: MemoRichEditorProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const editorRef = useRef<Crepe | null>(null);
+  const currentMarkdownRef = useRef(value);
   const onChangeRef = useRef(onChange);
+  const diagramRenderTimerRef = useRef<number | null>(null);
 
   const focusProseMirror = () => {
     rootRef.current?.querySelector<HTMLElement>(".ProseMirror")?.focus();
@@ -140,15 +144,20 @@ export default function MemoRichEditor({ value, placeholder, readOnly = false, o
     editor.editor.use(diagram);
 
     const scheduleDiagramRender = () => {
-      window.setTimeout(() => {
+      if (diagramRenderTimerRef.current) {
+        window.clearTimeout(diagramRenderTimerRef.current);
+      }
+      diagramRenderTimerRef.current = window.setTimeout(() => {
+        diagramRenderTimerRef.current = null;
         if (rootRef.current) {
           void renderMermaidDiagrams(rootRef.current);
         }
-      }, 80);
+      }, 120);
     };
 
     editor.on((listener) => {
       listener.markdownUpdated((_, markdown) => {
+        currentMarkdownRef.current = markdown;
         scheduleDiagramRender();
         if (readOnly) {
           return;
@@ -160,6 +169,7 @@ export default function MemoRichEditor({ value, placeholder, readOnly = false, o
     const observer = new MutationObserver(scheduleDiagramRender);
 
     void editor.create().then(() => {
+      editorRef.current = editor;
       applyReadonly();
       scheduleDiagramRender();
       if (rootRef.current) {
@@ -173,9 +183,34 @@ export default function MemoRichEditor({ value, placeholder, readOnly = false, o
 
     return () => {
       observer.disconnect();
+      if (diagramRenderTimerRef.current) {
+        window.clearTimeout(diagramRenderTimerRef.current);
+        diagramRenderTimerRef.current = null;
+      }
+      editorRef.current = null;
       void editor.destroy();
     };
   }, [placeholder, readOnly]);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || value === currentMarkdownRef.current) {
+      return;
+    }
+
+    currentMarkdownRef.current = value;
+    editor.editor.action(replaceAll(value));
+
+    if (diagramRenderTimerRef.current) {
+      window.clearTimeout(diagramRenderTimerRef.current);
+    }
+    diagramRenderTimerRef.current = window.setTimeout(() => {
+      diagramRenderTimerRef.current = null;
+      if (rootRef.current) {
+        void renderMermaidDiagrams(rootRef.current);
+      }
+    }, 120);
+  }, [value]);
 
   return (
     <div
