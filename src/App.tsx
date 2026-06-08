@@ -131,7 +131,13 @@ function AppContent() {
       useNotifyStore.getState().addRealtimeEvent(event);
 
       refreshTimer = window.setTimeout(() => {
-        useMemoStore.getState().fetchInitialData();
+        const memoStore = useMemoStore.getState();
+        if (event.type.startsWith("group.")) {
+          void memoStore.fetchGroups();
+        }
+        if (event.type.startsWith("memo.")) {
+          void memoStore.fetchMemos();
+        }
         refreshTimer = null;
       }, 250);
     });

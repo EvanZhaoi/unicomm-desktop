@@ -30,6 +30,7 @@ interface MemoState {
   error: string | null;
   fetchInitialData: () => Promise<void>;
   fetchMemos: () => Promise<void>;
+  fetchGroups: () => Promise<void>;
   setKeyword: (keyword: string) => void;
   setActiveGroup: (groupId: number | null) => void;
   setActiveStatus: (status: Memo["status"] | null) => void;
@@ -88,24 +89,27 @@ export const useMemoStore = create<MemoState>((set, get) => ({
   error: null,
 
   fetchInitialData: async () => {
-    set({ isLoading: true, error: null });
+    set((state) => ({ isLoading: state.memos.length === 0, error: null }));
     try {
       // 首屏需要分组和 Memo 列表一起加载；默认选中第一条 Memo，保证编辑区有稳定目标。
       const groups = await listMemoGroups();
       const result = await listMemos(listParams(get()));
-      set({
+      set((state) => ({
         groups,
         memos: result.list,
-        selectedMemoId: result.list[0]?.id ?? null,
+        selectedMemoId:
+          state.selectedMemoId && result.list.some((memo) => memo.id === state.selectedMemoId)
+            ? state.selectedMemoId
+            : result.list[0]?.id ?? null,
         isLoading: false,
-      });
+      }));
     } catch (error) {
       set({ error: errorMessage(error, localized("memo.errors.load")), isLoading: false });
     }
   },
 
   fetchMemos: async () => {
-    set({ isLoading: true, error: null });
+    set((state) => ({ isLoading: state.memos.length === 0, error: null }));
     try {
       const result = await listMemos(listParams(get()));
       set((state) => ({
@@ -119,6 +123,15 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       }));
     } catch (error) {
       set({ error: errorMessage(error, localized("memo.errors.load")), isLoading: false });
+    }
+  },
+
+  fetchGroups: async () => {
+    try {
+      const groups = await listMemoGroups();
+      set({ groups });
+    } catch (error) {
+      set({ error: errorMessage(error, localized("memo.errors.load")) });
     }
   },
 
@@ -258,8 +271,8 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isSaving: true, error: null });
     try {
       await createMemoGroup(input);
-      const groups = await listMemoGroups();
-      set({ groups, isSaving: false });
+      await get().fetchGroups();
+      set({ isSaving: false });
     } catch (error) {
       set({ error: errorMessage(error, localized("memo.group.errors.save")), isSaving: false });
     }
@@ -269,8 +282,8 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isSaving: true, error: null });
     try {
       await updateMemoGroup(id, input);
-      const groups = await listMemoGroups();
-      set({ groups, isSaving: false });
+      await get().fetchGroups();
+      set({ isSaving: false });
     } catch (error) {
       set({ error: errorMessage(error, localized("memo.group.errors.save")), isSaving: false });
     }

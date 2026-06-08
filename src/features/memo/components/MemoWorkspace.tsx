@@ -76,6 +76,7 @@ export function MemoWorkspace() {
     error,
     fetchInitialData,
     fetchMemos,
+    fetchGroups,
     setKeyword,
     createMemo,
     updateSelectedMemo,
@@ -95,7 +96,9 @@ export function MemoWorkspace() {
   const [markdownDraft, setMarkdownDraft] = useState("");
   const [markdownPreviewContent, setMarkdownPreviewContent] = useState("");
   const [contextMenu, setContextMenu] = useState<{ memo: Memo; x: number; y: number } | null>(null);
+  const [isDraftDirty, setIsDraftDirty] = useState(false);
   const previewSyncTimerRef = useRef<number | null>(null);
+  const lastDraftMemoIdRef = useRef<number | null>(null);
   const currentPermission = draft?.currentUserPermission ?? "view";
   const isOwner = currentPermission === "owner" || draft?.isOwner === true;
   const canEdit = isOwner || currentPermission === "edit";
@@ -106,19 +109,36 @@ export function MemoWorkspace() {
 
   useEffect(() => {
     const unlisten = listen("memo-created", () => {
-      fetchInitialData();
+      void fetchGroups();
+      void fetchMemos();
     });
 
     return () => {
       unlisten.then((dispose) => dispose());
     };
-  }, [fetchInitialData]);
+  }, [fetchGroups, fetchMemos]);
 
   useEffect(() => {
+    if (lastDraftMemoIdRef.current === selectedMemoId) {
+      return;
+    }
+
+    lastDraftMemoIdRef.current = selectedMemoId;
+    setIsDraftDirty(false);
     setDraft(selectedMemo ? { ...selectedMemo } : null);
     setMarkdownDraft(selectedMemo?.content ?? "");
     setMarkdownPreviewContent(selectedMemo?.content ?? "");
-  }, [selectedMemo]);
+  }, [selectedMemo, selectedMemoId]);
+
+  useEffect(() => {
+    if (!selectedMemo || isDraftDirty || lastDraftMemoIdRef.current !== selectedMemo.id) {
+      return;
+    }
+
+    setDraft({ ...selectedMemo });
+    setMarkdownDraft(selectedMemo.content ?? "");
+    setMarkdownPreviewContent(selectedMemo.content ?? "");
+  }, [isDraftDirty, selectedMemo]);
 
   useEffect(() => {
     return () => {
@@ -147,6 +167,7 @@ export function MemoWorkspace() {
   }, [draft, editorMode]);
 
   const updateDraftContent = (content: string) => {
+    setIsDraftDirty(true);
     setDraft((current) => (current ? { ...current, content } : current));
   };
 
@@ -197,6 +218,7 @@ export function MemoWorkspace() {
           }))
         : undefined,
     });
+    setIsDraftDirty(false);
   };
 
   useEffect(() => {
@@ -334,7 +356,10 @@ export function MemoWorkspace() {
             <div className="shrink-0 border-b border-border bg-card p-4">
               <Input
                 value={draft.title}
-                onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+                onChange={(event) => {
+                  setIsDraftDirty(true);
+                  setDraft({ ...draft, title: event.target.value });
+                }}
                 disabled={!canEdit}
                 className="h-auto border-0 bg-transparent px-0 py-0 text-xl font-semibold tracking-normal shadow-none focus-visible:border-transparent focus-visible:ring-0"
                 placeholder={t("memo.title.placeholder")}
@@ -349,7 +374,10 @@ export function MemoWorkspace() {
                       <MemoGroupDropdown
                         groups={groups}
                         value={draft.groupId}
-                        onChange={(groupId) => setDraft({ ...draft, groupId })}
+                        onChange={(groupId) => {
+                          setIsDraftDirty(true);
+                          setDraft({ ...draft, groupId });
+                        }}
                         disabled={!canManage}
                       />
                     </div>
@@ -359,7 +387,10 @@ export function MemoWorkspace() {
                       <button
                         key={status.value}
                         type="button"
-                        onClick={() => setDraft({ ...draft, status: status.value })}
+                        onClick={() => {
+                          setIsDraftDirty(true);
+                          setDraft({ ...draft, status: status.value });
+                        }}
                         disabled={!canEdit}
                         className={cn(
                           "inline-flex h-5 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-xs font-medium transition-colors hover:text-foreground",
@@ -404,12 +435,13 @@ export function MemoWorkspace() {
               users={draft.relatedUsers}
               ownerUsername={draft.ownerUsername}
               disabled={!canManage}
-              onChange={(relatedUsers) =>
+              onChange={(relatedUsers) => {
+                setIsDraftDirty(true);
                 setDraft({
                   ...draft,
                   relatedUsers,
-                })
-              }
+                });
+              }}
             />
             <div className="min-h-0 flex-1 overflow-hidden p-3">
               <div
