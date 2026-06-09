@@ -5,7 +5,7 @@ export interface RealtimeEvent {
   module: string;
   /** 事件类型，例如 memo.created、memo.updated、group.deleted */
   type: string;
-  /** 事件所属用户；后续多用户推送时可用于前端过滤 */
+  /** 事件发起人用户名；前端用于过滤自己触发的通知 */
   ownerUsername?: string;
   /** 本次事件影响的用户；共享 Memo 更新时包含创建者和相关人 */
   recipientUsernames?: string[];
@@ -13,6 +13,12 @@ export interface RealtimeEvent {
   memoId?: number | null;
   /** 发生变化或受影响的分组 ID */
   groupId?: number | null;
+  /** Memo 标题快照，用于即时通知展示 */
+  memoTitle?: string | null;
+  /** 操作人显示名 */
+  actorDisplayName?: string | null;
+  /** 内容摘要，避免通知弹框再发起详情查询 */
+  contentPreview?: string | null;
   /** 服务端事件生成时间 */
   occurredAt?: string;
 }

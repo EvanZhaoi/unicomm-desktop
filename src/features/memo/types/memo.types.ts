@@ -11,6 +11,8 @@ export interface Memo {
   isOwner: boolean;
   isShared: boolean;
   currentUserPermission: "owner" | "edit" | "view";
+  updateUsername?: string;
+  updateDisplayName?: string;
   relatedUsers: MemoRelatedUser[];
   createTime: string;
   updateTime: string;

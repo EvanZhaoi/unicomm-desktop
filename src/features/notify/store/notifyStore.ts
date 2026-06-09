@@ -24,30 +24,39 @@ function describeRealtimeEvent(event: RealtimeEvent): { title: string; body: str
   }
 
   const memoId = event.memoId ? `#${event.memoId}` : "";
+  const memoTitle = event.memoTitle?.trim();
+  const titleSuffix = memoTitle ? `：${memoTitle}` : "";
+  const actorName = event.actorDisplayName?.trim();
+  const preview = event.contentPreview?.trim();
+  const details = [
+    actorName ? localized("notify.memo.actor").replace("{name}", actorName) : "",
+    preview ? localized("notify.memo.preview").replace("{content}", preview) : "",
+  ].filter(Boolean);
+  const bodyWithDetails = (fallback: string) => (details.length > 0 ? details.join("\n") : fallback.replace("{id}", memoId));
 
   switch (event.type) {
     case "memo.created":
       return {
-        title: localized("notify.memo.created.title"),
-        body: localized("notify.memo.created.body").replace("{id}", memoId),
+        title: `${localized("notify.memo.created.title")}${titleSuffix}`,
+        body: bodyWithDetails(localized("notify.memo.created.body")),
         level: "success",
       };
     case "memo.updated":
       return {
-        title: localized("notify.memo.updated.title"),
-        body: localized("notify.memo.updated.body").replace("{id}", memoId),
+        title: `${localized("notify.memo.updated.title")}${titleSuffix}`,
+        body: bodyWithDetails(localized("notify.memo.updated.body")),
         level: "info",
       };
     case "memo.deleted":
       return {
-        title: localized("notify.memo.deleted.title"),
-        body: localized("notify.memo.deleted.body").replace("{id}", memoId),
+        title: `${localized("notify.memo.deleted.title")}${titleSuffix}`,
+        body: bodyWithDetails(localized("notify.memo.deleted.body")),
         level: "warning",
       };
     case "memo.related.updated":
       return {
-        title: localized("notify.memo.shared.title"),
-        body: localized("notify.memo.shared.body").replace("{id}", memoId),
+        title: `${localized("notify.memo.shared.title")}${titleSuffix}`,
+        body: bodyWithDetails(localized("notify.memo.shared.body")),
         level: "info",
       };
     default:
@@ -55,8 +64,8 @@ function describeRealtimeEvent(event: RealtimeEvent): { title: string; body: str
         return null;
       }
       return {
-        title: localized("notify.memo.changed.title"),
-        body: localized("notify.memo.changed.body").replace("{id}", memoId),
+        title: `${localized("notify.memo.changed.title")}${titleSuffix}`,
+        body: bodyWithDetails(localized("notify.memo.changed.body")),
         level: "info",
       };
   }
@@ -75,6 +84,9 @@ export const useNotifyStore = create<NotifyState>((set) => ({
       level: notification.level,
       read: notification.read ?? false,
       sourceId: notification.sourceId,
+      sourceTitle: notification.sourceTitle,
+      actorName: notification.actorName,
+      preview: notification.preview,
       createdAt: notification.createdAt ?? new Date().toISOString(),
     };
 
@@ -96,6 +108,9 @@ export const useNotifyStore = create<NotifyState>((set) => ({
       body: notification.body,
       level: notification.level,
       sourceId: event.memoId,
+      sourceTitle: event.memoTitle,
+      actorName: event.actorDisplayName,
+      preview: event.contentPreview,
       createdAt: event.occurredAt,
     });
   },

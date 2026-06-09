@@ -9,5 +9,8 @@ export interface NotifyItem {
   level: NotifyLevel;
   read: boolean;
   sourceId?: number | null;
+  sourceTitle?: string | null;
+  actorName?: string | null;
+  preview?: string | null;
   createdAt: string;
 }

@@ -432,6 +432,11 @@ export function MemoWorkspace() {
                     ))}
                   </div>
                   <span className="truncate">{t("memo.updatedAt", { time: formatDate(draft.updateTime) })}</span>
+                  {(draft.updateDisplayName || draft.updateUsername) && (
+                    <span className="truncate">
+                      {t("memo.updatedBy", { name: draft.updateDisplayName || draft.updateUsername || "-" })}
+                    </span>
+                  )}
                   {draft.isShared && (
                     <span className="inline-flex h-6 items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 text-primary">
                       <Users className="h-3.5 w-3.5" />

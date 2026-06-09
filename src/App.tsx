@@ -53,6 +53,7 @@ import { MemoWorkspace } from "./features/memo/components/MemoWorkspace";
 import { QuickMemoWindow } from "./features/memo/components/QuickMemoWindow";
 import { SettingsPanel } from "./features/settings/components/SettingsPanel";
 import { NotificationCenter } from "./features/notify/components/NotificationCenter";
+import { NotifyToastHost } from "./features/notify/components/NotifyToastHost";
 import { configureGlobalShortcuts } from "./desktop/shortcut/shortcutManager";
 import { useSettingStore } from "./stores/settingStore";
 import { useI18n } from "./i18n/useI18n";
@@ -188,16 +189,19 @@ function AppContent() {
  * - SettingsPanel：语言、字体和快捷键设置
  */
   return (
-    <AppLayout
-      sidebarCollapsed={sidebarCollapsed}
-      activeView={activeView}
-      onViewChange={setActiveView}
-      currentUser={currentUser}
-    >
-      {activeView === "memo" && <MemoWorkspace />}
-      {activeView === "notify" && <NotificationCenter />}
-      {activeView === "settings" && <SettingsPanel />}
-    </AppLayout>
+    <>
+      <AppLayout
+        sidebarCollapsed={sidebarCollapsed}
+        activeView={activeView}
+        onViewChange={setActiveView}
+        currentUser={currentUser}
+      >
+        {activeView === "memo" && <MemoWorkspace />}
+        {activeView === "notify" && <NotificationCenter />}
+        {activeView === "settings" && <SettingsPanel />}
+      </AppLayout>
+      <NotifyToastHost />
+    </>
   );
 }
 
