@@ -123,6 +123,7 @@ export interface NotificationManagerAPI {
  */
 class NotificationManager implements NotificationManagerAPI {
   private permissionGranted = false;
+  private activeNotifications = new Map<string, Notification>();
 
   /**
    * 请求通知权限
@@ -165,16 +166,25 @@ class NotificationManager implements NotificationManagerAPI {
           memoId: config.memoId,
         },
       });
+      const notificationKey = `notification_${id}`;
+      this.activeNotifications.set(notificationKey, notification);
+
+      const releaseNotification = () => {
+        this.activeNotifications.delete(notificationKey);
+      };
 
       notification.onclick = () => {
         window.focus();
         config.onClick?.();
         notification.close();
+        releaseNotification();
       };
+      notification.onclose = releaseNotification;
+      notification.onerror = releaseNotification;
 
       return {
         success: true,
-        id: `notification_${id}`,
+        id: notificationKey,
       };
     } catch (error) {
       return {
