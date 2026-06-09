@@ -53,7 +53,7 @@ import { MemoWorkspace } from "./features/memo/components/MemoWorkspace";
 import { QuickMemoWindow } from "./features/memo/components/QuickMemoWindow";
 import { SettingsPanel } from "./features/settings/components/SettingsPanel";
 import { NotificationCenter } from "./features/notify/components/NotificationCenter";
-import { NotifyToastHost } from "./features/notify/components/NotifyToastHost";
+import { SystemNotificationHost } from "./features/notify/components/SystemNotificationHost";
 import { configureGlobalShortcuts } from "./desktop/shortcut/shortcutManager";
 import { useSettingStore } from "./stores/settingStore";
 import { useI18n } from "./i18n/useI18n";
@@ -200,7 +200,7 @@ function AppContent() {
         {activeView === "notify" && <NotificationCenter />}
         {activeView === "settings" && <SettingsPanel />}
       </AppLayout>
-      <NotifyToastHost />
+      <SystemNotificationHost />
     </>
   );
 }

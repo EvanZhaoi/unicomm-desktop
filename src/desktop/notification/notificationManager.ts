@@ -26,6 +26,11 @@
  * });
  * ```
  */
+import {
+  isPermissionGranted,
+  requestPermission as requestSystemNotificationPermission,
+  sendNotification,
+} from '@tauri-apps/plugin-notification';
 
 /**
  * 通知严重级别
@@ -113,8 +118,7 @@ export interface NotificationManagerAPI {
 /**
  * Notification Manager 实现
  *
- * Phase 1: 定义接口和基础实现
- * Phase 2: 接入 tauri-plugin-notification 实现完整功能
+ * 系统通知由 Tauri notification 插件发送，Windows 下会进入系统通知中心并从屏幕右下角弹出。
  */
 class NotificationManager implements NotificationManagerAPI {
   private permissionGranted = false;
@@ -123,11 +127,11 @@ class NotificationManager implements NotificationManagerAPI {
    * 请求通知权限
    */
   async requestPermission(): Promise<boolean> {
-    // TODO: Phase 2 实现
-    // const permission = await invoke<string>('plugin:notification|request_permission');
-    // this.permissionGranted = permission === 'granted';
-
-    this.permissionGranted = true;
+    this.permissionGranted = await isPermissionGranted();
+    if (!this.permissionGranted) {
+      const permission = await requestSystemNotificationPermission();
+      this.permissionGranted = permission === 'granted';
+    }
     return this.permissionGranted;
   }
 
@@ -146,19 +150,19 @@ class NotificationManager implements NotificationManagerAPI {
     }
 
     try {
-      // TODO: Phase 2 实现
-      // const id = await invoke<string>('plugin:notification|show', {
-      //   title: config.title,
-      //   body: config.body,
-      //   icon: config.icon,
-      //   urgency: config.urgency,
-      // });
-
-      console.log('[NotificationManager] Notify:', config.title, config.body);
+      const id = Number.parseInt(`${Date.now()}`.slice(-9), 10);
+      sendNotification({
+        id,
+        title: config.title,
+        body: config.body,
+        icon: config.icon,
+        group: 'unicomm.memo',
+        autoCancel: true,
+      });
 
       return {
         success: true,
-        id: `notification_${Date.now()}`,
+        id: `notification_${id}`,
       };
     } catch (error) {
       return {
@@ -205,9 +209,7 @@ class NotificationManager implements NotificationManagerAPI {
    * 清除所有通知
    */
   async clearAll(): Promise<void> {
-    // TODO: Phase 2 实现
-    // await invoke('plugin:notification|clear_all');
-    console.log('[NotificationManager] Clear all notifications');
+    // 系统通知中心的历史清理后续再接 removeAllActive；当前功能只负责发送即时系统通知。
   }
 }
 
