@@ -38,7 +38,7 @@
  * @module App
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 // 认证状态管理
 import { useAuthStore } from "./features/auth/store/authStore";
@@ -83,6 +83,13 @@ function AppContent() {
       return false;
     }
   });
+
+  const openMemoFromNotification = useCallback((memoId: number) => {
+    const mainWindow = getCurrentWindow();
+    void mainWindow.show().then(() => mainWindow.unminimize()).then(() => mainWindow.setFocus());
+    setActiveView("memo");
+    void useMemoStore.getState().focusMemo(memoId);
+  }, []);
 
   /**
    * 初始化认证流程
@@ -197,10 +204,10 @@ function AppContent() {
         currentUser={currentUser}
       >
         {activeView === "memo" && <MemoWorkspace />}
-        {activeView === "notify" && <NotificationCenter />}
+        {activeView === "notify" && <NotificationCenter onOpenMemo={openMemoFromNotification} />}
         {activeView === "settings" && <SettingsPanel />}
       </AppLayout>
-      <SystemNotificationHost />
+      <SystemNotificationHost onOpenMemo={openMemoFromNotification} />
     </>
   );
 }

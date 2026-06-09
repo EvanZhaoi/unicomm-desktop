@@ -7,7 +7,11 @@ import { useNotifyStore } from "../store/notifyStore";
  *
  * 组件自身不渲染 UI：Windows 会从屏幕右下角弹出系统通知，macOS 会走系统通知中心。
  */
-export function SystemNotificationHost() {
+interface SystemNotificationHostProps {
+  onOpenMemo: (memoId: number) => void;
+}
+
+export function SystemNotificationHost({ onOpenMemo }: SystemNotificationHostProps) {
   const latestNotification = useNotifyStore((state) => state.notifications[0]);
   const sentIdsRef = useRef(new Set<string>());
 
@@ -23,8 +27,10 @@ export function SystemNotificationHost() {
     void notificationManager.notify({
       title: latestNotification.title,
       body: latestNotification.body,
+      memoId: latestNotification.sourceId ?? undefined,
+      onClick: latestNotification.sourceId ? () => onOpenMemo(latestNotification.sourceId as number) : undefined,
     });
-  }, [latestNotification]);
+  }, [latestNotification, onOpenMemo]);
 
   return null;
 }

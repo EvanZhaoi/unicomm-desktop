@@ -34,7 +34,11 @@ function levelClassName(level: NotifyItem["level"]): string {
   }
 }
 
-export function NotificationCenter() {
+interface NotificationCenterProps {
+  onOpenMemo: (memoId: number) => void;
+}
+
+export function NotificationCenter({ onOpenMemo }: NotificationCenterProps) {
   const { t } = useI18n();
   const { notifications, markRead, markAllRead, removeNotification, clearRead } = useNotifyStore();
   const [filter, setFilter] = useState<NotifyFilter>("all");
@@ -49,6 +53,8 @@ export function NotificationCenter() {
       body: `${t("notify.memo.actor", { name: t("notify.test.actor") })}\n${t("notify.memo.preview", {
         content: t("notify.test.preview"),
       })}`,
+      memoId: 1,
+      onClick: () => onOpenMemo(1),
     });
   };
 

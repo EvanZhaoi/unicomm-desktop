@@ -45,6 +45,7 @@ interface MemoState {
   fetchNextMemos: () => Promise<void>;
   fetchGroups: () => Promise<void>;
   fetchMemoDetail: (id: number) => Promise<void>;
+  focusMemo: (id: number) => Promise<void>;
   setKeyword: (keyword: string) => void;
   setActiveGroup: (groupId: number | null) => void;
   setActiveStatus: (status: Memo["status"] | null) => void;
@@ -285,6 +286,20 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       const memo = await getMemo(id);
       set((state) => ({
         memos: state.memos.map((item) => (item.id === id ? { ...item, ...memo } : item)),
+      }));
+    } catch (error) {
+      set({ error: errorMessage(error, localized("memo.errors.load")) });
+    }
+  },
+
+  focusMemo: async (id) => {
+    set({ error: null });
+    try {
+      const memo = await getMemo(id);
+      set((state) => ({
+        // 通知跳转可能打开当前分页/筛选条件之外的 Memo，因此需要插入到本地列表后再选中。
+        memos: upsertMemo(state.memos, memo),
+        selectedMemoId: memo.id,
       }));
     } catch (error) {
       set({ error: errorMessage(error, localized("memo.errors.load")) });

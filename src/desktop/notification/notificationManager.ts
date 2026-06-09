@@ -28,9 +28,12 @@
  */
 import {
   isPermissionGranted,
+  onAction,
   requestPermission as requestSystemNotificationPermission,
   sendNotification,
 } from '@tauri-apps/plugin-notification';
+import type { Options } from '@tauri-apps/plugin-notification';
+import type { PluginListener } from '@tauri-apps/api/core';
 
 /**
  * 通知严重级别
@@ -58,6 +61,8 @@ export interface NotificationConfig {
   urgency?: NotificationUrgency;
   /** 点击回调 */
   onClick?: () => void;
+  /** 点击后需要打开的 Memo ID */
+  memoId?: number;
   /** 超时时间（毫秒），0 表示不自动关闭 */
   timeout?: number;
 }
@@ -122,6 +127,9 @@ export interface NotificationManagerAPI {
  */
 class NotificationManager implements NotificationManagerAPI {
   private permissionGranted = false;
+  private actionListener: PluginListener | null = null;
+  private actionListenerPromise: Promise<void> | null = null;
+  private clickHandlers = new Map<number, () => void>();
 
   /**
    * 请求通知权限
@@ -150,13 +158,22 @@ class NotificationManager implements NotificationManagerAPI {
     }
 
     try {
+      await this.ensureActionListener();
+
       const id = Number.parseInt(`${Date.now()}`.slice(-9), 10);
+      if (config.onClick) {
+        this.clickHandlers.set(id, config.onClick);
+      }
+
       sendNotification({
         id,
         title: config.title,
         body: config.body,
         icon: config.icon,
         group: 'unicomm.memo',
+        extra: {
+          memoId: config.memoId,
+        },
         autoCancel: true,
       });
 
@@ -170,6 +187,34 @@ class NotificationManager implements NotificationManagerAPI {
         error: String(error),
       };
     }
+  }
+
+  private async ensureActionListener(): Promise<void> {
+    if (this.actionListener) {
+      return;
+    }
+    if (this.actionListenerPromise) {
+      return this.actionListenerPromise;
+    }
+
+    this.actionListenerPromise = onAction((notification: Options) => {
+      const notificationId = notification.id;
+      if (typeof notificationId !== 'number') {
+        return;
+      }
+
+      const handler = this.clickHandlers.get(notificationId);
+      this.clickHandlers.delete(notificationId);
+      handler?.();
+    })
+      .then((listener) => {
+        this.actionListener = listener;
+      })
+      .finally(() => {
+        this.actionListenerPromise = null;
+      });
+
+    return this.actionListenerPromise;
   }
 
   /**
