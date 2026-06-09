@@ -69,6 +69,8 @@ npm run tauri dev
 npm run tauri build
 ```
 
+Vite 构建不再手动按包名拆分 Milkdown 内部依赖，避免 Rollup circular chunk 警告。Memo 编辑器通过 `React.lazy` 懒加载，Milkdown/Mermaid 相关体积集中在编辑器异步 chunk 中，`vite.config.ts` 将 chunk 提示阈值调整为 1800KB 以匹配该真实异步块大小。
+
 ## 功能状态
 
 ### 已实现 ✅
