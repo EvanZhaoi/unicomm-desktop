@@ -150,6 +150,35 @@ function upsertMemo(memos: Memo[], memo: Memo): Memo[] {
   return sortMemos(next);
 }
 
+function mergeMemoSummary(existing: Memo | undefined, summary: Memo): Memo {
+  if (!existing || summary.relatedUsers.length > 0) {
+    return summary;
+  }
+
+  // 列表接口为了性能只返回摘要字段，relatedUsers 由详情接口维护。
+  // 合并列表摘要时保留已加载的相关人，避免 WebSocket/列表刷新把编辑区相关人显示清空。
+  return {
+    ...summary,
+    relatedUsers: existing.relatedUsers,
+  };
+}
+
+function mergeMemoSummaries(current: Memo[], summaries: Memo[]): Memo[] {
+  const currentMap = new Map(current.map((memo) => [memo.id, memo]));
+  return sortMemos(summaries.map((memo) => mergeMemoSummary(currentMap.get(memo.id), memo)));
+}
+
+function appendMemoSummaries(current: Memo[], summaries: Memo[]): Memo[] {
+  const currentMap = new Map(current.map((memo) => [memo.id, memo]));
+  const next = [...current];
+  for (const summary of summaries) {
+    if (!currentMap.has(summary.id)) {
+      next.push(mergeMemoSummary(undefined, summary));
+    }
+  }
+  return sortMemos(next);
+}
+
 export const useMemoStore = create<MemoState>((set, get) => ({
   memos: [],
   groups: [],
@@ -178,7 +207,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         const [groups, result] = await Promise.all([requestMemoGroups(), requestMemoList(listParams(get()))]);
         set((state) => ({
           groups,
-          memos: sortMemos(result.list),
+          memos: mergeMemoSummaries(state.memos, result.list),
           memoPage: result.page,
           memoTotal: result.total,
           hasMoreMemos: result.page < result.pages,
@@ -203,7 +232,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     try {
       const result = await requestMemoList(listParams(get()));
       set((state) => ({
-        memos: sortMemos(result.list),
+        memos: mergeMemoSummaries(state.memos, result.list),
         memoPage: result.page,
         memoTotal: result.total,
         hasMoreMemos: result.page < result.pages,
@@ -229,10 +258,8 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     try {
       const result = await requestMemoList({ ...listParams(get()), page: memoPage + 1 });
       set((state) => {
-        const existingIds = new Set(state.memos.map((memo) => memo.id));
-        const appended = result.list.filter((memo) => !existingIds.has(memo.id));
         return {
-          memos: sortMemos([...state.memos, ...appended]),
+          memos: appendMemoSummaries(state.memos, result.list),
           memoPage: result.page,
           memoTotal: result.total,
           hasMoreMemos: result.page < result.pages,
