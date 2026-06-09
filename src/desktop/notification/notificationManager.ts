@@ -28,12 +28,8 @@
  */
 import {
   isPermissionGranted,
-  onAction,
   requestPermission as requestSystemNotificationPermission,
-  sendNotification,
 } from '@tauri-apps/plugin-notification';
-import type { Options } from '@tauri-apps/plugin-notification';
-import type { PluginListener } from '@tauri-apps/api/core';
 
 /**
  * 通知严重级别
@@ -127,9 +123,6 @@ export interface NotificationManagerAPI {
  */
 class NotificationManager implements NotificationManagerAPI {
   private permissionGranted = false;
-  private actionListener: PluginListener | null = null;
-  private actionListenerPromise: Promise<void> | null = null;
-  private clickHandlers = new Map<number, () => void>();
 
   /**
    * 请求通知权限
@@ -158,24 +151,26 @@ class NotificationManager implements NotificationManagerAPI {
     }
 
     try {
-      await this.ensureActionListener();
-
       const id = Number.parseInt(`${Date.now()}`.slice(-9), 10);
-      if (config.onClick) {
-        this.clickHandlers.set(id, config.onClick);
-      }
 
-      sendNotification({
-        id,
-        title: config.title,
+      // 直接创建 Notification 对象可以稳定拿到 onclick 回调。
+      // 上一版使用插件 onAction 监听点击，但注册监听会产生额外 IPC 请求；
+      // 如果监听注册失败，还会阻断测试按钮的通知弹出。
+      const notification = new window.Notification(config.title, {
         body: config.body,
         icon: config.icon,
-        group: 'unicomm.memo',
-        extra: {
+        tag: `unicomm-memo-${id}`,
+        data: {
+          id,
           memoId: config.memoId,
         },
-        autoCancel: true,
       });
+
+      notification.onclick = () => {
+        window.focus();
+        config.onClick?.();
+        notification.close();
+      };
 
       return {
         success: true,
@@ -187,34 +182,6 @@ class NotificationManager implements NotificationManagerAPI {
         error: String(error),
       };
     }
-  }
-
-  private async ensureActionListener(): Promise<void> {
-    if (this.actionListener) {
-      return;
-    }
-    if (this.actionListenerPromise) {
-      return this.actionListenerPromise;
-    }
-
-    this.actionListenerPromise = onAction((notification: Options) => {
-      const notificationId = notification.id;
-      if (typeof notificationId !== 'number') {
-        return;
-      }
-
-      const handler = this.clickHandlers.get(notificationId);
-      this.clickHandlers.delete(notificationId);
-      handler?.();
-    })
-      .then((listener) => {
-        this.actionListener = listener;
-      })
-      .finally(() => {
-        this.actionListenerPromise = null;
-      });
-
-    return this.actionListenerPromise;
   }
 
   /**
