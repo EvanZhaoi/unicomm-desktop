@@ -29,7 +29,13 @@
 import {
   isPermissionGranted,
   requestPermission as requestSystemNotificationPermission,
+  sendNotification,
 } from '@tauri-apps/plugin-notification';
+import { Channel, invoke, PluginListener } from '@tauri-apps/api/core';
+
+interface NativeNotificationPayload {
+  id?: number;
+}
 
 /**
  * 通知严重级别
@@ -123,7 +129,9 @@ export interface NotificationManagerAPI {
  */
 class NotificationManager implements NotificationManagerAPI {
   private permissionGranted = false;
-  private activeNotifications = new Map<string, Notification>();
+  private actionListener: PluginListener | null = null;
+  private actionListenerPromise: Promise<void> | null = null;
+  private clickHandlers = new Map<number, () => void>();
 
   /**
    * 请求通知权限
@@ -152,35 +160,25 @@ class NotificationManager implements NotificationManagerAPI {
     }
 
     try {
-      const id = Number.parseInt(`${Date.now()}`.slice(-9), 10);
+      await this.ensureActionListener();
 
-      // 直接创建 Notification 对象可以稳定拿到 onclick 回调。
-      // 上一版使用插件 onAction 监听点击，但注册监听会产生额外 IPC 请求；
-      // 如果监听注册失败，还会阻断测试按钮的通知弹出。
-      const notification = new window.Notification(config.title, {
+      const id = Number.parseInt(`${Date.now()}`.slice(-9), 10);
+      const notificationKey = `notification_${id}`;
+      if (config.onClick) {
+        this.clickHandlers.set(id, config.onClick);
+      }
+
+      sendNotification({
+        id,
+        title: config.title,
         body: config.body,
         icon: config.icon,
-        tag: `unicomm-memo-${id}`,
-        data: {
-          id,
+        group: 'unicomm.memo',
+        extra: {
           memoId: config.memoId,
         },
+        autoCancel: true,
       });
-      const notificationKey = `notification_${id}`;
-      this.activeNotifications.set(notificationKey, notification);
-
-      const releaseNotification = () => {
-        this.activeNotifications.delete(notificationKey);
-      };
-
-      notification.onclick = () => {
-        window.focus();
-        config.onClick?.();
-        notification.close();
-        releaseNotification();
-      };
-      notification.onclose = releaseNotification;
-      notification.onerror = releaseNotification;
 
       return {
         success: true,
@@ -192,6 +190,40 @@ class NotificationManager implements NotificationManagerAPI {
         error: String(error),
       };
     }
+  }
+
+  private async ensureActionListener(): Promise<void> {
+    if (this.actionListener) {
+      return;
+    }
+    if (this.actionListenerPromise) {
+      return this.actionListenerPromise;
+    }
+
+    this.actionListenerPromise = (async () => {
+      const handler = new Channel<NativeNotificationPayload>((notification) => {
+        const id = notification.id;
+        if (typeof id !== 'number') {
+          return;
+        }
+
+        const onClick = this.clickHandlers.get(id);
+        this.clickHandlers.delete(id);
+        onClick?.();
+      });
+
+      // 直接使用 Tauri v2 notification 插件的 camelCase 注册命令，避免官方封装先请求
+      // register_listener、失败后再请求 registerListener 造成两条 IPC 记录。
+      await invoke('plugin:notification|registerListener', {
+        event: 'actionPerformed',
+        handler,
+      });
+      this.actionListener = new PluginListener('notification', 'actionPerformed', handler.id);
+    })().finally(() => {
+      this.actionListenerPromise = null;
+    });
+
+    return this.actionListenerPromise;
   }
 
   /**
