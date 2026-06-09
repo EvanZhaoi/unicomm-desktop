@@ -128,7 +128,10 @@ function AppContent() {
         window.clearTimeout(refreshTimer);
       }
 
-      useNotifyStore.getState().addRealtimeEvent(event);
+      // 自己发起的变更只需要刷新本地数据，不进入通知中心。
+      if (!currentUser?.username || event.ownerUsername !== currentUser.username) {
+        useNotifyStore.getState().addRealtimeEvent(event);
+      }
 
       refreshTimer = window.setTimeout(() => {
         const memoStore = useMemoStore.getState();
