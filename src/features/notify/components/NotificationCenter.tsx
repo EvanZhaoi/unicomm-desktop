@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Bell, CheckCheck, Circle, Clock3, Trash2 } from "lucide-react";
+import { Bell, CheckCheck, Circle, Clock3, FlaskConical, Trash2 } from "lucide-react";
 import { Button, Tabs, TabsList, TabsTrigger } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
@@ -35,13 +35,28 @@ function levelClassName(level: NotifyItem["level"]): string {
 
 export function NotificationCenter() {
   const { t } = useI18n();
-  const { notifications, markRead, markAllRead, removeNotification, clearRead } = useNotifyStore();
+  const { notifications, addNotification, markRead, markAllRead, removeNotification, clearRead } = useNotifyStore();
   const [filter, setFilter] = useState<NotifyFilter>("all");
   const unreadCount = notifications.filter((item) => !item.read).length;
   const visibleNotifications = useMemo(
     () => notifications.filter((item) => (filter === "unread" ? !item.read : true)),
     [filter, notifications]
   );
+  const addTestNotification = () => {
+    addNotification({
+      module: "memo",
+      type: "memo.updated",
+      title: t("notify.test.title"),
+      body: `${t("notify.memo.actor", { name: t("notify.test.actor") })}\n${t("notify.memo.preview", {
+        content: t("notify.test.preview"),
+      })}`,
+      level: "info",
+      sourceId: Date.now(),
+      sourceTitle: t("notify.test.memoTitle"),
+      actorName: t("notify.test.actor"),
+      preview: t("notify.test.preview"),
+    });
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
@@ -60,6 +75,10 @@ export function NotificationCenter() {
             <p className="mt-1 text-xs text-muted-foreground">{t("notify.description")}</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={addTestNotification}>
+              <FlaskConical className="h-3.5 w-3.5" />
+              {t("notify.action.test")}
+            </Button>
             <Button variant="outline" size="sm" onClick={markAllRead} disabled={unreadCount === 0}>
               <CheckCheck className="h-3.5 w-3.5" />
               {t("notify.action.markAllRead")}
