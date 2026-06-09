@@ -5,14 +5,14 @@
  * 
  * ## 核心功能
  * - **请求拦截器**: 自动为每个请求添加 `Authorization: Bearer <token>` 头
- * - **响应拦截器**: 统一处理 401/403 错误，自动清除本地会话状态
+ * - **响应拦截器**: 统一处理 401/403 错误，自动恢复桌面会话
  * - **基础配置**: 预配置 baseURL、超时时间等默认参数
  * 
  * ## 认证流程
  * 1. 组件通过 `useAuthStore()` 获取当前用户的 `accessToken`
  * 2. 请求拦截器在发送请求前自动注入 Authorization 头
- * 3. 若响应返回 401/403，拦截器调用 `clearSession()` 重置认证状态
- * 4. 组件检测到认证状态变更后，可展示登录界面或重新验证
+ * 3. 若响应返回 401/403，拦截器调用 `recoverSession()` 重新识别 Windows 用户
+ * 4. 组件根据恢复结果进入工作区或展示认证失败状态
  * 
  * ## 使用示例
  * ```typescript
@@ -49,6 +49,15 @@ const request: AxiosInstance = axios.create({
 });
 
 /**
+ * 旧版请求封装仍被部分历史模块使用，因此这里也保持与 core/http 一致的恢复逻辑。
+ * 认证接口本身失败时不触发恢复，避免递归调用。
+ */
+function shouldRecoverSession(error: AxiosError): boolean {
+  const url = error.config?.url || '';
+  return !url.includes('/auth/desktop/verify');
+}
+
+/**
  * 请求拦截器
  * 
  * 在每个请求发送前执行，从 authStore 获取 accessToken 并注入到 Authorization 头。
@@ -77,8 +86,8 @@ request.interceptors.request.use(
  * - **401 Unauthorized**: token 无效或已过期
  * - **403 Forbidden**: 当前用户无权访问该资源
  * 
- * 检测到这两种状态时，调用 `clearSession()` 清除本地会话数据，
- * 触发 UI 从受保护状态降级到认证界面。
+ * 检测到这两种状态时，调用 `recoverSession()` 清除旧 Session 并重新验证
+ * 当前 Windows 用户，避免启动时停留在 checking 状态。
  * 
  * @param error - Axios 错误对象，包含 response 状态码
  * @returns 始终抛出错误，允许调用方通过 catch 处理
@@ -87,8 +96,10 @@ request.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
-      // 认证失败，清除本地会话，下一次渲染时将显示登录界面
-      useAuthStore.getState().clearSession();
+      if (shouldRecoverSession(error)) {
+        // Token 失效时自动重新识别 Windows 用户。
+        void useAuthStore.getState().recoverSession();
+      }
     }
     return Promise.reject(error);
   }

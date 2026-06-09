@@ -18,6 +18,18 @@ import { AuthError } from '../errors/AuthError';
 import type { ApiResponse } from '../types/api';
 
 /**
+ * 判断认证失败后是否需要自动恢复 Session。
+ *
+ * `/auth/desktop/verify` 本身就是恢复链路的最后一步，如果它返回 401/403，
+ * 说明当前 Windows 用户确实未通过后端校验，应交给 authStore 设置 rejected，
+ * 不能在拦截器里再次触发 recoverSession 形成递归。
+ */
+function shouldRecoverSession(error: AxiosError): boolean {
+  const url = error.config?.url || '';
+  return !url.includes('/auth/desktop/verify');
+}
+
+/**
  * 响应成功拦截器函数
  *
  * 后端统一返回 { code, message, data }，业务层只关心 data。
@@ -54,8 +66,10 @@ export function responseInterceptor(error: AxiosError): Promise<never> {
   
   // 认证错误 (401/403)
   if (status === 401 || status === 403) {
-    // 清除本地 Session
-    useAuthStore.getState().clearSession();
+    if (shouldRecoverSession(error)) {
+      // Token 失效时自动重新识别 Windows 用户，避免界面长期停留在 checking。
+      void useAuthStore.getState().recoverSession();
+    }
     throw new AuthError('认证失败，请重新登录', status);
   }
   

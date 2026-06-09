@@ -182,6 +182,17 @@ function getErrorMessage(error: unknown): string {
 }
 
 /**
+ * 认证流程单飞锁。
+ *
+ * Tauri 启动阶段会同时挂载多个组件并触发多条接口请求，如果这些请求同时命中
+ * 401/403，不能让每条请求都各自清 Session、重新识别 Windows 用户，否则状态会
+ * 在 checking/verified 之间互相覆盖。这里用 Promise 复用正在执行的认证任务。
+ */
+let initAuthPromise: Promise<void> | null = null;
+let verifyDesktopUserPromise: Promise<boolean> | null = null;
+let recoverSessionPromise: Promise<void> | null = null;
+
+/**
  * 认证状态管理 Store
  *
  * 使用 Zustand 管理的全局认证状态。
@@ -203,111 +214,131 @@ export const useAuthStore = create<AuthState>((set, get) => ({
    * 3. 如果 Session 无效或不存在，执行完整的认证流程
    */
   initAuth: async () => {
-    console.log('[AuthStore] Initializing auth...');
-
-    // 尝试加载保存的 Session
-    const savedSession = await sessionStorageService.loadSession();
-
-    if (savedSession) {
-      console.log('[AuthStore] Found saved session, restoring...');
-
-      // 恢复保存的 Session
-      set({
-        currentUser: savedSession.currentUser,
-        accessToken: savedSession.accessToken,
-        authStatus: 'verified',
-        authError: null,
-      });
-
-      console.log('[AuthStore] Session restored for:', savedSession.currentUser.username);
-      return;
+    if (initAuthPromise) {
+      return initAuthPromise;
     }
 
-    // 没有保存的 Session，执行完整认证流程
-    console.log('[AuthStore] No saved session, performing full auth...');
-    await get().verifyDesktopUser();
+    initAuthPromise = (async () => {
+      console.log('[AuthStore] Initializing auth...');
+
+      // 尝试加载保存的 Session
+      const savedSession = await sessionStorageService.loadSession();
+
+      if (savedSession) {
+        console.log('[AuthStore] Found saved session, restoring...');
+
+        // 恢复保存的 Session
+        set({
+          currentUser: savedSession.currentUser,
+          accessToken: savedSession.accessToken,
+          authStatus: 'verified',
+          authError: null,
+        });
+
+        console.log('[AuthStore] Session restored for:', savedSession.currentUser.username);
+        return;
+      }
+
+      // 没有保存的 Session，执行完整认证流程
+      console.log('[AuthStore] No saved session, performing full auth...');
+      await get().verifyDesktopUser();
+    })().finally(() => {
+      initAuthPromise = null;
+    });
+
+    return initAuthPromise;
   },
 
   /**
    * 验证桌面用户身份
    */
   verifyDesktopUser: async () => {
-    // 开始验证，先将状态设为 checking
-    set({ authStatus: 'checking', authError: null });
-
-    try {
-      // ---- Step 1: 获取设备信息 ----
-      const deviceInfo = await getDeviceInfo();
-
-      // ---- Step 2: 获取 Windows 用户信息 ----
-      const userInfo = await getCurrentWindowsUser();
-
-      // ---- Step 3: 组合请求参数 ----
-      const requestData = {
-        username: userInfo.username,
-        domain: userInfo.domain || '',
-        computerName: deviceInfo.computerName,
-        deviceId: deviceInfo.deviceId,
-        os: deviceInfo.os,
-        osVersion: deviceInfo.osVersion,
-        appVersion: deviceInfo.appVersion,
-      };
-
-      // ---- Step 4: 调用后端 verify 接口 ----
-      const response: DesktopVerifyResponse = await verifyDesktopApi(requestData);
-
-      // ---- Step 5: 处理响应 ----
-      const userData: DesktopUserInfo = {
-        username: response.username,
-        employeeNo: response.employeeNo,
-        displayName: response.displayName,
-        departmentName: response.departmentName,
-        permissions: response.permissions || [],
-      };
-
-      // ---- Step 6: 保存到状态 ----
-      set({
-        currentUser: userData,
-        accessToken: response.accessToken,
-        authStatus: 'verified',
-        authError: null,
-      });
-
-      // ---- Step 7: 持久化 Session ----
-      // 计算 Token 过期时间（24 小时）
-      const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
-
-      await sessionStorageService.saveSession({
-        accessToken: response.accessToken,
-        currentUser: userData,
-        deviceInfo,
-        authStatus: 'verified',
-        authTime: Date.now(),
-        expiresAt,
-      });
-
-      console.log('[AuthStore] Auth successful:', response.username);
-      return true;
-    } catch (error: unknown) {
-      // ---- 处理异常情况 ----
-      const errorCode = getErrorCodeFromError(error);
-      const errorMessage = getErrorMessage(error);
-
-      // 根据错误类型设置状态
-      const authStatus: AuthStatus =
-        errorCode === AuthErrorCode.NETWORK_ERROR ? 'offline' : 'rejected';
-
-      set({
-        authStatus,
-        authError: {
-          code: errorCode,
-          message: errorMessage,
-        },
-      });
-
-      console.log('[AuthStore] Auth failed:', errorCode, errorMessage);
-      return false;
+    if (verifyDesktopUserPromise) {
+      return verifyDesktopUserPromise;
     }
+
+    verifyDesktopUserPromise = (async () => {
+      // 开始验证，先将状态设为 checking
+      set({ authStatus: 'checking', authError: null });
+
+      try {
+        // ---- Step 1: 获取设备信息 ----
+        const deviceInfo = await getDeviceInfo();
+
+        // ---- Step 2: 获取 Windows 用户信息 ----
+        const userInfo = await getCurrentWindowsUser();
+
+        // ---- Step 3: 组合请求参数 ----
+        const requestData = {
+          username: userInfo.username,
+          domain: userInfo.domain || '',
+          computerName: deviceInfo.computerName,
+          deviceId: deviceInfo.deviceId,
+          os: deviceInfo.os,
+          osVersion: deviceInfo.osVersion,
+          appVersion: deviceInfo.appVersion,
+        };
+
+        // ---- Step 4: 调用后端 verify 接口 ----
+        const response: DesktopVerifyResponse = await verifyDesktopApi(requestData);
+
+        // ---- Step 5: 处理响应 ----
+        const userData: DesktopUserInfo = {
+          username: response.username,
+          employeeNo: response.employeeNo,
+          displayName: response.displayName,
+          departmentName: response.departmentName,
+          permissions: response.permissions || [],
+        };
+
+        // ---- Step 6: 保存到状态 ----
+        set({
+          currentUser: userData,
+          accessToken: response.accessToken,
+          authStatus: 'verified',
+          authError: null,
+        });
+
+        // ---- Step 7: 持久化 Session ----
+        // 计算 Token 过期时间（24 小时）
+        const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+
+        await sessionStorageService.saveSession({
+          accessToken: response.accessToken,
+          currentUser: userData,
+          deviceInfo,
+          authStatus: 'verified',
+          authTime: Date.now(),
+          expiresAt,
+        });
+
+        console.log('[AuthStore] Auth successful:', response.username);
+        return true;
+      } catch (error: unknown) {
+        // ---- 处理异常情况 ----
+        const errorCode = getErrorCodeFromError(error);
+        const errorMessage = getErrorMessage(error);
+
+        // 根据错误类型设置状态
+        const authStatus: AuthStatus =
+          errorCode === AuthErrorCode.NETWORK_ERROR ? 'offline' : 'rejected';
+
+        set({
+          authStatus,
+          authError: {
+            code: errorCode,
+            message: errorMessage,
+          },
+        });
+
+        console.log('[AuthStore] Auth failed:', errorCode, errorMessage);
+        return false;
+      }
+    })().finally(() => {
+      verifyDesktopUserPromise = null;
+    });
+
+    return verifyDesktopUserPromise;
   },
 
   /**
@@ -335,12 +366,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
    * 先清除当前 Session，然后重新执行认证流程。
    */
   recoverSession: async () => {
-    console.log('[AuthStore] Recovering session...');
+    if (recoverSessionPromise) {
+      return recoverSessionPromise;
+    }
 
-    // 先清除当前 Session
-    await get().clearSession();
+    recoverSessionPromise = (async () => {
+      console.log('[AuthStore] Recovering session...');
 
-    // 重新执行认证
-    await get().verifyDesktopUser();
+      // 先清除当前 Session
+      await get().clearSession();
+
+      // 重新执行认证
+      await get().verifyDesktopUser();
+    })().finally(() => {
+      recoverSessionPromise = null;
+    });
+
+    return recoverSessionPromise;
   },
 }));
