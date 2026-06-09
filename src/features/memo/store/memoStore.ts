@@ -4,6 +4,7 @@ import {
   createMemo,
   deleteMemoGroup,
   deleteMemo as deleteMemoApi,
+  getMemo,
   listMemoGroups,
   listMemos,
   updateMemo,
@@ -27,17 +28,23 @@ export type MemoScope = "all" | "related" | "favorite";
 interface MemoState {
   memos: Memo[];
   groups: MemoGroup[];
+  memoPage: number;
+  memoTotal: number;
+  hasMoreMemos: boolean;
   selectedMemoId: number | null;
   activeGroupId: number | null;
   activeStatus: Memo["status"] | null;
   activeScope: MemoScope;
   keyword: string;
   isLoading: boolean;
+  isLoadingMore: boolean;
   isSaving: boolean;
   error: string | null;
   fetchInitialData: () => Promise<void>;
   fetchMemos: () => Promise<void>;
+  fetchNextMemos: () => Promise<void>;
   fetchGroups: () => Promise<void>;
+  fetchMemoDetail: (id: number) => Promise<void>;
   setKeyword: (keyword: string) => void;
   setActiveGroup: (groupId: number | null) => void;
   setActiveStatus: (status: Memo["status"] | null) => void;
@@ -68,7 +75,7 @@ function localized(key: Parameters<typeof translate>[0]): string {
   return translate(key, useSettingStore.getState().language);
 }
 
-const MEMO_PAGE_SIZE = 100;
+const MEMO_PAGE_SIZE = 30;
 const memoListRequests = new Map<string, Promise<PageResult<Memo>>>();
 let initialDataRequest: Promise<void> | null = null;
 let groupsRequest: Promise<MemoGroup[]> | null = null;
@@ -85,24 +92,6 @@ function memoListRequestKey(params: MemoListParams): string {
   });
 }
 
-async function listAllMemos(params: MemoListParams): Promise<PageResult<Memo>> {
-  const firstPage = await listMemos({ ...params, page: 1, size: MEMO_PAGE_SIZE });
-  if (firstPage.pages <= 1) {
-    return firstPage;
-  }
-
-  const restPages = await Promise.all(
-    Array.from({ length: firstPage.pages - 1 }, (_, index) =>
-      listMemos({ ...params, page: index + 2, size: MEMO_PAGE_SIZE })
-    )
-  );
-
-  return {
-    ...firstPage,
-    list: [firstPage.list, ...restPages.map((page) => page.list)].flat(),
-  };
-}
-
 function requestMemoList(params: MemoListParams): Promise<PageResult<Memo>> {
   const requestKey = memoListRequestKey(params);
   const runningRequest = memoListRequests.get(requestKey);
@@ -110,7 +99,7 @@ function requestMemoList(params: MemoListParams): Promise<PageResult<Memo>> {
     return runningRequest;
   }
 
-  const request = listAllMemos(params).finally(() => {
+  const request = listMemos(params).finally(() => {
     memoListRequests.delete(requestKey);
   });
   memoListRequests.set(requestKey, request);
@@ -143,15 +132,37 @@ function listParams(state: MemoState) {
   };
 }
 
+function sortMemos(memos: Memo[]): Memo[] {
+  return [...memos].sort((left, right) => {
+    const topDiff = Number(right.isTop) - Number(left.isTop);
+    if (topDiff !== 0) {
+      return topDiff;
+    }
+
+    const timeDiff = new Date(right.updateTime).getTime() - new Date(left.updateTime).getTime();
+    return timeDiff !== 0 ? timeDiff : right.id - left.id;
+  });
+}
+
+function upsertMemo(memos: Memo[], memo: Memo): Memo[] {
+  const exists = memos.some((item) => item.id === memo.id);
+  const next = exists ? memos.map((item) => (item.id === memo.id ? memo : item)) : [memo, ...memos];
+  return sortMemos(next);
+}
+
 export const useMemoStore = create<MemoState>((set, get) => ({
   memos: [],
   groups: [],
+  memoPage: 1,
+  memoTotal: 0,
+  hasMoreMemos: false,
   selectedMemoId: null,
   activeGroupId: null,
   activeStatus: null,
   activeScope: "all",
   keyword: "",
   isLoading: false,
+  isLoadingMore: false,
   isSaving: false,
   error: null,
 
@@ -167,7 +178,10 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         const [groups, result] = await Promise.all([requestMemoGroups(), requestMemoList(listParams(get()))]);
         set((state) => ({
           groups,
-          memos: result.list,
+          memos: sortMemos(result.list),
+          memoPage: result.page,
+          memoTotal: result.total,
+          hasMoreMemos: result.page < result.pages,
           selectedMemoId:
             state.selectedMemoId && result.list.some((memo) => memo.id === state.selectedMemoId)
               ? state.selectedMemoId
@@ -189,7 +203,10 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     try {
       const result = await requestMemoList(listParams(get()));
       set((state) => ({
-        memos: result.list,
+        memos: sortMemos(result.list),
+        memoPage: result.page,
+        memoTotal: result.total,
+        hasMoreMemos: result.page < result.pages,
         // 如果当前选中的 Memo 仍在新列表里，就保持选中；否则自动选中第一条，避免右侧编辑器悬空。
         selectedMemoId:
           state.selectedMemoId && result.list.some((memo) => memo.id === state.selectedMemoId)
@@ -202,10 +219,46 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     }
   },
 
+  fetchNextMemos: async () => {
+    const { isLoading, isLoadingMore, hasMoreMemos, memoPage } = get();
+    if (isLoading || isLoadingMore || !hasMoreMemos) {
+      return;
+    }
+
+    set({ isLoadingMore: true, error: null });
+    try {
+      const result = await requestMemoList({ ...listParams(get()), page: memoPage + 1 });
+      set((state) => {
+        const existingIds = new Set(state.memos.map((memo) => memo.id));
+        const appended = result.list.filter((memo) => !existingIds.has(memo.id));
+        return {
+          memos: sortMemos([...state.memos, ...appended]),
+          memoPage: result.page,
+          memoTotal: result.total,
+          hasMoreMemos: result.page < result.pages,
+          isLoadingMore: false,
+        };
+      });
+    } catch (error) {
+      set({ error: errorMessage(error, localized("memo.errors.load")), isLoadingMore: false });
+    }
+  },
+
   fetchGroups: async () => {
     try {
       const groups = await requestMemoGroups();
       set({ groups });
+    } catch (error) {
+      set({ error: errorMessage(error, localized("memo.errors.load")) });
+    }
+  },
+
+  fetchMemoDetail: async (id) => {
+    try {
+      const memo = await getMemo(id);
+      set((state) => ({
+        memos: state.memos.map((item) => (item.id === id ? { ...item, ...memo } : item)),
+      }));
     } catch (error) {
       set({ error: errorMessage(error, localized("memo.errors.load")) });
     }
@@ -244,9 +297,10 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       });
       const refreshedGroups = await requestMemoGroups();
       set((state) => ({
-        // 创建成功后先把新 Memo 放到当前列表顶部，随后 WebSocket 事件也可能触发一次全量刷新。
-        memos: [memo, ...state.memos],
+        // 创建后按统一规则插入列表：置顶优先，其次按更新时间倒序。
+        memos: upsertMemo(state.memos, memo),
         groups: refreshedGroups,
+        memoTotal: state.memoTotal + 1,
         activeScope: "all",
         selectedMemoId: memo.id,
         isSaving: false,
@@ -266,7 +320,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     try {
       const memo = await updateMemo(selectedMemoId, input);
       set((state) => ({
-        memos: state.memos.map((item) => (item.id === memo.id ? memo : item)),
+        memos: upsertMemo(state.memos, memo),
         isSaving: false,
       }));
     } catch (error) {
@@ -299,6 +353,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         return {
           memos,
           groups: refreshedGroups,
+          memoTotal: Math.max(0, state.memoTotal - 1),
           selectedMemoId: state.selectedMemoId === id ? memos[0]?.id ?? null : state.selectedMemoId,
           isSaving: false,
         };
@@ -321,7 +376,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set((state) => ({
       memos: state.memos
         .map((item) => (item.id === id ? updated : item))
-        .sort((left, right) => Number(right.isTop) - Number(left.isTop) || right.updateTime.localeCompare(left.updateTime)),
+        .sort((left, right) => Number(right.isTop) - Number(left.isTop) || new Date(right.updateTime).getTime() - new Date(left.updateTime).getTime() || right.id - left.id),
     }));
   },
 
@@ -335,7 +390,8 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       memos:
         state.activeScope === "favorite" && !updated.isFavorite
           ? state.memos.filter((item) => item.id !== id)
-          : state.memos.map((item) => (item.id === id ? updated : item)),
+          : upsertMemo(state.memos, updated),
+      memoTotal: state.activeScope === "favorite" && !updated.isFavorite ? Math.max(0, state.memoTotal - 1) : state.memoTotal,
       selectedMemoId:
         state.activeScope === "favorite" && !updated.isFavorite && state.selectedMemoId === id
           ? state.memos.find((item) => item.id !== id)?.id ?? null
@@ -376,7 +432,10 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       set({
         groups,
         activeGroupId,
-        memos: result.list,
+        memos: sortMemos(result.list),
+        memoPage: result.page,
+        memoTotal: result.total,
+        hasMoreMemos: result.page < result.pages,
         selectedMemoId: result.list[0]?.id ?? null,
         isSaving: false,
       });

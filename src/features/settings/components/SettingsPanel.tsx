@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Globe2, Keyboard, RotateCcw, Save, Type } from "lucide-react";
+import { Globe2, Keyboard, RotateCcw, Save } from "lucide-react";
 import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui";
 import { configureGlobalShortcuts } from "@/desktop/shortcut/shortcutManager";
 import { useI18n } from "@/i18n/useI18n";
@@ -82,8 +82,8 @@ export function SettingsPanel() {
         </div>
 
         <div className="p-4">
-          <label className="flex items-center justify-between gap-4 border-b border-border pb-4">
-            <span>
+          <label className="flex items-center justify-between gap-6">
+            <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium text-foreground">{t("settings.language.label")}</span>
               <span className="mt-1 block text-xs text-muted-foreground">
                 {t("settings.language.zh")} / {t("settings.language.ja")}
@@ -97,7 +97,7 @@ export function SettingsPanel() {
                 setError(null);
               }}
             >
-              <SelectTrigger className="min-w-40">
+              <SelectTrigger className="w-40 shrink-0">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -106,19 +106,6 @@ export function SettingsPanel() {
               </SelectContent>
             </Select>
           </label>
-
-          <div className="flex items-center justify-between gap-4 pt-4">
-            <span>
-              <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <Type className="h-4 w-4 text-muted-foreground" />
-                {t("settings.language.font")}
-              </span>
-              <span className="mt-1 block text-xs text-muted-foreground">{t("settings.language.fontHint")}</span>
-            </span>
-            <span className="rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground">
-              {t("settings.language.fontName")}
-            </span>
-          </div>
         </div>
       </section>
 
@@ -129,28 +116,28 @@ export function SettingsPanel() {
         </div>
 
         <div className="p-4">
-          <label className="flex items-center justify-between gap-4 border-b border-border pb-4">
-            <span>
+          <label className="flex items-center justify-between gap-6 border-b border-border pb-4">
+            <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium text-foreground">{t("settings.shortcuts.showMain")}</span>
               <span className="mt-1 block text-xs text-muted-foreground">{t("settings.shortcuts.showMainHint")}</span>
             </span>
             <Input
               value={showMain}
               onChange={(event) => setShowMain(event.target.value)}
-              className="min-w-40"
+              className="w-44 shrink-0"
               placeholder="Ctrl+Alt+M"
             />
           </label>
 
-          <label className="flex items-center justify-between gap-4 border-b border-border py-4">
-            <span>
+          <label className="flex items-center justify-between gap-6 border-b border-border py-4">
+            <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium text-foreground">{t("settings.shortcuts.quickMemo")}</span>
               <span className="mt-1 block text-xs text-muted-foreground">{t("settings.shortcuts.quickMemoHint")}</span>
             </span>
             <Input
               value={quickMemo}
               onChange={(event) => setQuickMemo(event.target.value)}
-              className="min-w-40"
+              className="w-44 shrink-0"
               placeholder="Ctrl+Alt+N"
             />
           </label>

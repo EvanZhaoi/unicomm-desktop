@@ -72,11 +72,15 @@ export function MemoWorkspace() {
     activeScope,
     keyword,
     isLoading,
+    isLoadingMore,
+    hasMoreMemos,
     isSaving,
     error,
     fetchInitialData,
     fetchMemos,
+    fetchNextMemos,
     fetchGroups,
+    fetchMemoDetail,
     setKeyword,
     createMemo,
     updateSelectedMemo,
@@ -97,6 +101,7 @@ export function MemoWorkspace() {
   const [markdownPreviewContent, setMarkdownPreviewContent] = useState("");
   const [contextMenu, setContextMenu] = useState<{ memo: Memo; x: number; y: number } | null>(null);
   const [isDraftDirty, setIsDraftDirty] = useState(false);
+  const [detailReadyMemoId, setDetailReadyMemoId] = useState<number | null>(null);
   const previewSyncTimerRef = useRef<number | null>(null);
   const lastDraftMemoIdRef = useRef<number | null>(null);
   const currentPermission = draft?.currentUserPermission ?? "view";
@@ -125,10 +130,17 @@ export function MemoWorkspace() {
 
     lastDraftMemoIdRef.current = selectedMemoId;
     setIsDraftDirty(false);
+    setDetailReadyMemoId(null);
     setDraft(selectedMemo ? { ...selectedMemo } : null);
     setMarkdownDraft(selectedMemo?.content ?? "");
     setMarkdownPreviewContent(selectedMemo?.content ?? "");
   }, [selectedMemo, selectedMemoId]);
+
+  useEffect(() => {
+    if (selectedMemoId) {
+      void fetchMemoDetail(selectedMemoId).then(() => setDetailReadyMemoId(selectedMemoId));
+    }
+  }, [fetchMemoDetail, selectedMemoId]);
 
   useEffect(() => {
     if (!selectedMemo || isDraftDirty || lastDraftMemoIdRef.current !== selectedMemo.id) {
@@ -211,7 +223,7 @@ export function MemoWorkspace() {
       content: draft.content,
       groupId: canManage ? draft.groupId : undefined,
       status: draft.status,
-      relatedUsers: canManage
+      relatedUsers: canManage && detailReadyMemoId === draft.id
         ? draft.relatedUsers.map((user) => ({
             username: user.username,
             permission: user.permission,
@@ -299,53 +311,68 @@ export function MemoWorkspace() {
             {t("memo.new")}
           </Button>
         )}
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div
+          className="min-h-0 flex-1 overflow-auto"
+          onScroll={(event) => {
+            const target = event.currentTarget;
+            if (target.scrollHeight - target.scrollTop - target.clientHeight < 80) {
+              void fetchNextMemos();
+            }
+          }}
+        >
           {isLoading ? (
             <EmptyMemoState icon={<Search className="h-5 w-5" />} title={t("memo.loading")} />
           ) : memos.length === 0 ? (
             <EmptyMemoState icon={<Inbox className="h-5 w-5" />} title={t("memo.empty")} />
           ) : (
-            memos.map((memo) => (
-              <button
-                key={memo.id}
-                className={cn(
-                  "block w-full border-l-2 border-b border-l-transparent border-border px-3 py-2 text-left transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
-                  selectedMemoId === memo.id && "border-l-primary bg-accent"
-                )}
-                onClick={() => selectMemo(memo.id)}
-                onContextMenu={(event) => openMemoContextMenu(event, memo)}
-              >
-                <div className="flex items-center gap-2">
-                  {memo.isTop && <span className="text-xs text-primary">📌</span>}
-                  <div
-                    className={cn(
-                      "min-w-0 flex-1 truncate text-sm font-medium",
-                      memo.title ? "text-foreground" : "text-muted-foreground"
-                    )}
-                  >
-                    {memo.title || t("memo.title.placeholder")}
-                  </div>
-                  {memo.isFavorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
-                  {memo.isShared && <Users className="h-3.5 w-3.5 text-primary" />}
-                  {memo.isShared && (
-                    <PermissionBadge
-                      permission={memo.currentUserPermission}
-                      compact
-                    />
+            <>
+              {memos.map((memo) => (
+                <button
+                  key={memo.id}
+                  className={cn(
+                    "block w-full border-l-2 border-b border-l-transparent border-border px-3 py-2 text-left transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
+                    selectedMemoId === memo.id && "border-l-primary bg-accent"
                   )}
+                  onClick={() => selectMemo(memo.id)}
+                  onContextMenu={(event) => openMemoContextMenu(event, memo)}
+                >
+                  <div className="flex items-center gap-2">
+                    {memo.isTop && <span className="text-xs text-primary">📌</span>}
+                    <div
+                      className={cn(
+                        "min-w-0 flex-1 truncate text-sm font-medium",
+                        memo.title ? "text-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      {memo.title || t("memo.title.placeholder")}
+                    </div>
+                    {memo.isFavorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
+                    {memo.isShared && <Users className="h-3.5 w-3.5 text-primary" />}
+                    {memo.isShared && (
+                      <PermissionBadge
+                        permission={memo.currentUserPermission}
+                        compact
+                      />
+                    )}
+                  </div>
+                  <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                    {memo.content || t("memo.noContent")}
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>{formatDate(memo.updateTime)}</span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className={cn("h-1.5 w-1.5 rounded-full", memo.status === "todo" ? "bg-yellow-500" : memo.status === "done" ? "bg-blue-500" : "bg-emerald-500")} />
+                      {t(memoStatusKey(memo.status))}
+                    </span>
+                  </div>
+                </button>
+              ))}
+              {(isLoadingMore || hasMoreMemos) && (
+                <div className="flex h-9 items-center justify-center border-b border-border text-[11px] text-muted-foreground">
+                  {isLoadingMore ? t("memo.loading") : ""}
                 </div>
-                <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                  {memo.content || t("memo.noContent")}
-                </div>
-                <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>{formatDate(memo.updateTime)}</span>
-                  <span className="inline-flex items-center gap-1">
-                    <span className={cn("h-1.5 w-1.5 rounded-full", memo.status === "todo" ? "bg-yellow-500" : memo.status === "done" ? "bg-blue-500" : "bg-emerald-500")} />
-                    {t(memoStatusKey(memo.status))}
-                  </span>
-                </div>
-              </button>
-            ))
+              )}
+            </>
           )}
         </div>
       </section>

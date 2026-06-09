@@ -112,7 +112,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
     <aside
       className={cn(
         "flex h-full shrink-0 flex-col border-r border-border bg-card shadow-sm transition-all duration-200 ease-out",
-        collapsed ? "w-14" : "w-[170px]"
+        collapsed ? "w-14" : "w-[190px]"
       )}
     >
       <div className="border-b border-border p-3">
