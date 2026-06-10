@@ -23,7 +23,8 @@
  * @module features/auth/components
  */
 
-import { ShieldAlert, WifiOff } from "lucide-react";
+import { useState } from "react";
+import { KeyRound, ShieldAlert, WifiOff } from "lucide-react";
 import { useI18n } from "@/i18n/useI18n";
 import { useAuthStore } from "../store/authStore";
 
@@ -43,6 +44,9 @@ export function AuthStatusView() {
   const { t } = useI18n();
   // 从 authStore 读取当前认证状态
   const authStatus = useAuthStore((state) => state.authStatus);
+  const authError = useAuthStore((state) => state.authError);
+  const submitDeviceVerification = useAuthStore((state) => state.submitDeviceVerification);
+  const [code, setCode] = useState("");
 
   // 正在验证中
   if (authStatus === "checking") {
@@ -67,6 +71,40 @@ export function AuthStatusView() {
           </div>
           <p className="text-base font-medium text-destructive">{t("auth.rejected.title")}</p>
           <p className="mt-2 text-sm text-muted-foreground">{t("auth.rejected.description")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authStatus === "device_verification") {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background p-8">
+        <div className="w-full max-w-sm rounded-xl border border-border bg-card px-10 py-9 text-center shadow-sm">
+          <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <KeyRound className="h-5 w-5" />
+          </div>
+          <p className="text-base font-medium text-foreground">需要确认当前设备</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            验证码已发送到你的企业邮箱。测试阶段请查看后端日志中的验证码。
+          </p>
+          <input
+            value={code}
+            onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+            className="mt-5 h-9 w-full rounded-md border border-input bg-background px-3 text-center text-sm tracking-[0.35em] text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            placeholder="输入 6 位验证码"
+            inputMode="numeric"
+          />
+          {authError?.message && (
+            <p className="mt-2 text-xs text-destructive">{authError.message}</p>
+          )}
+          <button
+            type="button"
+            disabled={code.length !== 6}
+            onClick={() => void submitDeviceVerification(code)}
+            className="mt-4 h-9 w-full rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            验证并进入
+          </button>
         </div>
       </div>
     );

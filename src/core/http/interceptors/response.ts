@@ -26,7 +26,7 @@ import type { ApiResponse } from '../types/api';
  */
 function shouldRecoverSession(error: AxiosError): boolean {
   const url = error.config?.url || '';
-  return !url.includes('/auth/desktop/verify');
+  return !url.includes('/auth/desktop/verify') && !url.includes('/auth/token/refresh');
 }
 
 /**

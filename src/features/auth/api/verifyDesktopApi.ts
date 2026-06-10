@@ -37,7 +37,19 @@ export interface DesktopVerifyResponse {
   displayName: string;
   departmentName: string;
   permissions: string[];
+  accessToken?: string;
+  deviceVerificationRequired?: boolean;
+  verificationId?: string;
+}
+
+export interface DeviceVerificationRequest {
+  verificationId: string;
+  code: string;
+}
+
+export interface TokenRefreshResponse {
   accessToken: string;
+  expiresAt: number;
 }
 
 /**
@@ -73,4 +85,15 @@ export async function verifyDesktopApi(request: DesktopVerifyRequest): Promise<D
     '/auth/desktop/verify',
     request
   );
+}
+
+export async function verifyDeviceApi(request: DeviceVerificationRequest): Promise<DesktopVerifyResponse> {
+  return client.post<DesktopVerifyResponse, DesktopVerifyResponse>(
+    '/auth/desktop/device/verify',
+    request
+  );
+}
+
+export async function refreshTokenApi(): Promise<TokenRefreshResponse> {
+  return client.post<TokenRefreshResponse, TokenRefreshResponse>('/auth/token/refresh');
 }

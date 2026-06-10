@@ -57,7 +57,7 @@
 /**
  * 认证状态枚举
  */
-export type AuthStatus = 'checking' | 'verified' | 'rejected' | 'offline';
+export type AuthStatus = 'checking' | 'verified' | 'rejected' | 'offline' | 'device_verification';
 
 /**
  * 桌面用户信息结构

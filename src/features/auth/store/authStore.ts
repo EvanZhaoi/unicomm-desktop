@@ -83,9 +83,16 @@ import { create } from 'zustand';
 import type { AuthStatus, DesktopUserInfo, AuthError } from '../types/auth.types';
 import { getDeviceInfo } from '@/desktop/device/DeviceService';
 import { getCurrentWindowsUser } from '@/desktop/user/getCurrentWindowsUser';
-import { verifyDesktopApi, type DesktopVerifyResponse } from '../api/verifyDesktopApi';
-import { AuthError as HttpAuthError, NetworkError } from '@/core/http';
+import {
+  refreshTokenApi,
+  verifyDesktopApi,
+  verifyDeviceApi,
+  type DesktopVerifyResponse,
+  type DesktopVerifyRequest,
+} from '../api/verifyDesktopApi';
+import { ApiError, AuthError as HttpAuthError, NetworkError } from '@/core/http';
 import { sessionStorageService } from '@/services/sessionStorageService';
+import type { DeviceInfo } from '@/desktop/device/DeviceService';
 
 /**
  * 认证状态存储的接口定义
@@ -99,6 +106,8 @@ interface AuthState {
   authStatus: AuthStatus;
   /** 认证错误详情，用于 UI 展示错误信息 */
   authError: AuthError | null;
+  pendingVerificationId: string | null;
+  pendingDeviceInfo: DeviceInfo | null;
 
   /**
    * 初始化认证
@@ -120,6 +129,7 @@ interface AuthState {
    * @returns Promise<boolean> 验证是否成功
    */
   verifyDesktopUser: () => Promise<boolean>;
+  submitDeviceVerification: (code: string) => Promise<boolean>;
 
   /**
    * 清除当前会话
@@ -165,6 +175,9 @@ function getErrorCodeFromError(error: unknown): AuthErrorCode {
   if (error instanceof HttpAuthError) {
     return error.statusCode === 401 ? AuthErrorCode.USER_NOT_FOUND : AuthErrorCode.USER_DISABLED;
   }
+  if (error instanceof ApiError) {
+    return error.statusCode === 401 ? AuthErrorCode.USER_NOT_FOUND : AuthErrorCode.SERVICE_UNAVAILABLE;
+  }
   if (error instanceof NetworkError) {
     return AuthErrorCode.NETWORK_ERROR;
   }
@@ -204,6 +217,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   accessToken: null,
   authStatus: 'checking',
   authError: null,
+  pendingVerificationId: null,
+  pendingDeviceInfo: null,
 
   /**
    * 初始化认证
@@ -227,13 +242,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (savedSession) {
         console.log('[AuthStore] Found saved session, restoring...');
 
-        // 恢复保存的 Session
+        // 先恢复到内存，刷新接口会自动携带当前 token。
         set({
           currentUser: savedSession.currentUser,
           accessToken: savedSession.accessToken,
           authStatus: 'verified',
           authError: null,
         });
+
+        try {
+          const refreshed = await refreshTokenApi();
+          const accessToken = refreshed.accessToken || savedSession.accessToken;
+          const expiresAt = refreshed.expiresAt || Date.now() + 24 * 60 * 60 * 1000;
+          set({ accessToken });
+          await sessionStorageService.updateToken(accessToken, expiresAt);
+        } catch (error) {
+          console.warn('[AuthStore] Saved session refresh failed, performing full auth...', error);
+          await get().clearSession();
+          await get().verifyDesktopUser();
+          return;
+        }
 
         console.log('[AuthStore] Session restored for:', savedSession.currentUser.username);
         return;
@@ -269,7 +297,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const userInfo = await getCurrentWindowsUser();
 
         // ---- Step 3: 组合请求参数 ----
-        const requestData = {
+        const requestData: DesktopVerifyRequest = {
           username: userInfo.username,
           domain: userInfo.domain || '',
           computerName: deviceInfo.computerName,
@@ -282,35 +310,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // ---- Step 4: 调用后端 verify 接口 ----
         const response: DesktopVerifyResponse = await verifyDesktopApi(requestData);
 
-        // ---- Step 5: 处理响应 ----
-        const userData: DesktopUserInfo = {
-          username: response.username,
-          employeeNo: response.employeeNo,
-          displayName: response.displayName,
-          departmentName: response.departmentName,
-          permissions: response.permissions || [],
-        };
+        if (response.deviceVerificationRequired && response.verificationId) {
+          set({
+            authStatus: 'device_verification',
+            authError: {
+              code: AuthErrorCode.DEVICE_NOT_TRUSTED,
+              message: '当前设备需要验证码确认',
+            },
+            pendingVerificationId: response.verificationId,
+            pendingDeviceInfo: deviceInfo,
+          });
+          return false;
+        }
 
-        // ---- Step 6: 保存到状态 ----
-        set({
-          currentUser: userData,
-          accessToken: response.accessToken,
-          authStatus: 'verified',
-          authError: null,
-        });
-
-        // ---- Step 7: 持久化 Session ----
-        // 计算 Token 过期时间（24 小时）
-        const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
-
-        await sessionStorageService.saveSession({
-          accessToken: response.accessToken,
-          currentUser: userData,
-          deviceInfo,
-          authStatus: 'verified',
-          authTime: Date.now(),
-          expiresAt,
-        });
+        await persistVerifiedSession(response, deviceInfo, set);
 
         console.log('[AuthStore] Auth successful:', response.username);
         return true;
@@ -341,6 +354,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return verifyDesktopUserPromise;
   },
 
+  submitDeviceVerification: async (code: string) => {
+    const verificationId = get().pendingVerificationId;
+    const deviceInfo = get().pendingDeviceInfo || await getDeviceInfo();
+    if (!verificationId) {
+      set({
+        authStatus: 'rejected',
+        authError: {
+          code: AuthErrorCode.DEVICE_NOT_TRUSTED,
+          message: '设备验证码流程已失效，请刷新后重试',
+        },
+      });
+      return false;
+    }
+
+    set({ authStatus: 'checking', authError: null });
+    try {
+      const response = await verifyDeviceApi({ verificationId, code });
+      await persistVerifiedSession(response, deviceInfo, set);
+      return true;
+    } catch (error) {
+      set({
+        authStatus: 'device_verification',
+        authError: {
+          code: AuthErrorCode.DEVICE_NOT_TRUSTED,
+          message: getErrorMessage(error),
+        },
+      });
+      return false;
+    }
+  },
+
   /**
    * 清除当前会话
    */
@@ -354,6 +398,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       accessToken: null,
       authStatus: 'checking',
       authError: null,
+      pendingVerificationId: null,
+      pendingDeviceInfo: null,
     });
 
     console.log('[AuthStore] Session cleared');
@@ -385,3 +431,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return recoverSessionPromise;
   },
 }));
+
+async function persistVerifiedSession(
+  response: DesktopVerifyResponse,
+  deviceInfo: DeviceInfo,
+  set: (partial: Partial<AuthState>) => void,
+) {
+  if (!response.accessToken) {
+    throw new Error('认证响应缺少 accessToken');
+  }
+
+  const userData: DesktopUserInfo = {
+    username: response.username,
+    employeeNo: response.employeeNo,
+    displayName: response.displayName,
+    departmentName: response.departmentName,
+    permissions: response.permissions || [],
+  };
+
+  set({
+    currentUser: userData,
+    accessToken: response.accessToken,
+    authStatus: 'verified',
+    authError: null,
+    pendingVerificationId: null,
+    pendingDeviceInfo: null,
+  });
+
+  await sessionStorageService.saveSession({
+    accessToken: response.accessToken,
+    currentUser: userData,
+    deviceInfo,
+    authStatus: 'verified',
+    authTime: Date.now(),
+    expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+  });
+}
