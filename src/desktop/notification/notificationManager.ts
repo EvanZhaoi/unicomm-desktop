@@ -31,11 +31,6 @@ import {
   requestPermission as requestSystemNotificationPermission,
   sendNotification,
 } from '@tauri-apps/plugin-notification';
-import { Channel, invoke, PluginListener } from '@tauri-apps/api/core';
-
-interface NativeNotificationPayload {
-  id?: number;
-}
 
 /**
  * 通知严重级别
@@ -120,6 +115,11 @@ export interface NotificationManagerAPI {
    * 请求通知权限
    */
   requestPermission(): Promise<boolean>;
+
+  /**
+   * 读取并清空待打开的 Memo ID。
+   */
+  consumePendingMemoId(): number | null;
 }
 
 /**
@@ -129,9 +129,7 @@ export interface NotificationManagerAPI {
  */
 class NotificationManager implements NotificationManagerAPI {
   private permissionGranted = false;
-  private actionListener: PluginListener | null = null;
-  private actionListenerPromise: Promise<void> | null = null;
-  private clickHandlers = new Map<number, () => void>();
+  private pendingMemoId: number | null = null;
 
   /**
    * 请求通知权限
@@ -162,8 +160,8 @@ class NotificationManager implements NotificationManagerAPI {
     try {
       const id = Number.parseInt(`${Date.now()}`.slice(-9), 10);
       const notificationKey = `notification_${id}`;
-      if (config.onClick) {
-        this.clickHandlers.set(id, config.onClick);
+      if (config.memoId) {
+        this.pendingMemoId = config.memoId;
       }
 
       sendNotification({
@@ -178,10 +176,6 @@ class NotificationManager implements NotificationManagerAPI {
         autoCancel: true,
       });
 
-      void this.ensureActionListener().catch((error) => {
-        console.error('[NotificationManager] Failed to register notification click listener', error);
-      });
-
       return {
         success: true,
         id: notificationKey,
@@ -194,38 +188,10 @@ class NotificationManager implements NotificationManagerAPI {
     }
   }
 
-  private async ensureActionListener(): Promise<void> {
-    if (this.actionListener) {
-      return;
-    }
-    if (this.actionListenerPromise) {
-      return this.actionListenerPromise;
-    }
-
-    this.actionListenerPromise = (async () => {
-      const handler = new Channel<NativeNotificationPayload>((notification) => {
-        const id = notification.id;
-        if (typeof id !== 'number') {
-          return;
-        }
-
-        const onClick = this.clickHandlers.get(id);
-        this.clickHandlers.delete(id);
-        onClick?.();
-      });
-
-      // 直接使用当前 Tauri notification 插件支持的 snake_case 注册命令，避免官方封装
-      // 先尝试一个命令、失败后 fallback 到另一个命令造成重复 IPC。
-      await invoke('plugin:notification|register_listener', {
-        event: 'actionPerformed',
-        handler,
-      });
-      this.actionListener = new PluginListener('notification', 'actionPerformed', handler.id);
-    })().finally(() => {
-      this.actionListenerPromise = null;
-    });
-
-    return this.actionListenerPromise;
+  consumePendingMemoId(): number | null {
+    const memoId = this.pendingMemoId;
+    this.pendingMemoId = null;
+    return memoId;
   }
 
   /**

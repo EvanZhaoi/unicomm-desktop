@@ -54,6 +54,7 @@ import { QuickMemoWindow } from "./features/memo/components/QuickMemoWindow";
 import { SettingsPanel } from "./features/settings/components/SettingsPanel";
 import { NotificationCenter } from "./features/notify/components/NotificationCenter";
 import { SystemNotificationHost } from "./features/notify/components/SystemNotificationHost";
+import { notificationManager } from "./desktop/notification";
 import { configureGlobalShortcuts } from "./desktop/shortcut/shortcutManager";
 import { useSettingStore } from "./stores/settingStore";
 import { useI18n } from "./i18n/useI18n";
@@ -90,6 +91,27 @@ function AppContent() {
     setActiveView("memo");
     void useMemoStore.getState().focusMemo(memoId);
   }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+
+    void getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+      if (!focused) {
+        return;
+      }
+
+      const memoId = notificationManager.consumePendingMemoId();
+      if (memoId) {
+        openMemoFromNotification(memoId);
+      }
+    }).then((handler) => {
+      unlisten = handler;
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, [openMemoFromNotification]);
 
   /**
    * 初始化认证流程
