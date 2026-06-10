@@ -76,6 +76,12 @@ function localized(key: Parameters<typeof translate>[0]): string {
   return translate(key, useSettingStore.getState().language);
 }
 
+/*
+ * 列表分页策略：
+ * - 首屏只拉 30 条，避免用户有大量 Memo 时启动慢。
+ * - 滚动到底部再调用 fetchNextMemos() 追加下一页。
+ * - 后端允许 size 最大 100，但桌面端默认不一次性拉满，保证主窗口打开速度。
+ */
 const MEMO_PAGE_SIZE = 30;
 const memoListRequests = new Map<string, Promise<PageResult<Memo>>>();
 let initialDataRequest: Promise<void> | null = null;
@@ -97,6 +103,7 @@ function requestMemoList(params: MemoListParams): Promise<PageResult<Memo>> {
   const requestKey = memoListRequestKey(params);
   const runningRequest = memoListRequests.get(requestKey);
   if (runningRequest) {
+    // 同一轮渲染、WebSocket 刷新和用户操作可能请求同一页；复用 Promise，避免接口重复调用。
     return runningRequest;
   }
 
@@ -134,6 +141,8 @@ function listParams(state: MemoState) {
 }
 
 function sortMemos(memos: Memo[]): Memo[] {
+  // 前端排序与后端保持一致：置顶优先、更新时间倒序、id 倒序兜底。
+  // 局部更新后立即排序，避免保存后位置不变、刷新后又跳到上方造成割裂感。
   return [...memos].sort((left, right) => {
     const topDiff = Number(right.isTop) - Number(left.isTop);
     if (topDiff !== 0) {
@@ -170,6 +179,7 @@ function mergeMemoSummaries(current: Memo[], summaries: Memo[]): Memo[] {
 }
 
 function appendMemoSummaries(current: Memo[], summaries: Memo[]): Memo[] {
+  // 追加分页时不覆盖已有详情，避免用户正在编辑的 Memo 被列表摘要冲掉相关人或权限字段。
   const currentMap = new Map(current.map((memo) => [memo.id, memo]));
   const next = [...current];
   for (const summary of summaries) {

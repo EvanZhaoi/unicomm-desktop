@@ -201,6 +201,12 @@ function AppContent() {
       return;
     }
 
+    /*
+     * 实时同步策略：
+     * - WebSocket 事件只表示“某个 Memo/分组发生变化”，不直接把事件体当作最终数据。
+     * - 事件会进入 250ms 防抖窗口，合并短时间内的多次保存/相关人变更，避免界面闪烁和接口连发。
+     * - 自己触发的事件只刷新本地列表，不进入通知中心；其他人的更新才生成桌面通知。
+     */
     let refreshTimer: number | null = null;
     const unsubscribe = realtimeService.subscribe((event) => {
       if (event.module !== "memo") {

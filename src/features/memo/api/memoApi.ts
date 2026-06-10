@@ -11,6 +11,14 @@ import type {
   PageResult,
 } from "../types/memo.types";
 
+/*
+ * Memo API 边界层。
+ *
+ * 约定：
+ * - 组件和 store 只能调用这里的函数，不直接拼接 URL。
+ * - 这里保持“薄封装”，不写业务判断；权限、排序、过滤最终由后端决定。
+ * - client 已经统一处理 baseURL、Sa-Token、错误转换和 Result<T> 解包。
+ */
 export function listMemos(params: MemoListParams): Promise<PageResult<Memo>> {
   return client.get<PageResult<Memo>, PageResult<Memo>>("/memos", { params });
 }
@@ -60,6 +68,7 @@ export function deleteMemoGroup(id: number): Promise<void> {
 }
 
 export function searchMembers(keyword: string, limit = 10): Promise<MemberSearchResult[]> {
+  // 测试阶段该接口由 mock 人员源提供；未来接入企业人员 API 时，前端调用方式保持不变。
   return client.get<MemberSearchResult[], MemberSearchResult[]>("/members/search", {
     params: { keyword, limit },
   });
