@@ -87,6 +87,17 @@ function AppContent() {
     }
   });
 
+  useEffect(() => {
+    const preventNativeContextMenu = (event: Event) => {
+      event.preventDefault();
+    };
+
+    window.addEventListener("contextmenu", preventNativeContextMenu);
+    return () => {
+      window.removeEventListener("contextmenu", preventNativeContextMenu);
+    };
+  }, []);
+
   const openMemoFromNotification = useCallback(async (memoId: number) => {
     if (!(await saveMemoDraftBeforeLeave())) {
       return;
