@@ -246,7 +246,7 @@ fn setup_quick_memo_window(app: &mut tauri::App) -> tauri::Result<()> {
     .inner_size(520.0, 420.0)
     .min_inner_size(420.0, 340.0)
     .resizable(true)
-    .decorations(true)
+    .decorations(false)
     .always_on_top(true)
     .skip_taskbar(true)
     .visible(false)

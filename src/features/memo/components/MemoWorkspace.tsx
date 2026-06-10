@@ -38,7 +38,12 @@ import {
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
 import { searchMembers } from "../api/memoApi";
-import { registerMemoDraftGuard } from "../services/memoDraftGuard";
+import {
+  clearMemoRecoveryDraft,
+  consumeMemoRecoveryDraft,
+  registerMemoDraftGuard,
+  saveMemoRecoveryDraft,
+} from "../services/memoDraftGuard";
 import { useMemoStore } from "../store/memoStore";
 import type { Memo, MemoGroup } from "../types/memo.types";
 import { MemoGroupIcon } from "./MemoGroupIcon";
@@ -136,12 +141,14 @@ export function MemoWorkspace() {
     }
 
     lastDraftMemoIdRef.current = selectedMemoId;
-    setIsDraftDirty(false);
-    setDraftSaveStatus("saved");
+    const recoveryDraft = selectedMemoId ? consumeMemoRecoveryDraft(selectedMemoId) : null;
+    setIsDraftDirty(Boolean(recoveryDraft));
+    setDraftSaveStatus(recoveryDraft ? "error" : "saved");
     setDetailReadyMemoId(null);
-    setDraft(selectedMemo ? { ...selectedMemo } : null);
-    setMarkdownDraft(selectedMemo?.content ?? "");
-    setMarkdownPreviewContent(selectedMemo?.content ?? "");
+    const nextDraft = recoveryDraft ?? (selectedMemo ? { ...selectedMemo } : null);
+    setDraft(nextDraft);
+    setMarkdownDraft(nextDraft?.content ?? "");
+    setMarkdownPreviewContent(nextDraft?.content ?? "");
   }, [selectedMemo, selectedMemoId]);
 
   useEffect(() => {
@@ -212,7 +219,11 @@ export function MemoWorkspace() {
     }, 400);
   };
 
-  const changeEditorMode = (nextMode: typeof editorMode) => {
+  const changeEditorMode = async (nextMode: typeof editorMode) => {
+    if (nextMode !== editorMode) {
+      await saveDraft({ allowLeaveOnError: true });
+    }
+
     setEditorMode(nextMode);
     if (nextMode !== "markdown") {
       if (previewSyncTimerRef.current) {
@@ -223,7 +234,7 @@ export function MemoWorkspace() {
     }
   };
 
-  const saveDraft = useCallback(async (): Promise<boolean> => {
+  const saveDraft = useCallback(async (options?: { allowLeaveOnError?: boolean }): Promise<boolean> => {
     if (!draft || !canEdit || !isDraftDirty) {
       return true;
     }
@@ -244,14 +255,16 @@ export function MemoWorkspace() {
       });
       setIsDraftDirty(false);
       setDraftSaveStatus("saved");
+      clearMemoRecoveryDraft(draft.id);
       return true;
     } catch {
+      saveMemoRecoveryDraft(draft);
       setDraftSaveStatus("error");
-      return false;
+      return Boolean(options?.allowLeaveOnError);
     }
   }, [canEdit, canManage, detailReadyMemoId, draft, isDraftDirty, updateSelectedMemo]);
 
-  useEffect(() => registerMemoDraftGuard(saveDraft), [saveDraft]);
+  useEffect(() => registerMemoDraftGuard(() => saveDraft({ allowLeaveOnError: true })), [saveDraft]);
 
   useEffect(() => {
     const saveWithShortcut = (event: KeyboardEvent) => {
@@ -270,7 +283,7 @@ export function MemoWorkspace() {
       return;
     }
 
-    const saved = await saveDraft();
+    const saved = await saveDraft({ allowLeaveOnError: true });
     if (saved) {
       selectMemo(id);
     }
@@ -281,7 +294,7 @@ export function MemoWorkspace() {
     event.stopPropagation();
 
     if (memo.id !== selectedMemoId) {
-      const saved = await saveDraft();
+      const saved = await saveDraft({ allowLeaveOnError: true });
       if (!saved) {
         return;
       }
@@ -296,13 +309,20 @@ export function MemoWorkspace() {
   };
 
   const search = async () => {
+    await saveDraft({ allowLeaveOnError: true });
     await fetchMemos();
+  };
+
+  const createMemoAfterSaving = async () => {
+    await saveDraft({ allowLeaveOnError: true });
+    await createMemo();
   };
 
   const deleteDraft = async () => {
     if (!draft || !isOwner || !window.confirm(t("memo.delete.confirm"))) {
       return;
     }
+    await saveDraft({ allowLeaveOnError: true });
     await deleteSelectedMemo();
   };
 
@@ -342,7 +362,7 @@ export function MemoWorkspace() {
         </div>
         {activeScope !== "related" && (
           <Button
-            onClick={createMemo}
+            onClick={() => void createMemoAfterSaving()}
             disabled={isSaving}
             className="mx-3 my-2.5 w-[calc(100%-1.5rem)] shrink-0"
           >
@@ -487,7 +507,7 @@ export function MemoWorkspace() {
                   )}
                   <PermissionBadge permission={currentPermission} />
                 </div>
-                <Tabs value={editorMode} onValueChange={(value) => changeEditorMode(value as typeof editorMode)}>
+                <Tabs value={editorMode} onValueChange={(value) => void changeEditorMode(value as typeof editorMode)}>
                   <TabsList className="h-7">
                     <TabsTrigger value="visual" className="h-6 gap-1 px-2.5">
                     <FileText className="h-3 w-3" />
@@ -562,11 +582,17 @@ export function MemoWorkspace() {
                 {canEdit && !canManage && <span>{t("memo.permission.editHint")}</span>}
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => toggleTop(draft.id)} disabled={isSaving}>
+                <Button variant="outline" size="sm" onClick={async () => {
+                  await saveDraft({ allowLeaveOnError: true });
+                  await toggleTop(draft.id);
+                }} disabled={isSaving}>
                   <Pin className={cn(draft.isTop && "fill-primary text-primary")} />
                   {draft.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => toggleFavorite(draft.id)} disabled={isSaving}>
+                <Button variant="outline" size="sm" onClick={async () => {
+                  await saveDraft({ allowLeaveOnError: true });
+                  await toggleFavorite(draft.id);
+                }} disabled={isSaving}>
                   <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />
                   {t("memo.action.favorite")}
                 </Button>
@@ -597,13 +623,16 @@ export function MemoWorkspace() {
           isSaving={isSaving}
           onClose={() => setContextMenu(null)}
           onToggleTop={async () => {
+            await saveDraft({ allowLeaveOnError: true });
             await toggleTop(contextMenu.memo.id);
           }}
           onToggleFavorite={async () => {
+            await saveDraft({ allowLeaveOnError: true });
             await toggleFavorite(contextMenu.memo.id);
           }}
           onDelete={async () => {
             if (window.confirm(t("memo.delete.confirm"))) {
+              await saveDraft({ allowLeaveOnError: true });
               await deleteMemoById(contextMenu.memo.id);
             }
           }}
