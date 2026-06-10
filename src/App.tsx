@@ -94,6 +94,10 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
+    if (isQuickMemoWindow) {
+      return;
+    }
+
     let unlisten: (() => void) | null = null;
 
     void listen<number>("open-memo-from-notification", ({ payload: memoId }) => {
@@ -106,7 +110,7 @@ function AppContent() {
     return () => {
       unlisten?.();
     };
-  }, [openMemoFromNotification]);
+  }, [isQuickMemoWindow, openMemoFromNotification]);
 
   useEffect(() => {
     let unlisten: (() => void) | null = null;

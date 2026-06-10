@@ -93,7 +93,7 @@ fn show_quick_memo_window(app: &AppHandle) {
 #[cfg(windows)]
 fn open_memo_from_notification(app: &AppHandle, memo_id: u64) {
     show_main_window(app);
-    let _ = app.emit("open-memo-from-notification", memo_id);
+    let _ = app.emit_to(MAIN_WINDOW_LABEL, "open-memo-from-notification", memo_id);
 }
 
 #[cfg(windows)]
