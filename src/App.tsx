@@ -39,6 +39,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 // 认证状态管理
 import { useAuthStore } from "./features/auth/store/authStore";
@@ -91,6 +92,21 @@ function AppContent() {
     setActiveView("memo");
     void useMemoStore.getState().focusMemo(memoId);
   }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+
+    void listen<number>("open-memo-from-notification", ({ payload: memoId }) => {
+      notificationManager.consumePendingMemoId();
+      openMemoFromNotification(memoId);
+    }).then((handler) => {
+      unlisten = handler;
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, [openMemoFromNotification]);
 
   useEffect(() => {
     let unlisten: (() => void) | null = null;

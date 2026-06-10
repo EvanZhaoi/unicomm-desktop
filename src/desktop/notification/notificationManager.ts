@@ -29,8 +29,8 @@
 import {
   isPermissionGranted,
   requestPermission as requestSystemNotificationPermission,
-  sendNotification,
 } from '@tauri-apps/plugin-notification';
+import { invoke } from '@tauri-apps/api/core';
 
 /**
  * 通知严重级别
@@ -164,16 +164,10 @@ class NotificationManager implements NotificationManagerAPI {
         this.pendingMemoId = config.memoId;
       }
 
-      sendNotification({
-        id,
+      await invoke('send_memo_notification', {
         title: config.title,
         body: config.body,
-        icon: config.icon,
-        group: 'unicomm.memo',
-        extra: {
-          memoId: config.memoId,
-        },
-        autoCancel: true,
+        memoId: config.memoId,
       });
 
       return {

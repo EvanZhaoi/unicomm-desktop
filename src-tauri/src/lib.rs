@@ -44,7 +44,13 @@ use tauri::{
     webview::WebviewWindowBuilder,
     AppHandle, Manager, RunEvent, WebviewUrl, WindowEvent,
 };
+#[cfg(windows)]
+use tauri::Emitter;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutEvent, ShortcutState};
+#[cfg(not(windows))]
+use tauri_plugin_notification::NotificationExt;
+#[cfg(windows)]
+use tauri_winrt_notification::{Duration, Toast};
 
 /// 注册并暴露 Tauri 命令
 ///
@@ -82,6 +88,86 @@ fn show_quick_memo_window(app: &AppHandle) {
         let _ = window.center();
         let _ = window.set_focus();
     }
+}
+
+#[cfg(windows)]
+fn open_memo_from_notification(app: &AppHandle, memo_id: u64) {
+    show_main_window(app);
+    let _ = app.emit("open-memo-from-notification", memo_id);
+}
+
+#[cfg(windows)]
+fn send_windows_memo_notification(
+    app: AppHandle,
+    title: &str,
+    body: &str,
+    memo_id: Option<u64>,
+) -> Result<(), String> {
+    // Tauri dev 环境通常没有注册 AppUserModelID；用 PowerShell 兼容 ID 可以保证本地调试时 toast 能弹出并触发点击回调。
+    let app_id = if cfg!(dev) {
+        Toast::POWERSHELL_APP_ID.to_string()
+    } else {
+        app.config().identifier.clone()
+    };
+    let app_for_click = app.clone();
+    let memo_id_for_click = memo_id;
+    let toast = Toast::new(&app_id)
+        .title(title)
+        .text1(body)
+        .duration(Duration::Short)
+        .on_activated(move |_| {
+            if let Some(memo_id) = memo_id_for_click {
+                open_memo_from_notification(&app_for_click, memo_id);
+            } else {
+                show_main_window(&app_for_click);
+            }
+            Ok(())
+        });
+
+    toast.show().or_else(|_| {
+        let app_for_click = app.clone();
+        Toast::new(Toast::POWERSHELL_APP_ID)
+            .title(title)
+            .text1(body)
+            .duration(Duration::Short)
+            .on_activated(move |_| {
+                if let Some(memo_id) = memo_id {
+                    open_memo_from_notification(&app_for_click, memo_id);
+                } else {
+                    show_main_window(&app_for_click);
+                }
+                Ok(())
+            })
+            .show()
+    })
+    .map_err(|error| error.to_string())
+}
+
+#[cfg(not(windows))]
+fn send_windows_memo_notification(
+    app: AppHandle,
+    title: &str,
+    body: &str,
+    memo_id: Option<u64>,
+) -> Result<(), String> {
+    let mut notification = app.notification().builder().title(title).body(body);
+    if let Some(memo_id) = memo_id {
+        notification = notification.extra("memoId", memo_id);
+    }
+    notification
+        .show()
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn send_memo_notification(
+    app: AppHandle,
+    title: String,
+    body: String,
+    memo_id: Option<u64>,
+) -> Result<(), String> {
+    send_windows_memo_notification(app, &title, &body, memo_id)
 }
 
 #[tauri::command]
@@ -238,6 +324,7 @@ pub fn run() {
             get_device_info,
             configure_global_shortcuts,
             hide_quick_memo,
+            send_memo_notification,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

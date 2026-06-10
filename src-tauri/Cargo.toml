@@ -21,6 +21,9 @@ serde_json = "1"
 whoami = "1"
 tauri-plugin-notification = "2"
 
+[target.'cfg(windows)'.dependencies]
+tauri-winrt-notification = "0.7.2"
+
 [profile.release]
 panic = "abort"
 codegen-units = 1
