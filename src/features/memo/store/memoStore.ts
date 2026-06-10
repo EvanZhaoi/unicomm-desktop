@@ -367,6 +367,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       }));
     } catch (error) {
       set({ error: errorMessage(error, localized("memo.errors.save")), isSaving: false });
+      throw error;
     }
   },
 

@@ -39,6 +39,7 @@ import type { MemoScope } from "@/features/memo/store/memoStore";
 import type { Memo } from "@/features/memo/types/memo.types";
 import { MemoGroupIcon } from "@/features/memo/components/MemoGroupIcon";
 import { MemoGroupManager } from "@/features/memo/components/MemoGroupManager";
+import { saveMemoDraftBeforeLeave } from "@/features/memo/services/memoDraftGuard";
 import { useNotifyStore } from "@/features/notify/store/notifyStore";
 import { useSettingsStore } from "@/stores/settings.store";
 import type { DesktopUserInfo } from "@/features/auth/types/auth.types";
@@ -52,7 +53,7 @@ interface SidebarProps {
   /** 是否折叠侧边栏（折叠时只显示图标） */
   collapsed?: boolean;
   activeView: AppView;
-  onViewChange: (view: AppView) => void;
+  onViewChange: (view: AppView) => void | Promise<void>;
   currentUser?: DesktopUserInfo | null;
 }
 
@@ -93,19 +94,35 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
   ];
 
   const chooseStatus = async (status: Memo["status"] | null) => {
+    if (!(await saveMemoDraftBeforeLeave())) {
+      return;
+    }
     setActiveStatus(status);
     await fetchMemos();
   };
 
   const chooseGroup = async (groupId: number | null) => {
+    if (!(await saveMemoDraftBeforeLeave())) {
+      return;
+    }
     setActiveGroup(groupId);
     await fetchMemos();
   };
 
   const chooseScope = async (scope: MemoScope) => {
+    if (!(await saveMemoDraftBeforeLeave())) {
+      return;
+    }
     setActiveScope(scope);
-    onViewChange("memo");
+    await onViewChange("memo");
     await fetchMemos();
+  };
+
+  const chooseView = async (view: AppView) => {
+    if (!(await saveMemoDraftBeforeLeave())) {
+      return;
+    }
+    await onViewChange(view);
   };
 
   return (
@@ -246,7 +263,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
           <div className={cn("flex rounded-md bg-muted p-0.5", collapsed && "w-9")}>
             <button
               title={t("nav.settings")}
-              onClick={() => onViewChange("settings")}
+              onClick={() => void chooseView("settings")}
               className={cn(
                 "flex h-8 w-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground",
                 activeView === "settings" && "bg-card text-foreground shadow-sm"
@@ -309,7 +326,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
           )}
           <button
             title={t("nav.notify")}
-            onClick={() => onViewChange("notify")}
+            onClick={() => void chooseView("notify")}
             className={cn(
               "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
               activeView === "notify" && "bg-accent text-foreground"
@@ -338,7 +355,7 @@ interface NavItemProps {
   /** 是否折叠（不显示文字） */
   collapsed?: boolean;
   active?: boolean;
-  onClick?: () => void;
+  onClick?: () => void | Promise<void>;
 }
 
 /**
@@ -441,7 +458,7 @@ interface AppLayoutProps {
   /** 是否折叠侧边栏 */
   sidebarCollapsed?: boolean;
   activeView: AppView;
-  onViewChange: (view: AppView) => void;
+  onViewChange: (view: AppView) => void | Promise<void>;
   currentUser?: DesktopUserInfo | null;
 }
 

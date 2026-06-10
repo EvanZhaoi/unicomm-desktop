@@ -56,6 +56,7 @@ import { SettingsPanel } from "./features/settings/components/SettingsPanel";
 import { NotificationCenter } from "./features/notify/components/NotificationCenter";
 import { SystemNotificationHost } from "./features/notify/components/SystemNotificationHost";
 import { notificationManager } from "./desktop/notification";
+import { saveMemoDraftBeforeLeave } from "./features/memo/services/memoDraftGuard";
 import { configureGlobalShortcuts } from "./desktop/shortcut/shortcutManager";
 import { useSettingStore } from "./stores/settingStore";
 import { useI18n } from "./i18n/useI18n";
@@ -86,7 +87,11 @@ function AppContent() {
     }
   });
 
-  const openMemoFromNotification = useCallback((memoId: number) => {
+  const openMemoFromNotification = useCallback(async (memoId: number) => {
+    if (!(await saveMemoDraftBeforeLeave())) {
+      return;
+    }
+
     const mainWindow = getCurrentWindow();
     void mainWindow.show().then(() => mainWindow.unminimize()).then(() => mainWindow.setFocus());
     setActiveView("memo");
@@ -102,7 +107,7 @@ function AppContent() {
 
     void listen<number>("open-memo-from-notification", ({ payload: memoId }) => {
       notificationManager.consumePendingMemoId();
-      openMemoFromNotification(memoId);
+      void openMemoFromNotification(memoId);
     }).then((handler) => {
       unlisten = handler;
     });
@@ -122,7 +127,7 @@ function AppContent() {
 
       const memoId = notificationManager.consumePendingMemoId();
       if (memoId) {
-        openMemoFromNotification(memoId);
+        void openMemoFromNotification(memoId);
       }
     }).then((handler) => {
       unlisten = handler;

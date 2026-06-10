@@ -1,12 +1,15 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
+  AlertCircle,
+  CheckCircle2,
   Columns2,
   Eye,
   FileCode2,
   FileText,
   Inbox,
+  LoaderCircle,
   Pencil,
   Pin,
   Plus,
@@ -35,6 +38,7 @@ import {
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
 import { searchMembers } from "../api/memoApi";
+import { registerMemoDraftGuard } from "../services/memoDraftGuard";
 import { useMemoStore } from "../store/memoStore";
 import type { Memo, MemoGroup } from "../types/memo.types";
 import { MemoGroupIcon } from "./MemoGroupIcon";
@@ -62,6 +66,8 @@ const memoStatusOptions: Array<{ value: Memo["status"]; colorClassName: string }
   { value: "todo", colorClassName: "bg-yellow-500" },
   { value: "done", colorClassName: "bg-blue-500" },
 ];
+
+type DraftSaveStatus = "saved" | "dirty" | "saving" | "error";
 
 export function MemoWorkspace() {
   const { t } = useI18n();
@@ -101,6 +107,7 @@ export function MemoWorkspace() {
   const [markdownPreviewContent, setMarkdownPreviewContent] = useState("");
   const [contextMenu, setContextMenu] = useState<{ memo: Memo; x: number; y: number } | null>(null);
   const [isDraftDirty, setIsDraftDirty] = useState(false);
+  const [draftSaveStatus, setDraftSaveStatus] = useState<DraftSaveStatus>("saved");
   const [detailReadyMemoId, setDetailReadyMemoId] = useState<number | null>(null);
   const previewSyncTimerRef = useRef<number | null>(null);
   const lastDraftMemoIdRef = useRef<number | null>(null);
@@ -130,6 +137,7 @@ export function MemoWorkspace() {
 
     lastDraftMemoIdRef.current = selectedMemoId;
     setIsDraftDirty(false);
+    setDraftSaveStatus("saved");
     setDetailReadyMemoId(null);
     setDraft(selectedMemo ? { ...selectedMemo } : null);
     setMarkdownDraft(selectedMemo?.content ?? "");
@@ -180,6 +188,7 @@ export function MemoWorkspace() {
 
   const updateDraftContent = (content: string) => {
     setIsDraftDirty(true);
+    setDraftSaveStatus("dirty");
     setDraft((current) => (current ? { ...current, content } : current));
   };
 
@@ -214,24 +223,35 @@ export function MemoWorkspace() {
     }
   };
 
-  const saveDraft = async () => {
-    if (!draft || !canEdit) {
-      return;
+  const saveDraft = useCallback(async (): Promise<boolean> => {
+    if (!draft || !canEdit || !isDraftDirty) {
+      return true;
     }
-    await updateSelectedMemo({
-      title: draft.title,
-      content: draft.content,
-      groupId: canManage ? draft.groupId : undefined,
-      status: draft.status,
-      relatedUsers: canManage && detailReadyMemoId === draft.id
-        ? draft.relatedUsers.map((user) => ({
-            username: user.username,
-            permission: user.permission,
-          }))
-        : undefined,
-    });
-    setIsDraftDirty(false);
-  };
+
+    setDraftSaveStatus("saving");
+    try {
+      await updateSelectedMemo({
+        title: draft.title,
+        content: draft.content,
+        groupId: canManage ? draft.groupId : undefined,
+        status: draft.status,
+        relatedUsers: canManage && detailReadyMemoId === draft.id
+          ? draft.relatedUsers.map((user) => ({
+              username: user.username,
+              permission: user.permission,
+            }))
+          : undefined,
+      });
+      setIsDraftDirty(false);
+      setDraftSaveStatus("saved");
+      return true;
+    } catch {
+      setDraftSaveStatus("error");
+      return false;
+    }
+  }, [canEdit, canManage, detailReadyMemoId, draft, isDraftDirty, updateSelectedMemo]);
+
+  useEffect(() => registerMemoDraftGuard(saveDraft), [saveDraft]);
 
   useEffect(() => {
     const saveWithShortcut = (event: KeyboardEvent) => {
@@ -243,12 +263,31 @@ export function MemoWorkspace() {
 
     window.addEventListener("keydown", saveWithShortcut);
     return () => window.removeEventListener("keydown", saveWithShortcut);
-  }, [draft, canEdit]);
+  }, [saveDraft]);
 
-  const openMemoContextMenu = (event: MouseEvent<HTMLButtonElement>, memo: Memo) => {
+  const selectMemoAfterSaving = async (id: number) => {
+    if (id === selectedMemoId) {
+      return;
+    }
+
+    const saved = await saveDraft();
+    if (saved) {
+      selectMemo(id);
+    }
+  };
+
+  const openMemoContextMenu = async (event: MouseEvent<HTMLButtonElement>, memo: Memo) => {
     event.preventDefault();
     event.stopPropagation();
-    selectMemo(memo.id);
+
+    if (memo.id !== selectedMemoId) {
+      const saved = await saveDraft();
+      if (!saved) {
+        return;
+      }
+      selectMemo(memo.id);
+    }
+
     setContextMenu({
       memo,
       x: event.clientX,
@@ -333,8 +372,8 @@ export function MemoWorkspace() {
                     "block w-full border-l-2 border-b border-l-transparent border-border px-3 py-2 text-left transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
                     selectedMemoId === memo.id && "border-l-primary bg-accent"
                   )}
-                  onClick={() => selectMemo(memo.id)}
-                  onContextMenu={(event) => openMemoContextMenu(event, memo)}
+                  onClick={() => void selectMemoAfterSaving(memo.id)}
+                  onContextMenu={(event) => void openMemoContextMenu(event, memo)}
                 >
                   <div className="flex items-center gap-2">
                     {memo.isTop && <span className="text-xs text-primary">📌</span>}
@@ -383,10 +422,11 @@ export function MemoWorkspace() {
             <div className="shrink-0 border-b border-border bg-card p-4">
               <Input
                 value={draft.title}
-                onChange={(event) => {
-                  setIsDraftDirty(true);
-                  setDraft({ ...draft, title: event.target.value });
-                }}
+                  onChange={(event) => {
+                    setIsDraftDirty(true);
+                    setDraftSaveStatus("dirty");
+                    setDraft({ ...draft, title: event.target.value });
+                  }}
                 disabled={!canEdit}
                 className="h-auto border-0 bg-transparent px-0 py-0 text-xl font-semibold tracking-normal shadow-none focus-visible:border-transparent focus-visible:ring-0"
                 placeholder={t("memo.title.placeholder")}
@@ -403,6 +443,7 @@ export function MemoWorkspace() {
                         value={draft.groupId}
                         onChange={(groupId) => {
                           setIsDraftDirty(true);
+                          setDraftSaveStatus("dirty");
                           setDraft({ ...draft, groupId });
                         }}
                         disabled={!canManage}
@@ -416,6 +457,7 @@ export function MemoWorkspace() {
                         type="button"
                         onClick={() => {
                           setIsDraftDirty(true);
+                          setDraftSaveStatus("dirty");
                           setDraft({ ...draft, status: status.value });
                         }}
                         disabled={!canEdit}
@@ -469,6 +511,7 @@ export function MemoWorkspace() {
               disabled={!canManage}
               onChange={(relatedUsers) => {
                 setIsDraftDirty(true);
+                setDraftSaveStatus("dirty");
                 setDraft({
                   ...draft,
                   relatedUsers,
@@ -513,7 +556,7 @@ export function MemoWorkspace() {
             </div>
             <div className="flex h-9 shrink-0 items-center justify-between border-t border-border bg-card px-3">
               <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{t("memo.editor.saved")}</span>
+                <SaveStatusIndicator status={draftSaveStatus} />
                 {error && <span className="text-destructive">{error}</span>}
                 {!canEdit && <span>{t("memo.permission.viewHint")}</span>}
                 {canEdit && !canManage && <span>{t("memo.permission.editHint")}</span>}
@@ -528,7 +571,7 @@ export function MemoWorkspace() {
                   {t("memo.action.favorite")}
                 </Button>
                 {canEdit && (
-                  <Button size="sm" onClick={saveDraft} disabled={isSaving}>
+                  <Button size="sm" onClick={() => void saveDraft()} disabled={isSaving || draftSaveStatus === "saving" || !isDraftDirty}>
                     <Save />
                     {t("memo.action.save")}
                   </Button>
@@ -705,6 +748,39 @@ function PermissionBadge({
     >
       {normalized === "edit" ? <Pencil className="h-2.5 w-2.5" /> : <Eye className="h-2.5 w-2.5" />}
       {label}
+    </span>
+  );
+}
+
+function SaveStatusIndicator({ status }: { status: DraftSaveStatus }) {
+  const { t } = useI18n();
+  const config = {
+    saved: {
+      icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+      label: t("memo.editor.saved"),
+      className: "text-emerald-600",
+    },
+    dirty: {
+      icon: <AlertCircle className="h-3.5 w-3.5" />,
+      label: t("memo.editor.unsaved"),
+      className: "text-yellow-600",
+    },
+    saving: {
+      icon: <LoaderCircle className="h-3.5 w-3.5 animate-spin" />,
+      label: t("memo.editor.saving"),
+      className: "text-primary",
+    },
+    error: {
+      icon: <AlertCircle className="h-3.5 w-3.5" />,
+      label: t("memo.editor.saveFailed"),
+      className: "text-destructive",
+    },
+  }[status];
+
+  return (
+    <span className={cn("inline-flex items-center gap-1 font-medium", config.className)}>
+      {config.icon}
+      {config.label}
     </span>
   );
 }
