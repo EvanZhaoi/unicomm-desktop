@@ -160,8 +160,6 @@ class NotificationManager implements NotificationManagerAPI {
     }
 
     try {
-      await this.ensureActionListener();
-
       const id = Number.parseInt(`${Date.now()}`.slice(-9), 10);
       const notificationKey = `notification_${id}`;
       if (config.onClick) {
@@ -178,6 +176,10 @@ class NotificationManager implements NotificationManagerAPI {
           memoId: config.memoId,
         },
         autoCancel: true,
+      });
+
+      void this.ensureActionListener().catch((error) => {
+        console.error('[NotificationManager] Failed to register notification click listener', error);
       });
 
       return {
@@ -212,9 +214,9 @@ class NotificationManager implements NotificationManagerAPI {
         onClick?.();
       });
 
-      // 直接使用 Tauri v2 notification 插件的 camelCase 注册命令，避免官方封装先请求
-      // register_listener、失败后再请求 registerListener 造成两条 IPC 记录。
-      await invoke('plugin:notification|registerListener', {
+      // 直接使用当前 Tauri notification 插件支持的 snake_case 注册命令，避免官方封装
+      // 先尝试一个命令、失败后 fallback 到另一个命令造成重复 IPC。
+      await invoke('plugin:notification|register_listener', {
         event: 'actionPerformed',
         handler,
       });
