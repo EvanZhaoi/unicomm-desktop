@@ -1,4 +1,5 @@
 import { useSocketStore } from "@/stores/socket.store";
+import { useAuthStore } from "@/features/auth/store/authStore";
 
 export interface RealtimeEvent {
   /** 后端模块名，当前 Memo 事件固定为 "memo" */
@@ -25,24 +26,27 @@ export interface RealtimeEvent {
 
 type RealtimeListener = (event: RealtimeEvent) => void;
 
-function resolveWsUrl(): string {
+function resolveWsUrl(token: string): string {
   /*
    * WebSocket 地址支持两种来源：
    * 1. VITE_WS_URL 显式指定，方便测试环境、反向代理或独立 ws 域名。
    * 2. 从 VITE_API_BASE_URL 推导，把 http/https 转成 ws/wss，并固定路径为 /ws。
    */
   const explicit = (import.meta as { env?: { VITE_WS_URL?: string } }).env?.VITE_WS_URL;
+  let url: URL;
   if (explicit) {
-    return explicit;
+    url = new URL(explicit);
+  } else {
+    const apiBase =
+      (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL ||
+      "http://localhost:28080/api/v1";
+    url = new URL(apiBase);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    url.pathname = "/ws";
+    url.search = "";
   }
-
-  const apiBase =
-    (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL ||
-    "http://localhost:28080/api/v1";
-  const url = new URL(apiBase);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.pathname = "/ws";
-  url.search = "";
+  // 浏览器 WebSocket 不能自定义认证头，因此使用查询参数承载 Sa-Token。
+  url.searchParams.set("token", token);
   return url.toString();
 }
 
@@ -62,6 +66,12 @@ class RealtimeService {
   private readonly listeners = new Set<RealtimeListener>();
 
   connect() {
+    const token = useAuthStore.getState().accessToken;
+    if (!token) {
+      useSocketStore.getState().setConnected(false);
+      return;
+    }
+
     // 防止 React effect 重复触发时创建多个 WebSocket 连接。
     if (this.socket?.readyState === WebSocket.CONNECTING || this.socket?.readyState === WebSocket.OPEN) {
       return;
@@ -71,7 +81,7 @@ class RealtimeService {
     this.clearReconnectTimer();
     useSocketStore.getState().setConnecting(true);
 
-    const socket = new WebSocket(resolveWsUrl());
+    const socket = new WebSocket(resolveWsUrl(token));
     this.socket = socket;
 
     socket.onopen = () => {
