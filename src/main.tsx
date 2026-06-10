@@ -27,11 +27,13 @@
  */
 
 import { createRoot } from "react-dom/client";
+import { QueryClientProvider } from "@tanstack/react-query";
 // Milkdown Crepe 提供富文本编辑器基础样式；globals.css 会继续覆盖主题变量。
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/frame.css";
 // 导入全局样式（Tailwind CSS 和应用主题等）
 import "./styles/globals.css";
+import { queryClient } from "./core/query/queryClient";
 // 导入根组件
 import App from "./App";
 
@@ -41,4 +43,8 @@ import App from "./App";
  * 获取 DOM 容器并挂载 React 应用。
  * 桌面端直接渲染 App，避免开发环境重复执行 Tauri 副作用。
  */
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <QueryClientProvider client={queryClient}>
+    <App />
+  </QueryClientProvider>
+);

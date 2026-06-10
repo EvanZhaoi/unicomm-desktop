@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { queryClient } from "@/core/query/queryClient";
 import {
   createMemoGroup,
   createMemo,
@@ -12,6 +13,7 @@ import {
   updateMemoGroup,
   updateMemoTop,
 } from "../api/memoApi";
+import { memoQueryKeys } from "../api/memoQueryKeys";
 import { translate } from "@/i18n";
 import { useSettingStore } from "@/stores/settingStore";
 import type {
@@ -67,6 +69,7 @@ interface MemoState {
  *
  * 这里不在 WebSocket 事件里直接拼对象。
  * 当前策略是：用户操作时局部更新，提高即时反馈；远端事件或初始化时重新拉取列表，保证最终一致。
+ * 服务端数据请求通过 TanStack Query 承接，Zustand 只保留当前视图、选中项和编辑状态。
  */
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -81,48 +84,38 @@ function localized(key: Parameters<typeof translate>[0]): string {
  * - 首屏只拉 30 条，避免用户有大量 Memo 时启动慢。
  * - 滚动到底部再调用 fetchNextMemos() 追加下一页。
  * - 后端允许 size 最大 100，但桌面端默认不一次性拉满，保证主窗口打开速度。
+ * - TanStack Query 负责同 key 请求去重和短期缓存，不再手写请求 Map。
  */
 const MEMO_PAGE_SIZE = 30;
-const memoListRequests = new Map<string, Promise<PageResult<Memo>>>();
 let initialDataRequest: Promise<void> | null = null;
-let groupsRequest: Promise<MemoGroup[]> | null = null;
-
-function memoListRequestKey(params: MemoListParams): string {
-  return JSON.stringify({
-    page: params.page ?? 1,
-    size: params.size ?? MEMO_PAGE_SIZE,
-    groupId: params.groupId ?? null,
-    status: params.status ?? null,
-    keyword: params.keyword ?? "",
-    isShared: params.isShared ?? null,
-    isFavorite: params.isFavorite ?? null,
-  });
-}
 
 function requestMemoList(params: MemoListParams): Promise<PageResult<Memo>> {
-  const requestKey = memoListRequestKey(params);
-  const runningRequest = memoListRequests.get(requestKey);
-  if (runningRequest) {
-    // 同一轮渲染、WebSocket 刷新和用户操作可能请求同一页；复用 Promise，避免接口重复调用。
-    return runningRequest;
-  }
-
-  const request = listMemos(params).finally(() => {
-    memoListRequests.delete(requestKey);
+  return queryClient.fetchQuery({
+    queryKey: memoQueryKeys.list(params),
+    queryFn: () => listMemos(params),
   });
-  memoListRequests.set(requestKey, request);
-  return request;
 }
 
 function requestMemoGroups(): Promise<MemoGroup[]> {
-  if (groupsRequest) {
-    return groupsRequest;
-  }
-
-  groupsRequest = listMemoGroups().finally(() => {
-    groupsRequest = null;
+  return queryClient.fetchQuery({
+    queryKey: memoQueryKeys.groups(),
+    queryFn: listMemoGroups,
   });
-  return groupsRequest;
+}
+
+function requestMemoDetail(id: number): Promise<Memo> {
+  return queryClient.fetchQuery({
+    queryKey: memoQueryKeys.detail(id),
+    queryFn: () => getMemo(id),
+  });
+}
+
+function invalidateMemoLists() {
+  void queryClient.invalidateQueries({ queryKey: memoQueryKeys.lists() });
+}
+
+function invalidateMemoGroups() {
+  void queryClient.invalidateQueries({ queryKey: memoQueryKeys.groups() });
 }
 
 function listParams(state: MemoState) {
@@ -293,7 +286,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
 
   fetchMemoDetail: async (id) => {
     try {
-      const memo = await getMemo(id);
+      const memo = await requestMemoDetail(id);
       set((state) => ({
         memos: state.memos.map((item) => (item.id === id ? { ...item, ...memo } : item)),
       }));
@@ -305,7 +298,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
   focusMemo: async (id) => {
     set({ error: null });
     try {
-      const memo = await getMemo(id);
+      const memo = await requestMemoDetail(id);
       set((state) => ({
         // 通知跳转可能打开当前分页/筛选条件之外的 Memo，因此需要插入到本地列表后再选中。
         memos: upsertMemo(state.memos, memo),
@@ -347,6 +340,9 @@ export const useMemoStore = create<MemoState>((set, get) => ({
         groupId: fallbackGroupId,
         status: activeStatus ?? "normal",
       });
+      queryClient.setQueryData(memoQueryKeys.detail(memo.id), memo);
+      invalidateMemoLists();
+      invalidateMemoGroups();
       const refreshedGroups = await requestMemoGroups();
       set((state) => ({
         // 创建后按统一规则插入列表：置顶优先，其次按更新时间倒序。
@@ -371,6 +367,8 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isSaving: true, error: null });
     try {
       const memo = await updateMemo(selectedMemoId, input);
+      queryClient.setQueryData(memoQueryKeys.detail(selectedMemoId), memo);
+      invalidateMemoLists();
       set((state) => ({
         memos: upsertMemo(state.memos, memo),
         isSaving: false,
@@ -399,6 +397,9 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isSaving: true, error: null });
     try {
       await deleteMemoApi(id);
+      queryClient.removeQueries({ queryKey: memoQueryKeys.detail(id) });
+      invalidateMemoLists();
+      invalidateMemoGroups();
       const refreshedGroups = await requestMemoGroups();
       set((state) => {
         // 删除后重新选择列表第一条，保持编辑器始终指向有效 Memo。
@@ -426,6 +427,8 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       return;
     }
     const updated = await updateMemoTop(id, !memo.isTop);
+    queryClient.setQueryData(memoQueryKeys.detail(id), updated);
+    invalidateMemoLists();
     set((state) => ({
       memos: state.memos
         .map((item) => (item.id === id ? updated : item))
@@ -439,6 +442,8 @@ export const useMemoStore = create<MemoState>((set, get) => ({
       return;
     }
     const updated = await updateMemoFavorite(id, !memo.isFavorite);
+    queryClient.setQueryData(memoQueryKeys.detail(id), updated);
+    invalidateMemoLists();
     set((state) => ({
       memos:
         state.activeScope === "favorite" && !updated.isFavorite
@@ -456,6 +461,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isSaving: true, error: null });
     try {
       await createMemoGroup(input);
+      invalidateMemoGroups();
       await get().fetchGroups();
       set({ isSaving: false });
     } catch (error) {
@@ -467,6 +473,7 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isSaving: true, error: null });
     try {
       await updateMemoGroup(id, input);
+      invalidateMemoGroups();
       await get().fetchGroups();
       set({ isSaving: false });
     } catch (error) {
@@ -478,6 +485,8 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     set({ isSaving: true, error: null });
     try {
       await deleteMemoGroup(id);
+      invalidateMemoGroups();
+      invalidateMemoLists();
       const groups = await requestMemoGroups();
       const activeGroupId = get().activeGroupId === id ? null : get().activeGroupId;
       set({ activeGroupId });
