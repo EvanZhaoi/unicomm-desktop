@@ -157,8 +157,32 @@ function AppContent() {
    * 2. 没有有效 Session 时，执行完整桌面认证流程
    */
   useEffect(() => {
-    initAuth();
-  }, [initAuth]);
+    if (!isQuickMemoWindow) {
+      initAuth();
+      return;
+    }
+
+    let unlisten: (() => void) | null = null;
+    const currentWindow = getCurrentWindow();
+
+    void currentWindow.isVisible().then((visible) => {
+      if (visible) {
+        initAuth();
+      }
+    });
+
+    void currentWindow.onFocusChanged(({ payload: focused }) => {
+      if (focused) {
+        initAuth();
+      }
+    }).then((handler) => {
+      unlisten = handler;
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, [initAuth, isQuickMemoWindow]);
 
   useEffect(() => {
     configureGlobalShortcuts(shortcuts).catch((error) => {
