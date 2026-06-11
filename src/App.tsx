@@ -61,6 +61,7 @@ import { configureGlobalShortcuts } from "./desktop/shortcut/shortcutManager";
 import { useSettingStore } from "./stores/settingStore";
 import { useI18n } from "./i18n/useI18n";
 import { realtimeService } from "./services/realtime";
+import { invalidateMemoQueriesForRealtimeEvent } from "./features/memo/api/memoQueryInvalidation";
 import { useMemoStore } from "./features/memo/store/memoStore";
 import { useNotifyStore } from "./features/notify/store/notifyStore";
 
@@ -206,6 +207,7 @@ function AppContent() {
      * - WebSocket 事件只表示“某个 Memo/分组发生变化”，不直接把事件体当作最终数据。
      * - 事件会进入 250ms 防抖窗口，合并短时间内的多次保存/相关人变更，避免界面闪烁和接口连发。
      * - 自己触发的事件只刷新本地列表，不进入通知中心；其他人的更新才生成桌面通知。
+     * - 收到事件后必须先失效 TanStack Query 缓存，否则 fetchQuery 可能返回 staleTime 内的旧数据。
      */
     let refreshTimer: number | null = null;
     const unsubscribe = realtimeService.subscribe((event) => {
@@ -231,6 +233,7 @@ function AppContent() {
 
       refreshTimer = window.setTimeout(() => {
         const memoStore = useMemoStore.getState();
+        invalidateMemoQueriesForRealtimeEvent(event.type, event.memoId ?? null);
         if (event.type.startsWith("group.")) {
           void memoStore.fetchGroups();
         }
