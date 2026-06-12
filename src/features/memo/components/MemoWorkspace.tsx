@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { MouseEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   AlertCircle,
@@ -23,6 +23,10 @@ import {
 } from "lucide-react";
 import {
   Button,
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
   Input,
   RemoteMultiSelect,
   Select,
@@ -110,7 +114,6 @@ export function MemoWorkspace() {
   const [editorMode, setEditorMode] = useState<"visual" | "markdown" | "split">("visual");
   const [markdownDraft, setMarkdownDraft] = useState("");
   const [markdownPreviewContent, setMarkdownPreviewContent] = useState("");
-  const [contextMenu, setContextMenu] = useState<{ memo: Memo; x: number; y: number } | null>(null);
   const [isDraftDirty, setIsDraftDirty] = useState(false);
   const [draftSaveStatus, setDraftSaveStatus] = useState<DraftSaveStatus>("saved");
   const [detailReadyMemoId, setDetailReadyMemoId] = useState<number | null>(null);
@@ -172,18 +175,6 @@ export function MemoWorkspace() {
       if (previewSyncTimerRef.current) {
         window.clearTimeout(previewSyncTimerRef.current);
       }
-    };
-  }, []);
-
-  useEffect(() => {
-    const closeContextMenu = () => setContextMenu(null);
-    window.addEventListener("click", closeContextMenu);
-    window.addEventListener("resize", closeContextMenu);
-    window.addEventListener("scroll", closeContextMenu, true);
-    return () => {
-      window.removeEventListener("click", closeContextMenu);
-      window.removeEventListener("resize", closeContextMenu);
-      window.removeEventListener("scroll", closeContextMenu, true);
     };
   }, []);
 
@@ -289,23 +280,33 @@ export function MemoWorkspace() {
     }
   };
 
-  const openMemoContextMenu = async (event: MouseEvent<HTMLButtonElement>, memo: Memo) => {
-    event.preventDefault();
-    event.stopPropagation();
-
+  const prepareMemoContextMenu = async (memo: Memo) => {
     if (memo.id !== selectedMemoId) {
       const saved = await saveDraft({ allowLeaveOnError: true });
       if (!saved) {
-        return;
+        return false;
       }
       selectMemo(memo.id);
     }
 
-    setContextMenu({
-      memo,
-      x: event.clientX,
-      y: event.clientY,
-    });
+    return true;
+  };
+
+  const toggleMemoTopFromMenu = async (memo: Memo) => {
+    await saveDraft({ allowLeaveOnError: true });
+    await toggleTop(memo.id);
+  };
+
+  const toggleMemoFavoriteFromMenu = async (memo: Memo) => {
+    await saveDraft({ allowLeaveOnError: true });
+    await toggleFavorite(memo.id);
+  };
+
+  const deleteMemoFromMenu = async (memo: Memo) => {
+    if (window.confirm(t("memo.delete.confirm"))) {
+      await saveDraft({ allowLeaveOnError: true });
+      await deleteMemoById(memo.id);
+    }
   };
 
   const search = async () => {
@@ -386,45 +387,69 @@ export function MemoWorkspace() {
           ) : (
             <>
               {memos.map((memo) => (
-                <button
-                  key={memo.id}
-                  className={cn(
-                    "block w-full border-l-2 border-b border-l-transparent border-border px-3 py-2 text-left transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
-                    selectedMemoId === memo.id && "border-l-primary bg-accent"
-                  )}
-                  onClick={() => void selectMemoAfterSaving(memo.id)}
-                  onContextMenu={(event) => void openMemoContextMenu(event, memo)}
-                >
-                  <div className="flex items-center gap-2">
-                    {memo.isTop && <span className="text-xs text-primary">📌</span>}
-                    <div
+                <ContextMenu key={memo.id}>
+                  <ContextMenuTrigger asChild onContextMenu={() => void prepareMemoContextMenu(memo)}>
+                    <button
                       className={cn(
-                        "min-w-0 flex-1 truncate text-sm font-medium",
-                        memo.title ? "text-foreground" : "text-muted-foreground"
+                        "block w-full border-l-2 border-b border-l-transparent border-border px-3 py-2 text-left transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
+                        selectedMemoId === memo.id && "border-l-primary bg-accent"
                       )}
+                      onClick={() => void selectMemoAfterSaving(memo.id)}
                     >
-                      {memo.title || t("memo.title.placeholder")}
-                    </div>
-                    {memo.isFavorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
-                    {memo.isShared && <Users className="h-3.5 w-3.5 text-primary" />}
-                    {memo.isShared && (
-                      <PermissionBadge
-                        permission={memo.currentUserPermission}
-                        compact
-                      />
-                    )}
-                  </div>
-                  <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                    {memo.content || t("memo.noContent")}
-                  </div>
-                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span>{formatDate(memo.updateTime)}</span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className={cn("h-1.5 w-1.5 rounded-full", memo.status === "todo" ? "bg-yellow-500" : memo.status === "done" ? "bg-blue-500" : "bg-emerald-500")} />
-                      {t(memoStatusKey(memo.status))}
-                    </span>
-                  </div>
-                </button>
+                      <div className="flex items-center gap-2">
+                        {memo.isTop && <span className="text-xs text-primary">📌</span>}
+                        <div
+                          className={cn(
+                            "min-w-0 flex-1 truncate text-sm font-medium",
+                            memo.title ? "text-foreground" : "text-muted-foreground"
+                          )}
+                        >
+                          {memo.title || t("memo.title.placeholder")}
+                        </div>
+                        {memo.isFavorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
+                        {memo.isShared && <Users className="h-3.5 w-3.5 text-primary" />}
+                        {memo.isShared && <PermissionBadge permission={memo.currentUserPermission} compact />}
+                      </div>
+                      <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                        {memo.content || t("memo.noContent")}
+                      </div>
+                      <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span>{formatDate(memo.updateTime)}</span>
+                        <span className="inline-flex items-center gap-1">
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              memo.status === "todo"
+                                ? "bg-yellow-500"
+                                : memo.status === "done"
+                                  ? "bg-blue-500"
+                                  : "bg-emerald-500"
+                            )}
+                          />
+                          {t(memoStatusKey(memo.status))}
+                        </span>
+                      </div>
+                    </button>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent className="min-w-36">
+                    <ContextMenuItem disabled={isSaving} onSelect={() => void toggleMemoTopFromMenu(memo)}>
+                      <Pin className={cn("mr-2 h-3.5 w-3.5", memo.isTop && "fill-primary text-primary")} />
+                      {memo.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
+                    </ContextMenuItem>
+                    <ContextMenuItem disabled={isSaving} onSelect={() => void toggleMemoFavoriteFromMenu(memo)}>
+                      <Star className={cn("mr-2 h-3.5 w-3.5", memo.isFavorite && "fill-primary text-primary")} />
+                      {t("memo.action.favorite")}
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      disabled={isSaving || !memo.isOwner}
+                      onSelect={() => void deleteMemoFromMenu(memo)}
+                      className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-3.5 w-3.5" />
+                      {t("memo.action.delete")}
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               ))}
               {(isLoadingMore || hasMoreMemos) && (
                 <div className="flex h-9 items-center justify-center border-b border-border text-[11px] text-muted-foreground">
@@ -615,95 +640,6 @@ export function MemoWorkspace() {
           <EmptyMemoState icon={<FileText className="h-6 w-6" />} title={t("memo.selectOrCreate")} />
         )}
       </main>
-      {contextMenu && (
-        <MemoContextMenu
-          memo={contextMenu.memo}
-          x={contextMenu.x}
-          y={contextMenu.y}
-          isSaving={isSaving}
-          onClose={() => setContextMenu(null)}
-          onToggleTop={async () => {
-            await saveDraft({ allowLeaveOnError: true });
-            await toggleTop(contextMenu.memo.id);
-          }}
-          onToggleFavorite={async () => {
-            await saveDraft({ allowLeaveOnError: true });
-            await toggleFavorite(contextMenu.memo.id);
-          }}
-          onDelete={async () => {
-            if (window.confirm(t("memo.delete.confirm"))) {
-              await saveDraft({ allowLeaveOnError: true });
-              await deleteMemoById(contextMenu.memo.id);
-            }
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function MemoContextMenu({
-  memo,
-  x,
-  y,
-  isSaving,
-  onClose,
-  onToggleTop,
-  onToggleFavorite,
-  onDelete,
-}: {
-  memo: Memo;
-  x: number;
-  y: number;
-  isSaving: boolean;
-  onClose: () => void;
-  onToggleTop: () => Promise<void>;
-  onToggleFavorite: () => Promise<void>;
-  onDelete: () => Promise<void>;
-}) {
-  const { t } = useI18n();
-  const menuLeft = Math.min(x, window.innerWidth - 160);
-  const menuTop = Math.min(y, window.innerHeight - 112);
-
-  const runAction = async (action: () => Promise<void>) => {
-    onClose();
-    await action();
-  };
-
-  return (
-    <div
-      className="fixed z-50 min-w-36 overflow-hidden rounded-md border border-border bg-popover p-1 text-sm text-popover-foreground shadow-lg"
-      style={{ left: Math.max(8, menuLeft), top: Math.max(8, menuTop) }}
-      onClick={(event) => event.stopPropagation()}
-      onContextMenu={(event) => event.preventDefault()}
-    >
-      <button
-        type="button"
-        disabled={isSaving}
-        onClick={() => void runAction(onToggleTop)}
-        className="flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <Pin className={cn("h-3.5 w-3.5", memo.isTop && "fill-primary text-primary")} />
-        {memo.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
-      </button>
-      <button
-        type="button"
-        disabled={isSaving}
-        onClick={() => void runAction(onToggleFavorite)}
-        className="flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <Star className={cn("h-3.5 w-3.5", memo.isFavorite && "fill-primary text-primary")} />
-        {t("memo.action.favorite")}
-      </button>
-      <button
-        type="button"
-        disabled={isSaving || !memo.isOwner}
-        onClick={() => void runAction(onDelete)}
-        className="flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-        {t("memo.action.delete")}
-      </button>
     </div>
   );
 }
