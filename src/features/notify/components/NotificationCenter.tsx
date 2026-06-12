@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Bell, CheckCheck, Circle, Clock3, FlaskConical, Trash2 } from "lucide-react";
 import { Button, Tabs, TabsList, TabsTrigger } from "@/components/ui";
 import { notificationManager } from "@/desktop/notification";
@@ -42,11 +43,28 @@ export function NotificationCenter({ onOpenMemo }: NotificationCenterProps) {
   const { t } = useI18n();
   const { notifications, markRead, markAllRead, removeNotification, clearRead } = useNotifyStore();
   const [filter, setFilter] = useState<NotifyFilter>("all");
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const unreadCount = notifications.filter((item) => !item.read).length;
   const visibleNotifications = useMemo(
     () => notifications.filter((item) => (filter === "unread" ? !item.read : true)),
     [filter, notifications]
   );
+  const rowVirtualizer = useVirtualizer({
+    count: visibleNotifications.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 92,
+    overscan: 6,
+  });
+
+  const openNotificationSource = (item: NotifyItem) => {
+    if (!item.read) {
+      markRead(item.id);
+    }
+    if (item.module === "memo" && item.sourceId) {
+      onOpenMemo(item.sourceId);
+    }
+  };
+
   const sendTestSystemNotification = () => {
     void notificationManager.notify({
       title: t("notify.test.title"),
@@ -102,7 +120,7 @@ export function NotificationCenter({ onOpenMemo }: NotificationCenterProps) {
         </Tabs>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-auto p-4">
+      <main ref={scrollRef} className="min-h-0 flex-1 overflow-auto p-4">
         {visibleNotifications.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center">
@@ -114,14 +132,32 @@ export function NotificationCenter({ onOpenMemo }: NotificationCenterProps) {
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
-            {visibleNotifications.map((item) => (
+          <div
+            className="relative"
+            style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+              const item = visibleNotifications[virtualItem.index];
+              return (
               <article
                 key={item.id}
+                data-index={virtualItem.index}
+                ref={rowVirtualizer.measureElement}
+                onClick={() => openNotificationSource(item)}
+                role={item.sourceId ? "button" : undefined}
+                tabIndex={item.sourceId ? 0 : undefined}
+                onKeyDown={(event) => {
+                  if (item.sourceId && (event.key === "Enter" || event.key === " ")) {
+                    event.preventDefault();
+                    openNotificationSource(item);
+                  }
+                }}
                 className={cn(
-                  "flex gap-3 rounded-md border border-border bg-card p-3 shadow-sm transition-colors",
+                  "absolute left-0 top-0 flex w-full gap-3 rounded-md border border-border bg-card p-3 shadow-sm transition-colors",
+                  item.sourceId && "cursor-pointer hover:border-primary/40 hover:bg-accent/40",
                   !item.read && "border-primary/30 bg-primary/5"
                 )}
+                style={{ transform: `translateY(${virtualItem.start}px)` }}
               >
                 <span className={cn("mt-1 h-2 w-2 shrink-0 rounded-full", levelClassName(item.level))} />
                 <div className="min-w-0 flex-1">
@@ -144,7 +180,15 @@ export function NotificationCenter({ onOpenMemo }: NotificationCenterProps) {
                     </span>
                     <div className="flex items-center gap-1">
                       {!item.read && (
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => markRead(item.id)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            markRead(item.id);
+                          }}
+                        >
                           {t("notify.action.markRead")}
                         </Button>
                       )}
@@ -152,7 +196,10 @@ export function NotificationCenter({ onOpenMemo }: NotificationCenterProps) {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => removeNotification(item.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeNotification(item.id);
+                        }}
                         title={t("notify.action.remove")}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -161,7 +208,8 @@ export function NotificationCenter({ onOpenMemo }: NotificationCenterProps) {
                   </div>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>

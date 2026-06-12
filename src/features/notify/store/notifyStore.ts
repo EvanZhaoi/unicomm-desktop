@@ -1,8 +1,11 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import { translate } from "@/i18n";
 import { useSettingStore } from "@/stores/settingStore";
 import type { RealtimeEvent } from "@/services/realtime";
 import type { NotifyItem, NotifyLevel } from "../types/notify.types";
+
+const MAX_NOTIFICATION_COUNT = 200;
 
 interface NotifyState {
   notifications: NotifyItem[];
@@ -71,71 +74,79 @@ function describeRealtimeEvent(event: RealtimeEvent): { title: string; body: str
   }
 }
 
-export const useNotifyStore = create<NotifyState>((set) => ({
-  notifications: [],
+export const useNotifyStore = create<NotifyState>()(
+  persist(
+    (set) => ({
+      notifications: [],
 
-  addNotification: (notification) => {
-    const item: NotifyItem = {
-      id: notification.id ?? `notify_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      module: notification.module,
-      type: notification.type,
-      title: notification.title,
-      body: notification.body,
-      level: notification.level,
-      read: notification.read ?? false,
-      sourceId: notification.sourceId,
-      sourceTitle: notification.sourceTitle,
-      actorName: notification.actorName,
-      preview: notification.preview,
-      createdAt: notification.createdAt ?? new Date().toISOString(),
-    };
+      addNotification: (notification) => {
+        const item: NotifyItem = {
+          id: notification.id ?? `notify_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          module: notification.module,
+          type: notification.type,
+          title: notification.title,
+          body: notification.body,
+          level: notification.level,
+          read: notification.read ?? false,
+          sourceId: notification.sourceId,
+          sourceTitle: notification.sourceTitle,
+          actorName: notification.actorName,
+          preview: notification.preview,
+          createdAt: notification.createdAt ?? new Date().toISOString(),
+        };
 
-    set((state) => ({
-      notifications: [item, ...state.notifications].slice(0, 100),
-    }));
-  },
+        set((state) => ({
+          notifications: [item, ...state.notifications].slice(0, MAX_NOTIFICATION_COUNT),
+        }));
+      },
 
-  addRealtimeEvent: (event) => {
-    const notification = describeRealtimeEvent(event);
-    if (!notification) {
-      return;
+      addRealtimeEvent: (event) => {
+        const notification = describeRealtimeEvent(event);
+        if (!notification) {
+          return;
+        }
+
+        useNotifyStore.getState().addNotification({
+          module: "memo",
+          type: event.type,
+          title: notification.title,
+          body: notification.body,
+          level: notification.level,
+          sourceId: event.memoId,
+          sourceTitle: event.memoTitle,
+          actorName: event.actorDisplayName,
+          preview: event.contentPreview,
+          createdAt: event.occurredAt,
+        });
+      },
+
+      markRead: (id) => {
+        set((state) => ({
+          notifications: state.notifications.map((item) => (item.id === id ? { ...item, read: true } : item)),
+        }));
+      },
+
+      markAllRead: () => {
+        set((state) => ({
+          notifications: state.notifications.map((item) => ({ ...item, read: true })),
+        }));
+      },
+
+      removeNotification: (id) => {
+        set((state) => ({
+          notifications: state.notifications.filter((item) => item.id !== id),
+        }));
+      },
+
+      clearRead: () => {
+        set((state) => ({
+          notifications: state.notifications.filter((item) => !item.read),
+        }));
+      },
+    }),
+    {
+      name: "unicomm-notifications",
+      partialize: (state) => ({ notifications: state.notifications }),
     }
-
-    useNotifyStore.getState().addNotification({
-      module: "memo",
-      type: event.type,
-      title: notification.title,
-      body: notification.body,
-      level: notification.level,
-      sourceId: event.memoId,
-      sourceTitle: event.memoTitle,
-      actorName: event.actorDisplayName,
-      preview: event.contentPreview,
-      createdAt: event.occurredAt,
-    });
-  },
-
-  markRead: (id) => {
-    set((state) => ({
-      notifications: state.notifications.map((item) => (item.id === id ? { ...item, read: true } : item)),
-    }));
-  },
-
-  markAllRead: () => {
-    set((state) => ({
-      notifications: state.notifications.map((item) => ({ ...item, read: true })),
-    }));
-  },
-
-  removeNotification: (id) => {
-    set((state) => ({
-      notifications: state.notifications.filter((item) => item.id !== id),
-    }));
-  },
-
-  clearRead: () => {
-    set((state) => ({
-      notifications: state.notifications.filter((item) => !item.read),
-    }));
-  },
-}));
+  )
+);

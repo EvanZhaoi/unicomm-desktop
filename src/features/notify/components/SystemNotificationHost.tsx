@@ -12,25 +12,35 @@ interface SystemNotificationHostProps {
 }
 
 export function SystemNotificationHost({ onOpenMemo }: SystemNotificationHostProps) {
-  const latestNotification = useNotifyStore((state) => state.notifications[0]);
+  const notifications = useNotifyStore((state) => state.notifications);
   const sentIdsRef = useRef(new Set<string>());
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (!latestNotification || latestNotification.read || latestNotification.module !== "memo") {
-      return;
-    }
-    if (sentIdsRef.current.has(latestNotification.id)) {
+    if (!initializedRef.current) {
+      notifications.forEach((notification) => sentIdsRef.current.add(notification.id));
+      initializedRef.current = true;
       return;
     }
 
-    sentIdsRef.current.add(latestNotification.id);
+    const nextNotification = notifications.find(
+      (notification) =>
+        notification.module === "memo" &&
+        !notification.read &&
+        !sentIdsRef.current.has(notification.id)
+    );
+    if (!nextNotification) {
+      return;
+    }
+
+    sentIdsRef.current.add(nextNotification.id);
     void notificationManager.notify({
-      title: latestNotification.title,
-      body: latestNotification.body,
-      memoId: latestNotification.sourceId ?? undefined,
-      onClick: latestNotification.sourceId ? () => onOpenMemo(latestNotification.sourceId as number) : undefined,
+      title: nextNotification.title,
+      body: nextNotification.body,
+      memoId: nextNotification.sourceId ?? undefined,
+      onClick: nextNotification.sourceId ? () => onOpenMemo(nextNotification.sourceId as number) : undefined,
     });
-  }, [latestNotification, onOpenMemo]);
+  }, [notifications, onOpenMemo]);
 
   return null;
 }
