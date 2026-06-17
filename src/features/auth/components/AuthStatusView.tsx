@@ -25,6 +25,7 @@
 
 import { useState } from "react";
 import { KeyRound, ShieldAlert, WifiOff } from "lucide-react";
+import { Button, Input } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
 import { useAuthStore } from "../store/authStore";
 
@@ -47,6 +48,11 @@ export function AuthStatusView() {
   const authError = useAuthStore((state) => state.authError);
   const submitDeviceVerification = useAuthStore((state) => state.submitDeviceVerification);
   const [code, setCode] = useState("");
+  const submitCode = () => {
+    if (code.length === 6) {
+      void submitDeviceVerification(code);
+    }
+  };
 
   // 正在验证中
   if (authStatus === "checking") {
@@ -55,7 +61,7 @@ export function AuthStatusView() {
         <div className="rounded-xl border border-border bg-card px-10 py-9 text-center shadow-sm">
           <div className="mx-auto mb-5 h-10 w-10 animate-spin rounded-full border-2 border-primary/25 border-t-primary" />
           <p className="text-base font-medium text-foreground">{t("auth.checking")}</p>
-          <p className="mt-2 text-sm text-muted-foreground">即将进入 UniComm 工作空间</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t("auth.entering")}</p>
         </div>
       </div>
     );
@@ -83,28 +89,31 @@ export function AuthStatusView() {
           <div className="mx-auto mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <KeyRound className="h-5 w-5" />
           </div>
-          <p className="text-base font-medium text-foreground">需要确认当前设备</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            验证码已发送到你的企业邮箱。测试阶段请查看后端日志中的验证码。
-          </p>
-          <input
+          <p className="text-base font-medium text-foreground">{t("auth.device.title")}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t("auth.device.description")}</p>
+          <Input
             value={code}
             onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-            className="mt-5 h-9 w-full rounded-md border border-input bg-background px-3 text-center text-sm tracking-[0.35em] text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-            placeholder="输入 6 位验证码"
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                submitCode();
+              }
+            }}
+            className="mt-5 text-center tracking-[0.35em]"
+            placeholder={t("auth.device.placeholder")}
             inputMode="numeric"
           />
           {authError?.message && (
             <p className="mt-2 text-xs text-destructive">{authError.message}</p>
           )}
-          <button
+          <Button
             type="button"
             disabled={code.length !== 6}
-            onClick={() => void submitDeviceVerification(code)}
-            className="mt-4 h-9 w-full rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={submitCode}
+            className="mt-4 w-full"
           >
-            验证并进入
-          </button>
+            {t("auth.device.submit")}
+          </Button>
         </div>
       </div>
     );
