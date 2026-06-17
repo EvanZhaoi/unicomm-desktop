@@ -121,42 +121,41 @@ export function MemoGroupManager({
 
             <div className="grid max-h-40 grid-cols-6 gap-1 overflow-auto pr-1">
               {memoGroupIconOptions.map((option) => (
-                <button
+                <Button
                   key={option.value}
                   type="button"
+                  variant="outline"
                   className={cn(
-                    "flex h-8 items-center justify-center rounded-md border border-border transition-colors hover:border-primary/60 hover:bg-accent",
+                    "h-8 p-0 hover:border-primary/60",
                     icon === option.value && "border-primary bg-primary/10"
                   )}
                   onClick={() => setIcon(option.value)}
                   title={option.value}
                 >
                   <MemoGroupIcon icon={option.value} color={color} />
-                </button>
+                </Button>
               ))}
             </div>
 
             <div className="flex flex-wrap items-center gap-1">
               {memoGroupColorOptions.map((option) => (
-                <button
+                <Button
                   key={option}
                   type="button"
-                  className={cn(
-                    "flex h-6 w-6 items-center justify-center rounded-md border border-border",
-                    color === option && "ring-2 ring-primary/30"
-                  )}
+                  variant="outline"
+                  className={cn("h-6 w-6 p-0", color === option && "ring-2 ring-primary/30")}
                   style={{ backgroundColor: option }}
                   onClick={() => setColor(option)}
                   title={option}
                 >
                   {color === option && <Check className="h-3.5 w-3.5 text-white" />}
-                </button>
+                </Button>
               ))}
-              <input
+              <Input
                 type="color"
                 value={color}
                 onChange={(event) => setColor(event.target.value)}
-                className="h-6 w-8 cursor-pointer rounded-md border border-border bg-transparent p-0"
+                className="h-6 w-8 cursor-pointer bg-transparent p-0"
                 title={t("memo.group.color.custom")}
               />
             </div>
