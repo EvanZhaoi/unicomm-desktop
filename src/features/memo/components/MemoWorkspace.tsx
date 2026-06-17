@@ -22,6 +22,14 @@ import {
   X,
 } from "lucide-react";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   ContextMenu,
   ContextMenuContent,
@@ -99,7 +107,6 @@ export function MemoWorkspace() {
     setKeyword,
     createMemo,
     updateSelectedMemo,
-    deleteSelectedMemo,
     deleteMemoById,
     selectMemo,
     toggleTop,
@@ -117,6 +124,7 @@ export function MemoWorkspace() {
   const [isDraftDirty, setIsDraftDirty] = useState(false);
   const [draftSaveStatus, setDraftSaveStatus] = useState<DraftSaveStatus>("saved");
   const [detailReadyMemoId, setDetailReadyMemoId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Memo | null>(null);
   const previewSyncTimerRef = useRef<number | null>(null);
   const lastDraftMemoIdRef = useRef<number | null>(null);
   const currentPermission = draft?.currentUserPermission ?? "view";
@@ -302,10 +310,9 @@ export function MemoWorkspace() {
     await toggleFavorite(memo.id);
   };
 
-  const deleteMemoFromMenu = async (memo: Memo) => {
-    if (window.confirm(t("memo.delete.confirm"))) {
-      await saveDraft({ allowLeaveOnError: true });
-      await deleteMemoById(memo.id);
+  const requestDeleteMemo = (memo: Memo) => {
+    if (memo.isOwner) {
+      setDeleteTarget(memo);
     }
   };
 
@@ -319,12 +326,13 @@ export function MemoWorkspace() {
     await createMemo();
   };
 
-  const deleteDraft = async () => {
-    if (!draft || !isOwner || !window.confirm(t("memo.delete.confirm"))) {
+  const confirmDeleteMemo = async () => {
+    if (!deleteTarget) {
       return;
     }
     await saveDraft({ allowLeaveOnError: true });
-    await deleteSelectedMemo();
+    await deleteMemoById(deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   return (
@@ -442,7 +450,7 @@ export function MemoWorkspace() {
                     </ContextMenuItem>
                     <ContextMenuItem
                       disabled={isSaving || !memo.isOwner}
-                      onSelect={() => void deleteMemoFromMenu(memo)}
+                      onSelect={() => requestDeleteMemo(memo)}
                       className="text-destructive focus:bg-destructive/10 focus:text-destructive"
                     >
                       <Trash2 className="mr-2 h-3.5 w-3.5" />
@@ -628,7 +636,7 @@ export function MemoWorkspace() {
                   </Button>
                 )}
                 {canManage && (
-                  <Button variant="destructive" size="sm" onClick={deleteDraft} disabled={isSaving}>
+                  <Button variant="destructive" size="sm" onClick={() => draft && requestDeleteMemo(draft)} disabled={isSaving}>
                     <Trash2 />
                     {t("memo.action.delete")}
                   </Button>
@@ -640,6 +648,27 @@ export function MemoWorkspace() {
           <EmptyMemoState icon={<FileText className="h-6 w-6" />} title={t("memo.selectOrCreate")} />
         )}
       </main>
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("memo.delete.title")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("memo.delete.confirm")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSaving}>{t("memo.delete.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isSaving}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmDeleteMemo();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("memo.delete.submit")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

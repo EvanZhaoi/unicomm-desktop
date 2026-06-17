@@ -2,6 +2,19 @@ export { Button, buttonVariants } from "./button";
 export { Badge, badgeVariants } from "./badge";
 export { Card, CardHeader, CardTitle, CardContent } from "./card";
 export {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogOverlay,
+  AlertDialogPortal,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "./alert-dialog";
+export {
   ContextMenu,
   ContextMenuCheckboxItem,
   ContextMenuContent,
