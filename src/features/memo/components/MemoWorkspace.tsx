@@ -48,6 +48,7 @@ import {
   type RemoteSelectOption,
 } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
+import { useDocumentShortcut } from "@/hooks/useDocumentShortcut";
 import { cn } from "@/utils/cn";
 import { searchMembers } from "../api/memoApi";
 import {
@@ -265,17 +266,11 @@ export function MemoWorkspace() {
 
   useEffect(() => registerMemoDraftGuard(() => saveDraft({ allowLeaveOnError: true })), [saveDraft]);
 
-  useEffect(() => {
-    const saveWithShortcut = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
-        event.preventDefault();
-        void saveDraft();
-      }
-    };
-
-    window.addEventListener("keydown", saveWithShortcut);
-    return () => window.removeEventListener("keydown", saveWithShortcut);
-  }, [saveDraft]);
+  useDocumentShortcut({
+    key: "s",
+    ctrlOrMeta: true,
+    onTrigger: () => void saveDraft(),
+  });
 
   const selectMemoAfterSaving = async (id: number) => {
     if (id === selectedMemoId) {
