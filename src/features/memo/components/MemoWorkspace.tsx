@@ -397,9 +397,11 @@ export function MemoWorkspace() {
               {memos.map((memo) => (
                 <ContextMenu key={memo.id}>
                   <ContextMenuTrigger asChild onContextMenu={() => void prepareMemoContextMenu(memo)}>
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
                       className={cn(
-                        "block w-full border-l-2 border-b border-l-transparent border-border px-3 py-2 text-left transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
+                        "h-auto w-full justify-start rounded-none border-l-2 border-b border-l-transparent border-border px-3 py-2 text-left font-normal transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
                         selectedMemoId === memo.id && "border-l-primary bg-accent"
                       )}
                       onClick={() => void selectMemoAfterSaving(memo.id)}
@@ -437,7 +439,7 @@ export function MemoWorkspace() {
                           {t(memoStatusKey(memo.status))}
                         </span>
                       </div>
-                    </button>
+                    </Button>
                   </ContextMenuTrigger>
                   <ContextMenuContent className="min-w-36">
                     <ContextMenuItem disabled={isSaving} onSelect={() => void toggleMemoTopFromMenu(memo)}>
@@ -505,9 +507,10 @@ export function MemoWorkspace() {
                   )}
                   <div className="flex h-6 shrink-0 items-center rounded-md bg-muted p-0.5">
                     {memoStatusOptions.map((status) => (
-                      <button
+                      <Button
                         key={status.value}
                         type="button"
+                        variant="ghost"
                         onClick={() => {
                           setIsDraftDirty(true);
                           setDraftSaveStatus("dirty");
@@ -515,7 +518,7 @@ export function MemoWorkspace() {
                         }}
                         disabled={!canEdit}
                         className={cn(
-                          "inline-flex h-5 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-xs font-medium transition-colors hover:text-foreground",
+                          "h-5 gap-1.5 whitespace-nowrap rounded-md px-2 text-xs font-medium hover:text-foreground",
                           draft.status === status.value
                             ? "bg-card text-foreground shadow-sm"
                             : "text-muted-foreground"
@@ -523,7 +526,7 @@ export function MemoWorkspace() {
                       >
                         <span className={cn("h-1.5 w-1.5 rounded-full", status.colorClassName)} />
                         {t(memoStatusKey(status.value))}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                   <span className="truncate">{t("memo.updatedAt", { time: formatDate(draft.updateTime) })}</span>
@@ -871,8 +874,9 @@ function RelatedUsersEditor({
               <PermissionBadge permission={option.permission} compact />
             ) : (
               <>
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onMouseDown={(event) => event.stopPropagation()}
                   onClick={() =>
                     updateUsers(
@@ -884,25 +888,26 @@ function RelatedUsersEditor({
                     )
                   }
                   className={cn(
-                    "ml-1 inline-flex h-4 items-center gap-0.5 rounded-sm border px-1 text-[10px] transition-colors",
+                    "ml-1 h-4 gap-0.5 rounded-sm px-1 text-[10px] [&_svg]:size-2.5",
                     option.permission === "edit"
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-border bg-background text-muted-foreground hover:text-foreground"
+                      ? "border-primary/30 bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                   title={option.permission === "edit" ? t("memo.permission.edit") : t("memo.permission.view")}
                 >
                   {option.permission === "edit" ? <Pencil className="h-2.5 w-2.5" /> : <Eye className="h-2.5 w-2.5" />}
                   {option.permission === "edit" ? t("memo.permission.editShort") : t("memo.permission.viewShort")}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="ghost"
                   onMouseDown={(event) => event.stopPropagation()}
                   onClick={actions.remove}
-                  className="shrink-0 rounded-sm text-muted-foreground transition-colors hover:text-destructive"
+                  className="h-4 w-4 shrink-0 rounded-sm p-0 text-muted-foreground hover:bg-transparent hover:text-destructive [&_svg]:size-3"
                   title={t("memo.relatedUsers.remove")}
                 >
                   <X className="h-3 w-3" />
-                </button>
+                </Button>
               </>
             )}
           </span>
