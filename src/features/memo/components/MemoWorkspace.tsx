@@ -1,17 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   Columns2,
   Eye,
   FileCode2,
   FileText,
-  Inbox,
   Pencil,
   Pin,
-  Plus,
   Save,
-  Search,
   Star,
   Trash2,
   UserPlus,
@@ -28,10 +24,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
   Input,
   RemoteMultiSelect,
   Select,
@@ -56,26 +48,14 @@ import {
 } from "../services/memoDraftGuard";
 import { useMemoStore } from "../store/memoStore";
 import type { Memo, MemoGroup } from "../types/memo.types";
+import { formatMemoDate, memoStatusKey } from "../utils/memoFormatters";
+import { MemoEmptyState } from "./MemoEmptyState";
 import { MemoGroupIcon } from "./MemoGroupIcon";
+import { MemoListPanel } from "./MemoListPanel";
+import { MemoPermissionBadge } from "./MemoPermissionBadge";
 import { MemoSaveStatusIndicator, type DraftSaveStatus } from "./MemoSaveStatusIndicator";
 
 const MemoRichEditor = lazy(() => import("./MemoRichEditor"));
-
-function formatDate(value: string): string {
-  if (!value) {
-    return "";
-  }
-  return new Date(value).toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function memoStatusKey(status: Memo["status"]) {
-  return `memo.status.${status}` as const;
-}
 
 const memoStatusOptions: Array<{ value: Memo["status"]; colorClassName: string }> = [
   { value: "normal", colorClassName: "bg-emerald-500" },
@@ -331,136 +311,25 @@ export function MemoWorkspace() {
       className="grid h-full grid-cols-[280px_minmax(0,1fr)] overflow-hidden bg-background"
       onContextMenu={(event) => event.preventDefault()}
     >
-      <section className="flex min-h-0 flex-col border-r border-border bg-card">
-        <div className="shrink-0 border-b border-border p-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  search();
-                }
-              }}
-              className="pl-8 pr-9"
-              placeholder={t("memo.search.placeholder")}
-            />
-            {keyword && (
-              <Button
-                type="button"
-                onClick={() => setKeyword("")}
-                variant="ghost"
-                size="icon"
-                className="absolute right-2 top-1.5 h-5 w-5 text-muted-foreground"
-                title={t("memo.search")}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            )}
-          </div>
-        </div>
-        {activeScope !== "related" && (
-          <Button
-            onClick={() => void createMemoAfterSaving()}
-            disabled={isSaving}
-            className="mx-3 my-2.5 w-[calc(100%-1.5rem)] shrink-0"
-          >
-            <Plus className="h-4 w-4" />
-            {t("memo.new")}
-          </Button>
-        )}
-        <div
-          className="min-h-0 flex-1 overflow-auto"
-          onScroll={(event) => {
-            const target = event.currentTarget;
-            if (target.scrollHeight - target.scrollTop - target.clientHeight < 80) {
-              void fetchNextMemos();
-            }
-          }}
-        >
-          {isLoading ? (
-            <EmptyMemoState icon={<Search className="h-5 w-5" />} title={t("memo.loading")} />
-          ) : memos.length === 0 ? (
-            <EmptyMemoState icon={<Inbox className="h-5 w-5" />} title={t("memo.empty")} />
-          ) : (
-            <>
-              {memos.map((memo) => (
-                <ContextMenu key={memo.id}>
-                  <ContextMenuTrigger asChild onContextMenu={() => void prepareMemoContextMenu(memo)}>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className={cn(
-                        "h-auto w-full justify-start rounded-none border-l-2 border-b border-l-transparent border-border px-3 py-2 text-left font-normal transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
-                        selectedMemoId === memo.id && "border-l-primary bg-accent"
-                      )}
-                      onClick={() => void selectMemoAfterSaving(memo.id)}
-                    >
-                      <div className="flex items-center gap-2">
-                        {memo.isTop && <span className="text-xs text-primary">📌</span>}
-                        <div
-                          className={cn(
-                            "min-w-0 flex-1 truncate text-sm font-medium",
-                            memo.title ? "text-foreground" : "text-muted-foreground"
-                          )}
-                        >
-                          {memo.title || t("memo.title.placeholder")}
-                        </div>
-                        {memo.isFavorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
-                        {memo.isShared && <Users className="h-3.5 w-3.5 text-primary" />}
-                        {memo.isShared && <PermissionBadge permission={memo.currentUserPermission} compact />}
-                      </div>
-                      <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                        {memo.content || t("memo.noContent")}
-                      </div>
-                      <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
-                        <span>{formatDate(memo.updateTime)}</span>
-                        <span className="inline-flex items-center gap-1">
-                          <span
-                            className={cn(
-                              "h-1.5 w-1.5 rounded-full",
-                              memo.status === "todo"
-                                ? "bg-yellow-500"
-                                : memo.status === "done"
-                                  ? "bg-blue-500"
-                                  : "bg-emerald-500"
-                            )}
-                          />
-                          {t(memoStatusKey(memo.status))}
-                        </span>
-                      </div>
-                    </Button>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent className="min-w-36">
-                    <ContextMenuItem disabled={isSaving} onSelect={() => void toggleMemoTopFromMenu(memo)}>
-                      <Pin className={cn("mr-2 h-3.5 w-3.5", memo.isTop && "fill-primary text-primary")} />
-                      {memo.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
-                    </ContextMenuItem>
-                    <ContextMenuItem disabled={isSaving} onSelect={() => void toggleMemoFavoriteFromMenu(memo)}>
-                      <Star className={cn("mr-2 h-3.5 w-3.5", memo.isFavorite && "fill-primary text-primary")} />
-                      {t("memo.action.favorite")}
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      disabled={isSaving || !memo.isOwner}
-                      onSelect={() => requestDeleteMemo(memo)}
-                      className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-3.5 w-3.5" />
-                      {t("memo.action.delete")}
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
-              ))}
-              {(isLoadingMore || hasMoreMemos) && (
-                <div className="flex h-9 items-center justify-center border-b border-border text-[11px] text-muted-foreground">
-                  {isLoadingMore ? t("memo.loading") : ""}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </section>
+      <MemoListPanel
+        memos={memos}
+        selectedMemoId={selectedMemoId}
+        activeScope={activeScope}
+        keyword={keyword}
+        isLoading={isLoading}
+        isLoadingMore={isLoadingMore}
+        hasMoreMemos={hasMoreMemos}
+        isSaving={isSaving}
+        onKeywordChange={setKeyword}
+        onSearch={() => void search()}
+        onCreateMemo={() => void createMemoAfterSaving()}
+        onLoadMore={() => void fetchNextMemos()}
+        onSelectMemo={(id) => void selectMemoAfterSaving(id)}
+        onPrepareContextMenu={(memo) => void prepareMemoContextMenu(memo)}
+        onToggleTop={(memo) => void toggleMemoTopFromMenu(memo)}
+        onToggleFavorite={(memo) => void toggleMemoFavoriteFromMenu(memo)}
+        onRequestDelete={requestDeleteMemo}
+      />
 
       <main className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-background">
         {draft ? (
@@ -520,7 +389,7 @@ export function MemoWorkspace() {
                       </Button>
                     ))}
                   </div>
-                  <span className="truncate">{t("memo.updatedAt", { time: formatDate(draft.updateTime) })}</span>
+                  <span className="truncate">{t("memo.updatedAt", { time: formatMemoDate(draft.updateTime) })}</span>
                   {(draft.updateDisplayName || draft.updateUsername) && (
                     <span className="truncate">
                       {t("memo.updatedBy", { name: draft.updateDisplayName || draft.updateUsername || "-" })}
@@ -532,7 +401,7 @@ export function MemoWorkspace() {
                       {t("memo.sharedBy", { username: draft.ownerUsername })}
                     </span>
                   )}
-                  <PermissionBadge permission={currentPermission} />
+                  <MemoPermissionBadge permission={currentPermission} />
                 </div>
                 <Tabs value={editorMode} onValueChange={(value) => void changeEditorMode(value as typeof editorMode)}>
                   <TabsList className="h-7">
@@ -575,7 +444,7 @@ export function MemoWorkspace() {
                 )}
               >
                 {editorMode !== "markdown" && (
-                  <Suspense fallback={<EmptyMemoState icon={<FileText className="h-5 w-5" />} title={t("memo.loading")} />}>
+                  <Suspense fallback={<MemoEmptyState icon={<FileText className="h-5 w-5" />} title={t("memo.loading")} />}>
                     <MemoRichEditor
                       key={draft.id}
                       value={editorMode === "split" ? markdownPreviewContent : draft.content}
@@ -639,7 +508,7 @@ export function MemoWorkspace() {
             </div>
           </>
         ) : (
-          <EmptyMemoState icon={<FileText className="h-6 w-6" />} title={t("memo.selectOrCreate")} />
+          <MemoEmptyState icon={<FileText className="h-6 w-6" />} title={t("memo.selectOrCreate")} />
         )}
       </main>
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -699,44 +568,6 @@ function MemoGroupDropdown({
         ))}
       </SelectContent>
     </Select>
-  );
-}
-
-function PermissionBadge({
-  permission,
-  compact = false,
-}: {
-  permission: Memo["currentUserPermission"];
-  compact?: boolean;
-}) {
-  const { t } = useI18n();
-  const normalized = permission === "owner" || permission === "edit" ? permission : "view";
-  const label =
-    normalized === "owner"
-      ? t(compact ? "memo.permission.ownerShort" : "memo.permission.owner")
-      : normalized === "edit"
-        ? t(compact ? "memo.permission.editShort" : "memo.permission.edit")
-        : t(compact ? "memo.permission.viewShort" : "memo.permission.view");
-  const title =
-    normalized === "owner"
-      ? t("memo.permission.manageHint")
-      : normalized === "edit"
-        ? t("memo.permission.editHint")
-        : t("memo.permission.viewHint");
-
-  return (
-    <span
-      className={cn(
-        "inline-flex h-5 shrink-0 items-center gap-1 rounded-md border px-1.5 text-[10px] font-medium",
-        normalized === "owner" && "border-primary/30 bg-primary/10 text-primary",
-        normalized === "edit" && "border-blue-500/30 bg-blue-500/10 text-blue-600",
-        normalized === "view" && "border-border bg-muted text-muted-foreground"
-      )}
-      title={title}
-    >
-      {normalized === "edit" ? <Pencil className="h-2.5 w-2.5" /> : <Eye className="h-2.5 w-2.5" />}
-      {label}
-    </span>
   );
 }
 
@@ -829,7 +660,7 @@ function RelatedUsersEditor({
             <span className="truncate">{option.label}</span>
             {option.meta && <span className="shrink-0 text-muted-foreground">{option.meta}</span>}
             {actions.disabled ? (
-              <PermissionBadge permission={option.permission} compact />
+              <MemoPermissionBadge permission={option.permission} compact />
             ) : (
               <>
                 <Button
@@ -879,19 +710,6 @@ function RelatedUsersEditor({
           </span>
         )}
       />
-    </div>
-  );
-}
-
-function EmptyMemoState({ icon, title }: { icon: ReactNode; title: string }) {
-  return (
-    <div className="flex h-full items-center justify-center p-4">
-      <div className="text-center">
-        <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm">
-          {icon}
-        </div>
-        <p className="text-sm font-medium text-foreground">{title}</p>
-      </div>
     </div>
   );
 }
