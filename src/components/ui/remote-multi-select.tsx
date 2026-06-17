@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
+import { Button } from "./button";
 import { Command, CommandEmpty, CommandItem, CommandList } from "@/components/ui/command";
+import { Input } from "./input";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/utils/cn";
 
@@ -146,20 +148,21 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
                     <span className="truncate">{item.label}</span>
                     {item.meta && <span className="shrink-0 text-muted-foreground">{item.meta}</span>}
                     {!disabled && (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
                         onClick={() => removeOption(item)}
-                        className="shrink-0 rounded-sm text-muted-foreground transition-colors hover:text-destructive"
+                        className="h-4 w-4 shrink-0 rounded-sm p-0 text-muted-foreground hover:bg-transparent hover:text-destructive [&_svg]:size-3"
                       >
                         <X className="h-3 w-3" />
-                      </button>
+                      </Button>
                     )}
                   </span>
                 )
               )}
 
               {!disabled && (
-                <input
+                <Input
                   ref={inputRef}
                   value={keyword}
                   onChange={(event) => setKeyword(event.target.value)}
@@ -177,7 +180,7 @@ export function RemoteMultiSelect<TOption extends RemoteSelectOption>({
                       setOpen(false);
                     }
                   }}
-                  className="h-6 min-w-[140px] flex-1 border-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
+                  className="h-6 min-w-[140px] flex-1 border-0 bg-transparent px-0 py-0 text-xs shadow-none focus-visible:border-transparent focus-visible:ring-0"
                   placeholder={value.length === 0 ? placeholder : undefined}
                 />
               )}
