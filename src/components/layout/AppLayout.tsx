@@ -166,37 +166,40 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
               <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("memo.view.favorite")}
               </div>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => chooseScope(activeScope === "favorite" ? "all" : "favorite")}
                 className={cn(
-                  "flex h-7 w-full items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                  "h-7 w-full justify-start gap-2 px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground",
                   activeScope === "favorite" && "bg-accent font-medium text-foreground"
                 )}
               >
                 <Star className={cn("h-3.5 w-3.5 shrink-0", activeScope === "favorite" && "fill-primary text-primary")} />
                 <span className="min-w-0 flex-1 truncate text-left">{t("memo.view.favorite")}</span>
-              </button>
+              </Button>
             </div>
 
             <div className="mt-3 shrink-0 space-y-1">
               <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("nav.status")}
               </div>
-            <div className="mx-1 grid grid-cols-2 gap-1 rounded-md bg-muted p-1">
-              {statusFilters.map((filter) => (
-                <button
-                  key={filter.value ?? "all"}
-                  onClick={() => chooseStatus(filter.value)}
-                  className={cn(
-                    "h-6 rounded-sm px-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground whitespace-nowrap",
-                    activeStatus === filter.value && "bg-primary text-primary-foreground hover:text-primary-foreground"
-                  )}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div>
+              <div className="mx-1 grid grid-cols-2 gap-1 rounded-md bg-muted p-1">
+                {statusFilters.map((filter) => (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    key={filter.value ?? "all"}
+                    onClick={() => chooseStatus(filter.value)}
+                    className={cn(
+                      "h-6 rounded-sm px-1 text-[11px] text-muted-foreground hover:text-foreground whitespace-nowrap",
+                      activeStatus === filter.value && "bg-primary text-primary-foreground hover:text-primary-foreground"
+                    )}
+                  >
+                    {filter.label}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             {activeScope !== "related" && (
@@ -212,18 +215,19 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
                     onDelete={deleteGroup}
                   />
                 </div>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => chooseGroup(null)}
                   className={cn(
-                    "mb-1 flex h-7 w-full shrink-0 items-center gap-2 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                    "mb-1 h-7 w-full shrink-0 justify-start gap-2 px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground",
                     activeGroupId === null && "bg-accent font-medium text-foreground"
                   )}
                 >
                   <Inbox className="h-3.5 w-3.5 shrink-0" />
                   <span className="min-w-0 flex-1 truncate text-left">{t("memo.all")}</span>
                   <span className="shrink-0 text-[10px]">{totalMemoCount}</span>
-                </button>
+                </Button>
                 <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
                   {groups.map((group) => (
                     <div
@@ -233,16 +237,17 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
                         activeGroupId === group.id && "bg-accent font-medium text-foreground"
                       )}
                     >
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
                         onClick={() => chooseGroup(group.id)}
-                        className="flex min-w-0 flex-1 items-center gap-2 px-2"
+                        className="h-7 min-w-0 flex-1 justify-start gap-2 rounded-md px-2 text-xs text-muted-foreground hover:bg-transparent hover:text-inherit"
                         title={group.name}
                       >
                         <MemoGroupIcon group={group} className="h-3.5 w-3.5" />
                         <span className="min-w-0 flex-1 truncate text-left">{group.name}</span>
                         <span className="shrink-0 text-[10px]">{group.memoCount}</span>
-                      </button>
+                      </Button>
                       <MemoGroupManager
                         group={group}
                         isSaving={isSaving}
@@ -261,48 +266,56 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
       <div className="border-t border-border p-2">
         <div className={cn("mb-2 flex items-center gap-1", collapsed && "flex-col")}>
           <div className={cn("flex rounded-md bg-muted p-0.5", collapsed && "w-9")}>
-            <button
+            <Button
+              type="button"
+              variant="ghost"
               title={t("nav.settings")}
               onClick={() => void chooseView("settings")}
               className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground",
+                "h-8 w-8 rounded-sm p-0 text-muted-foreground hover:text-foreground",
                 activeView === "settings" && "bg-card text-foreground shadow-sm"
               )}
             >
               <Settings className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </div>
           <div className={cn("flex flex-1 gap-0.5 rounded-md bg-muted p-0.5", collapsed && "w-9 flex-col")}>
-            <button
+            <Button
+              type="button"
+              variant="ghost"
               title="System"
               onClick={() => setTheme("system")}
               className={cn(
-                "flex h-8 flex-1 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground",
+                "h-8 flex-1 rounded-sm p-0 text-muted-foreground hover:text-foreground",
                 theme === "system" && "bg-card text-foreground shadow-sm"
               )}
             >
               <Monitor className="h-3.5 w-3.5" />
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
               title="Light"
               onClick={() => setTheme("light")}
               className={cn(
-                "flex h-8 flex-1 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground",
+                "h-8 flex-1 rounded-sm p-0 text-muted-foreground hover:text-foreground",
                 theme === "light" && "bg-card text-foreground shadow-sm"
               )}
             >
               <Sun className="h-3.5 w-3.5" />
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
               title="Dark"
               onClick={() => setTheme("dark")}
               className={cn(
-                "flex h-8 flex-1 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground",
+                "h-8 flex-1 rounded-sm p-0 text-muted-foreground hover:text-foreground",
                 theme === "dark" && "bg-card text-foreground shadow-sm"
               )}
             >
               <Moon className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </div>
         </div>
         <div className={cn("mt-2 flex items-center gap-2 rounded-md px-2 py-1.5", collapsed && "justify-center px-0")}>
@@ -324,11 +337,13 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
               </div>
             </div>
           )}
-          <button
+          <Button
+            type="button"
+            variant="ghost"
             title={t("nav.notify")}
             onClick={() => void chooseView("notify")}
             className={cn(
-              "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+              "relative h-7 w-7 shrink-0 p-0 text-muted-foreground hover:bg-accent hover:text-foreground",
               activeView === "notify" && "bg-accent text-foreground"
             )}
           >
@@ -336,7 +351,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
             {unreadNotifyCount > 0 && (
               <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-destructive" />
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </aside>
@@ -376,11 +391,13 @@ function NavItem({
   onClick,
 }: NavItemProps) {
   return (
-    <button
+    <Button
+      type="button"
+      variant="ghost"
       onClick={onClick}
       title={collapsed ? label : undefined}
       className={cn(
-        "flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-sm text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground",
+        "h-8 w-full justify-start gap-2 px-2.5 text-sm text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground",
         collapsed && "mx-auto w-9 justify-center px-0",
         active && "bg-accent font-medium text-accent-foreground"
       )}
@@ -388,7 +405,7 @@ function NavItem({
       {icon}
       {!collapsed && <span className="flex-1 text-left text-[13px]">{label}</span>}
       {!collapsed && badge && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{badge}</span>}
-    </button>
+    </Button>
   );
 }
 
