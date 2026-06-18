@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { FileText, Pin, Save, Star, Trash2 } from "lucide-react";
+import { FileText } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,7 +10,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  Button,
   Textarea,
 } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
@@ -24,11 +23,12 @@ import {
 } from "../services/memoDraftGuard";
 import { useMemoStore } from "../store/memoStore";
 import type { Memo } from "../types/memo.types";
+import { MemoEditorFooter } from "./MemoEditorFooter";
 import { MemoEditorHeader, type MemoEditorMode } from "./MemoEditorHeader";
 import { MemoEmptyState } from "./MemoEmptyState";
 import { MemoListPanel } from "./MemoListPanel";
 import { MemoRelatedUsersEditor } from "./MemoRelatedUsersEditor";
-import { MemoSaveStatusIndicator, type DraftSaveStatus } from "./MemoSaveStatusIndicator";
+import type { DraftSaveStatus } from "./MemoSaveStatusIndicator";
 
 const MemoRichEditor = lazy(() => import("./MemoRichEditor"));
 
@@ -376,42 +376,29 @@ export function MemoWorkspace() {
                 )}
               </div>
             </div>
-            <div className="flex h-9 shrink-0 items-center justify-between border-t border-border bg-card px-3">
-              <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                <MemoSaveStatusIndicator status={draftSaveStatus} />
-                {error && <span className="text-destructive">{error}</span>}
-                {!canEdit && <span>{t("memo.permission.viewHint")}</span>}
-                {canEdit && !canManage && <span>{t("memo.permission.editHint")}</span>}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={async () => {
+            <MemoEditorFooter
+              memo={draft}
+              saveStatus={draftSaveStatus}
+              error={error}
+              canEdit={canEdit}
+              canManage={canManage}
+              isSaving={isSaving}
+              isDraftDirty={isDraftDirty}
+              onToggleTop={() => {
+                void (async () => {
                   await saveDraft({ allowLeaveOnError: true });
                   await toggleTop(draft.id);
-                }} disabled={isSaving}>
-                  <Pin className={cn(draft.isTop && "fill-primary text-primary")} />
-                  {draft.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
-                </Button>
-                <Button variant="outline" size="sm" onClick={async () => {
+                })();
+              }}
+              onToggleFavorite={() => {
+                void (async () => {
                   await saveDraft({ allowLeaveOnError: true });
                   await toggleFavorite(draft.id);
-                }} disabled={isSaving}>
-                  <Star className={cn(draft.isFavorite && "fill-primary text-primary")} />
-                  {t("memo.action.favorite")}
-                </Button>
-                {canEdit && (
-                  <Button size="sm" onClick={() => void saveDraft()} disabled={isSaving || draftSaveStatus === "saving" || !isDraftDirty}>
-                    <Save />
-                    {t("memo.action.save")}
-                  </Button>
-                )}
-                {canManage && (
-                  <Button variant="destructive" size="sm" onClick={() => draft && requestDeleteMemo(draft)} disabled={isSaving}>
-                    <Trash2 />
-                    {t("memo.action.delete")}
-                  </Button>
-                )}
-              </div>
-            </div>
+                })();
+              }}
+              onSave={() => void saveDraft()}
+              onDelete={() => requestDeleteMemo(draft)}
+            />
           </>
         ) : (
           <MemoEmptyState icon={<FileText className="h-6 w-6" />} title={t("memo.selectOrCreate")} />
