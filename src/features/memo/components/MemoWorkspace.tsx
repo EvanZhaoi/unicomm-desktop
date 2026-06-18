@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { FileText } from "lucide-react";
 import {
@@ -10,11 +10,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  Textarea,
 } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
 import { useDocumentShortcut } from "@/hooks/useDocumentShortcut";
-import { cn } from "@/utils/cn";
 import {
   clearMemoRecoveryDraft,
   consumeMemoRecoveryDraft,
@@ -23,14 +21,13 @@ import {
 } from "../services/memoDraftGuard";
 import { useMemoStore } from "../store/memoStore";
 import type { Memo } from "../types/memo.types";
+import { MemoEditorContent } from "./MemoEditorContent";
 import { MemoEditorFooter } from "./MemoEditorFooter";
 import { MemoEditorHeader, type MemoEditorMode } from "./MemoEditorHeader";
 import { MemoEmptyState } from "./MemoEmptyState";
 import { MemoListPanel } from "./MemoListPanel";
 import { MemoRelatedUsersEditor } from "./MemoRelatedUsersEditor";
 import type { DraftSaveStatus } from "./MemoSaveStatusIndicator";
-
-const MemoRichEditor = lazy(() => import("./MemoRichEditor"));
 
 export function MemoWorkspace() {
   const { t } = useI18n();
@@ -340,42 +337,15 @@ export function MemoWorkspace() {
                 });
               }}
             />
-            <div className="min-h-0 flex-1 overflow-hidden p-3">
-              <div
-                className={cn(
-                  "grid h-full min-h-0 gap-3",
-                  editorMode === "split"
-                    ? "grid-rows-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)] xl:grid-rows-1"
-                    : "grid-cols-1"
-                )}
-              >
-                {editorMode !== "markdown" && (
-                  <Suspense fallback={<MemoEmptyState icon={<FileText className="h-5 w-5" />} title={t("memo.loading")} />}>
-                    <MemoRichEditor
-                      key={draft.id}
-                      value={editorMode === "split" ? markdownPreviewContent : draft.content}
-                      placeholder={t("memo.editor.placeholder")}
-                      readOnly={editorMode === "split" || !canEdit}
-                      onChange={editorMode === "split" ? () => undefined : updateContentFromVisualEditor}
-                    />
-                  </Suspense>
-                )}
-                {editorMode !== "visual" && (
-                  <section className="flex min-h-0 flex-col overflow-hidden rounded-md border border-input bg-background">
-                    <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-3 text-xs font-medium text-muted-foreground">
-                      <span>{t("memo.editor.markdown")}</span>
-                    </div>
-                    <Textarea
-                      value={markdownDraft}
-                      onChange={(event) => updateContentFromMarkdownSource(event.target.value)}
-                      readOnly={!canEdit}
-                      className="min-h-0 flex-1 resize-none rounded-none border-0 bg-background font-mono leading-7 shadow-none focus-visible:border-transparent focus-visible:ring-0"
-                      placeholder={t("memo.editor.placeholder")}
-                    />
-                  </section>
-                )}
-              </div>
-            </div>
+            <MemoEditorContent
+              memoId={draft.id}
+              editorMode={editorMode}
+              visualContent={editorMode === "split" ? markdownPreviewContent : draft.content}
+              markdownContent={markdownDraft}
+              canEdit={canEdit}
+              onVisualChange={updateContentFromVisualEditor}
+              onMarkdownChange={updateContentFromMarkdownSource}
+            />
             <MemoEditorFooter
               memo={draft}
               saveStatus={draftSaveStatus}
