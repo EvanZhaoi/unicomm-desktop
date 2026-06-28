@@ -3,7 +3,7 @@ import { notificationManager } from "@/desktop/notification";
 import { useNotifyStore } from "../store/notifyStore";
 
 /**
- * 监听通知中心中新到达的 Memo 通知，并转发为操作系统级通知。
+ * 监听通知中心中新到达的通知，并转发为操作系统级通知。
  *
  * 组件自身不渲染 UI：Windows 会从屏幕右下角弹出系统通知，macOS 会走系统通知中心。
  */
@@ -23,12 +23,7 @@ export function SystemNotificationHost({ onOpenMemo }: SystemNotificationHostPro
       return;
     }
 
-    const nextNotification = notifications.find(
-      (notification) =>
-        notification.module === "memo" &&
-        !notification.read &&
-        !sentIdsRef.current.has(notification.id)
-    );
+    const nextNotification = notifications.find((notification) => !notification.read && !sentIdsRef.current.has(notification.id));
     if (!nextNotification) {
       return;
     }
@@ -38,7 +33,10 @@ export function SystemNotificationHost({ onOpenMemo }: SystemNotificationHostPro
       title: nextNotification.title,
       body: nextNotification.body,
       memoId: nextNotification.sourceId ?? undefined,
-      onClick: nextNotification.sourceId ? () => onOpenMemo(nextNotification.sourceId as number) : undefined,
+      onClick:
+        nextNotification.module === "memo" && nextNotification.sourceId
+          ? () => onOpenMemo(nextNotification.sourceId as number)
+          : undefined,
     });
   }, [notifications, onOpenMemo]);
 

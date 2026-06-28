@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { translate } from "@/i18n";
 import { useSettingStore } from "@/stores/settingStore";
 import type { RealtimeEvent } from "@/services/realtime";
+import type { NotificationResponse } from "../api/notificationApi";
 import type { NotifyItem, NotifyLevel } from "../types/notify.types";
 
 const MAX_NOTIFICATION_COUNT = 200;
@@ -10,6 +11,7 @@ const MAX_NOTIFICATION_COUNT = 200;
 interface NotifyState {
   notifications: NotifyItem[];
   addNotification: (notification: Omit<NotifyItem, "id" | "read" | "createdAt"> & Partial<Pick<NotifyItem, "id" | "read" | "createdAt">>) => void;
+  mergeServerNotifications: (notifications: NotificationResponse[]) => void;
   addRealtimeEvent: (event: RealtimeEvent) => void;
   markRead: (id: string) => void;
   markAllRead: () => void;
@@ -74,6 +76,66 @@ function describeRealtimeEvent(event: RealtimeEvent): { title: string; body: str
   }
 }
 
+function normalizeLevel(level: unknown): NotifyLevel {
+  return level === "success" || level === "warning" || level === "error" ? level : "info";
+}
+
+function serverNotificationId(id: number): string {
+  return `server_notification_${id}`;
+}
+
+function memoSourceId(sourceType?: string | null, sourceId?: string | null): number | null {
+  if (sourceType !== "memo" || !sourceId) {
+    return null;
+  }
+  const value = Number(sourceId);
+  return Number.isFinite(value) ? value : null;
+}
+
+function toServerNotifyItem(notification: NotificationResponse): NotifyItem {
+  return {
+    id: serverNotificationId(notification.id),
+    serverId: notification.id,
+    module: notification.sourceType === "memo" ? "memo" : "system",
+    type: "notification.created",
+    title: notification.title,
+    body: notification.body,
+    level: normalizeLevel(notification.level),
+    read: notification.read,
+    sourceId: memoSourceId(notification.sourceType, notification.sourceId),
+    externalSourceId: notification.sourceId,
+    sourceSystem: notification.sourceSystem,
+    sourceType: notification.sourceType,
+    targetUrl: notification.targetUrl,
+    actorName: notification.actorDisplayName,
+    createdAt: notification.createTime,
+  };
+}
+
+function toRealtimeNotifyItem(event: RealtimeEvent): NotifyItem | null {
+  if (event.module !== "notify" || !event.notificationId || !event.title || !event.body) {
+    return null;
+  }
+
+  return {
+    id: serverNotificationId(event.notificationId),
+    serverId: event.notificationId,
+    module: event.sourceType === "memo" ? "memo" : "system",
+    type: event.type,
+    title: event.title,
+    body: event.body,
+    level: normalizeLevel(event.level),
+    read: false,
+    sourceId: memoSourceId(event.sourceType, event.sourceId),
+    externalSourceId: event.sourceId,
+    sourceSystem: event.sourceSystem,
+    sourceType: event.sourceType,
+    targetUrl: event.targetUrl,
+    actorName: event.actorDisplayName,
+    createdAt: event.occurredAt ?? new Date().toISOString(),
+  };
+}
+
 export const useNotifyStore = create<NotifyState>()(
   persist(
     (set) => ({
@@ -88,7 +150,12 @@ export const useNotifyStore = create<NotifyState>()(
           body: notification.body,
           level: notification.level,
           read: notification.read ?? false,
+          serverId: notification.serverId,
           sourceId: notification.sourceId,
+          externalSourceId: notification.externalSourceId,
+          sourceSystem: notification.sourceSystem,
+          sourceType: notification.sourceType,
+          targetUrl: notification.targetUrl,
           sourceTitle: notification.sourceTitle,
           actorName: notification.actorName,
           preview: notification.preview,
@@ -100,7 +167,33 @@ export const useNotifyStore = create<NotifyState>()(
         }));
       },
 
+      mergeServerNotifications: (notifications) => {
+        const incoming = notifications.map(toServerNotifyItem);
+        set((state) => {
+          const byId = new Map<string, NotifyItem>();
+          [...incoming, ...state.notifications].forEach((item) => {
+            byId.set(item.id, { ...byId.get(item.id), ...item });
+          });
+          return {
+            notifications: Array.from(byId.values())
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .slice(0, MAX_NOTIFICATION_COUNT),
+          };
+        });
+      },
+
       addRealtimeEvent: (event) => {
+        const serverNotification = toRealtimeNotifyItem(event);
+        if (serverNotification) {
+          set((state) => {
+            return {
+              notifications: [serverNotification, ...state.notifications.filter((item) => item.id !== serverNotification.id)]
+                .slice(0, MAX_NOTIFICATION_COUNT),
+            };
+          });
+          return;
+        }
+
         const notification = describeRealtimeEvent(event);
         if (!notification) {
           return;

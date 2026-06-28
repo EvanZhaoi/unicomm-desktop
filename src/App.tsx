@@ -62,6 +62,7 @@ import { realtimeService } from "./services/realtime";
 import { invalidateMemoQueriesForRealtimeEvent } from "./features/memo/api/memoQueryInvalidation";
 import { useMemoStore } from "./features/memo/store/memoStore";
 import { useNotifyStore } from "./features/notify/store/notifyStore";
+import { listNotifications } from "./features/notify/api/notificationApi";
 
 /**
  * 应用内容组件
@@ -223,6 +224,18 @@ function AppContent() {
      */
     let refreshTimer: number | null = null;
     const unsubscribe = realtimeService.subscribe((event) => {
+      if (event.module === "notify") {
+        if (
+          currentUser?.username &&
+          event.recipientUsernames?.length &&
+          !event.recipientUsernames.includes(currentUser.username)
+        ) {
+          return;
+        }
+        useNotifyStore.getState().addRealtimeEvent(event);
+        return;
+      }
+
       if (event.module !== "memo") {
         return;
       }
@@ -265,6 +278,19 @@ function AppContent() {
       }
     };
   }, [authStatus, currentUser?.username]);
+
+  useEffect(() => {
+    if (authStatus !== "verified" || !currentUser?.username || isQuickMemoWindow) {
+      return;
+    }
+
+    // 主窗口启动后先同步一页服务端通知，保证侧边栏未读数不依赖用户手动打开通知中心。
+    void listNotifications({ page: 1, size: 100 }).then((result) => {
+      useNotifyStore.getState().mergeServerNotifications(result.list);
+    }).catch((error) => {
+      console.warn("Load server notifications failed", error);
+    });
+  }, [authStatus, currentUser?.username, isQuickMemoWindow]);
 
   if (isQuickMemoWindow) {
     if (authStatus !== "verified" || !currentUser) {

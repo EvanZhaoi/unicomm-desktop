@@ -1,10 +1,12 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Bell, CheckCheck, Circle, Clock3, FlaskConical, Trash2 } from "lucide-react";
 import { Button, Tabs, TabsList, TabsTrigger } from "@/components/ui";
 import { notificationManager } from "@/desktop/notification";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
+import { createNotification, listNotifications, markAllNotificationsRead, markNotificationRead } from "../api/notificationApi";
 import { useNotifyStore } from "../store/notifyStore";
 import type { NotifyItem } from "../types/notify.types";
 
@@ -41,7 +43,8 @@ interface NotificationCenterProps {
 
 export function NotificationCenter({ onOpenMemo }: NotificationCenterProps) {
   const { t } = useI18n();
-  const { notifications, markRead, markAllRead, removeNotification, clearRead } = useNotifyStore();
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const { notifications, mergeServerNotifications, markRead, markAllRead, removeNotification, clearRead } = useNotifyStore();
   const [filter, setFilter] = useState<NotifyFilter>("all");
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const unreadCount = notifications.filter((item) => !item.read).length;
@@ -56,9 +59,30 @@ export function NotificationCenter({ onOpenMemo }: NotificationCenterProps) {
     overscan: 6,
   });
 
+  useEffect(() => {
+    let cancelled = false;
+
+    void listNotifications({ page: 1, size: 100 }).then((result) => {
+      if (!cancelled) {
+        mergeServerNotifications(result.list);
+      }
+    }).catch((error) => {
+      console.warn("Load server notifications failed", error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mergeServerNotifications]);
+
   const openNotificationSource = (item: NotifyItem) => {
     if (!item.read) {
       markRead(item.id);
+      if (item.serverId) {
+        void markNotificationRead(item.serverId).catch((error) => {
+          console.warn("Mark notification read failed", error);
+        });
+      }
     }
     if (item.module === "memo" && item.sourceId) {
       onOpenMemo(item.sourceId);
@@ -66,13 +90,46 @@ export function NotificationCenter({ onOpenMemo }: NotificationCenterProps) {
   };
 
   const sendTestSystemNotification = () => {
-    void notificationManager.notify({
-      title: t("notify.test.title"),
-      body: `${t("notify.memo.actor", { name: t("notify.test.actor") })}\n${t("notify.memo.preview", {
-        content: t("notify.test.preview"),
-      })}`,
-      memoId: 1,
-      onClick: () => onOpenMemo(1),
+    const title = t("notify.test.title");
+    const body = `${t("notify.memo.actor", { name: t("notify.test.actor") })}\n${t("notify.memo.preview", {
+      content: t("notify.test.preview"),
+    })}`;
+
+    if (!currentUser?.username) {
+      void notificationManager.notify({ title, body, memoId: 1, onClick: () => onOpenMemo(1) });
+      return;
+    }
+
+    void createNotification({
+      title,
+      body,
+      level: "info",
+      sourceSystem: "unicomm",
+      sourceType: "memo",
+      sourceId: "1",
+      actorDisplayName: t("notify.test.actor"),
+      recipientUsernames: [currentUser.username],
+    }).then((notification) => {
+      mergeServerNotifications([notification]);
+    }).catch((error) => {
+      console.warn("Create test notification failed", error);
+      void notificationManager.notify({ title, body, memoId: 1, onClick: () => onOpenMemo(1) });
+    });
+  };
+
+  const markNotificationItemRead = (item: NotifyItem) => {
+    markRead(item.id);
+    if (item.serverId) {
+      void markNotificationRead(item.serverId).catch((error) => {
+        console.warn("Mark notification read failed", error);
+      });
+    }
+  };
+
+  const markEveryNotificationRead = () => {
+    markAllRead();
+    void markAllNotificationsRead().catch((error) => {
+      console.warn("Mark all notifications read failed", error);
     });
   };
 
@@ -97,7 +154,7 @@ export function NotificationCenter({ onOpenMemo }: NotificationCenterProps) {
               <FlaskConical className="h-3.5 w-3.5" />
               {t("notify.action.test")}
             </Button>
-            <Button variant="outline" size="sm" onClick={markAllRead} disabled={unreadCount === 0}>
+            <Button variant="outline" size="sm" onClick={markEveryNotificationRead} disabled={unreadCount === 0}>
               <CheckCheck className="h-3.5 w-3.5" />
               {t("notify.action.markAllRead")}
             </Button>
@@ -186,7 +243,7 @@ export function NotificationCenter({ onOpenMemo }: NotificationCenterProps) {
                           className="h-7 px-2 text-xs"
                           onClick={(event) => {
                             event.stopPropagation();
-                            markRead(item.id);
+                            markNotificationItemRead(item);
                           }}
                         >
                           {t("notify.action.markRead")}

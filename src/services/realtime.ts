@@ -2,9 +2,9 @@ import { useSocketStore } from "@/stores/socket.store";
 import { useAuthStore } from "@/features/auth/store/authStore";
 
 export interface RealtimeEvent {
-  /** 后端模块名，当前 Memo 事件固定为 "memo" */
+  /** 后端模块名：memo=协作事件，notify=通用通知 */
   module: string;
-  /** 事件类型，例如 memo.created、memo.updated、group.deleted */
+  /** 事件类型，例如 memo.created、group.deleted、notification.created */
   type: string;
   /** 事件发起人用户名；前端用于过滤自己触发的通知 */
   ownerUsername?: string;
@@ -22,6 +22,22 @@ export interface RealtimeEvent {
   contentPreview?: string | null;
   /** 服务端事件生成时间 */
   occurredAt?: string;
+  /** 通用通知 ID */
+  notificationId?: number | null;
+  /** 通用通知标题 */
+  title?: string | null;
+  /** 通用通知正文 */
+  body?: string | null;
+  /** 通用通知级别 */
+  level?: "info" | "success" | "warning" | "error" | string | null;
+  /** 通知来源系统 */
+  sourceSystem?: string | null;
+  /** 通知来源业务类型 */
+  sourceType?: string | null;
+  /** 通知来源业务 ID */
+  sourceId?: string | null;
+  /** 通知跳转目标 */
+  targetUrl?: string | null;
 }
 
 type RealtimeListener = (event: RealtimeEvent) => void;
