@@ -144,12 +144,12 @@ export function MemoListPanel({
                         type="button"
                         variant="ghost"
                         className={cn(
-                          "h-auto w-full justify-start rounded-none border-l-2 border-b border-l-transparent border-border px-3 py-2 text-left font-normal transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
+                          "flex h-auto w-full flex-col items-stretch justify-start rounded-none border-l-2 border-b border-l-transparent border-border px-3 py-2 text-left font-normal transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
                           selectedMemoId === memo.id && "border-l-primary bg-accent"
                         )}
                         onClick={() => onSelectMemo(memo.id)}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex w-full items-center gap-2">
                           {memo.isTop && <Pin className="h-3.5 w-3.5 fill-primary text-primary" />}
                           <div
                             className={cn(
@@ -168,7 +168,7 @@ export function MemoListPanel({
                         <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                           {memo.content || t("memo.noContent")}
                         </div>
-                        <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+                        <div className="mt-1.5 flex w-full items-center justify-between text-[11px] text-muted-foreground">
                           <span>{formatMemoDate(memo.updateTime)}</span>
                           <span className="inline-flex items-center gap-1">
                             <span
