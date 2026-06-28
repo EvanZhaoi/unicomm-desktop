@@ -88,6 +88,7 @@ export default function MemoRichEditor({ value, placeholder, readOnly = false, o
   const onChangeRef = useRef(onChange);
   const diagramRenderTimerRef = useRef<number | null>(null);
   const suppressProgrammaticChangeRef = useRef(false);
+  const ignoreInitialMarkdownUpdateRef = useRef(true);
 
   const focusProseMirror = () => {
     rootRef.current?.querySelector<HTMLElement>(".ProseMirror")?.focus();
@@ -121,6 +122,7 @@ export default function MemoRichEditor({ value, placeholder, readOnly = false, o
       rootRef.current?.querySelector<HTMLElement>(".ProseMirror")?.setAttribute("contenteditable", readOnly ? "false" : "true");
     };
 
+    ignoreInitialMarkdownUpdateRef.current = true;
     const editor = new Crepe({
       root: rootRef.current,
       defaultValue: value,
@@ -158,6 +160,13 @@ export default function MemoRichEditor({ value, placeholder, readOnly = false, o
 
     editor.on((listener) => {
       listener.markdownUpdated((_, markdown) => {
+        if (ignoreInitialMarkdownUpdateRef.current) {
+          ignoreInitialMarkdownUpdateRef.current = false;
+          currentMarkdownRef.current = markdown;
+          scheduleDiagramRender();
+          return;
+        }
+
         if (suppressProgrammaticChangeRef.current) {
           scheduleDiagramRender();
           return;

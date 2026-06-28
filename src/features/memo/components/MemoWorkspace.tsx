@@ -136,9 +136,15 @@ export function MemoWorkspace() {
   }, [draft, editorMode]);
 
   const updateDraftContent = (content: string) => {
-    setIsDraftDirty(true);
-    setDraftSaveStatus("dirty");
-    setDraft((current) => (current ? { ...current, content } : current));
+    setDraft((current) => {
+      if (!current || current.content === content) {
+        return current;
+      }
+
+      setIsDraftDirty(true);
+      setDraftSaveStatus("dirty");
+      return { ...current, content };
+    });
   };
 
   const updateContentFromVisualEditor = (content: string) => {
