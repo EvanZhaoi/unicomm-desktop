@@ -10,6 +10,13 @@ const languageAliases: Array<[RegExp, Language]> = [
 const messages = {
   "zh-CN": {
     "app.initializing": "初始化中...",
+    "app.title": "UniComm - 企业桌面协作平台",
+    "window.minimize": "最小化",
+    "window.maximize": "最大化或还原",
+    "window.close": "关闭",
+    "theme.system": "跟随系统",
+    "theme.light": "浅色",
+    "theme.dark": "深色",
     "auth.checking": "正在识别当前 Windows 用户...",
     "auth.rejected.title": "当前 Windows 用户未授权",
     "auth.rejected.description": "请联系系统管理员获取权限",
@@ -160,6 +167,13 @@ const messages = {
   },
   "ja-JP": {
     "app.initializing": "初期化中...",
+    "app.title": "UniComm - エンタープライズデスクトップ共同作業",
+    "window.minimize": "最小化",
+    "window.maximize": "最大化または元に戻す",
+    "window.close": "閉じる",
+    "theme.system": "システム設定",
+    "theme.light": "ライト",
+    "theme.dark": "ダーク",
     "auth.checking": "現在の Windows ユーザーを識別しています...",
     "auth.rejected.title": "現在の Windows ユーザーは許可されていません",
     "auth.rejected.description": "権限についてはシステム管理者に連絡してください",

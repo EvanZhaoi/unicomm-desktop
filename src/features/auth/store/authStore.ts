@@ -234,14 +234,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     initAuthPromise = (async () => {
-      console.log('[AuthStore] Initializing auth...');
-
       // 尝试加载保存的 Session
       const savedSession = await sessionStorageService.loadSession();
 
       if (savedSession) {
-        console.log('[AuthStore] Found saved session, restoring...');
-
         // 先恢复到内存，刷新接口会自动携带当前 token。
         set({
           currentUser: savedSession.currentUser,
@@ -256,19 +252,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           const expiresAt = refreshed.expiresAt || Date.now() + 24 * 60 * 60 * 1000;
           set({ accessToken });
           await sessionStorageService.updateToken(accessToken, expiresAt);
-        } catch (error) {
-          console.warn('[AuthStore] Saved session refresh failed, performing full auth...', error);
+        } catch {
           await get().clearSession();
           await get().verifyDesktopUser();
           return;
         }
 
-        console.log('[AuthStore] Session restored for:', savedSession.currentUser.username);
         return;
       }
 
       // 没有保存的 Session，执行完整认证流程
-      console.log('[AuthStore] No saved session, performing full auth...');
       await get().verifyDesktopUser();
     })().finally(() => {
       initAuthPromise = null;
@@ -324,8 +317,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
 
         await persistVerifiedSession(response, deviceInfo, set);
-
-        console.log('[AuthStore] Auth successful:', response.username);
         return true;
       } catch (error: unknown) {
         // ---- 处理异常情况 ----
@@ -343,8 +334,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             message: errorMessage,
           },
         });
-
-        console.log('[AuthStore] Auth failed:', errorCode, errorMessage);
         return false;
       }
     })().finally(() => {
@@ -402,7 +391,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       pendingDeviceInfo: null,
     });
 
-    console.log('[AuthStore] Session cleared');
   },
 
   /**
@@ -417,8 +405,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     recoverSessionPromise = (async () => {
-      console.log('[AuthStore] Recovering session...');
-
       // 先清除当前 Session
       await get().clearSession();
 

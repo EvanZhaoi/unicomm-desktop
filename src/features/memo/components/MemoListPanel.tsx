@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Inbox, Pin, Plus, Search, Star, Trash2, Users, X } from "lucide-react";
 import {
   Button,
@@ -54,6 +56,27 @@ export function MemoListPanel({
   onRequestDelete,
 }: MemoListPanelProps) {
   const { t } = useI18n();
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: memos.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 78,
+    getItemKey: (index) => memos[index]?.id ?? index,
+    overscan: 6,
+  });
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const lastVirtualItem = virtualItems[virtualItems.length - 1];
+
+  useEffect(() => {
+    if (
+      lastVirtualItem &&
+      lastVirtualItem.index >= memos.length - 4 &&
+      hasMoreMemos &&
+      !isLoadingMore
+    ) {
+      onLoadMore();
+    }
+  }, [hasMoreMemos, isLoadingMore, lastVirtualItem, memos.length, onLoadMore]);
 
   return (
     <section className="flex min-h-0 flex-col border-r border-border bg-card">
@@ -95,94 +118,105 @@ export function MemoListPanel({
           {t("memo.new")}
         </Button>
       )}
-      <div
-        className="min-h-0 flex-1 overflow-auto"
-        onScroll={(event) => {
-          const target = event.currentTarget;
-          if (target.scrollHeight - target.scrollTop - target.clientHeight < 80) {
-            onLoadMore();
-          }
-        }}
-      >
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
         {isLoading ? (
           <MemoEmptyState icon={<Search className="h-5 w-5" />} title={t("memo.loading")} />
         ) : memos.length === 0 ? (
           <MemoEmptyState icon={<Inbox className="h-5 w-5" />} title={t("memo.empty")} />
         ) : (
-          <>
-            {memos.map((memo) => (
-              <ContextMenu key={memo.id}>
-                <ContextMenuTrigger asChild onContextMenu={() => onPrepareContextMenu(memo)}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className={cn(
-                      "h-auto w-full justify-start rounded-none border-l-2 border-b border-l-transparent border-border px-3 py-2 text-left font-normal transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
-                      selectedMemoId === memo.id && "border-l-primary bg-accent"
-                    )}
-                    onClick={() => onSelectMemo(memo.id)}
-                  >
-                    <div className="flex items-center gap-2">
-                      {memo.isTop && <span className="text-xs text-primary">📌</span>}
-                      <div
+          <div
+            className="relative"
+            style={{ height: `${rowVirtualizer.getTotalSize() + (isLoadingMore ? 36 : 0)}px` }}
+          >
+            {virtualItems.map((virtualItem) => {
+              const memo = memos[virtualItem.index];
+              return (
+                <div
+                  key={memo.id}
+                  data-index={virtualItem.index}
+                  ref={rowVirtualizer.measureElement}
+                  className="absolute left-0 top-0 w-full"
+                  style={{ transform: `translateY(${virtualItem.start}px)` }}
+                >
+                  <ContextMenu>
+                    <ContextMenuTrigger asChild onContextMenu={() => onPrepareContextMenu(memo)}>
+                      <Button
+                        type="button"
+                        variant="ghost"
                         className={cn(
-                          "min-w-0 flex-1 truncate text-sm font-medium",
-                          memo.title ? "text-foreground" : "text-muted-foreground"
+                          "h-auto w-full justify-start rounded-none border-l-2 border-b border-l-transparent border-border px-3 py-2 text-left font-normal transition-all duration-150 hover:border-l-primary/40 hover:bg-accent/70",
+                          selectedMemoId === memo.id && "border-l-primary bg-accent"
                         )}
+                        onClick={() => onSelectMemo(memo.id)}
                       >
-                        {memo.title || t("memo.title.placeholder")}
-                      </div>
-                      {memo.isFavorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
-                      {memo.isShared && <Users className="h-3.5 w-3.5 text-primary" />}
-                      {memo.isShared && <MemoPermissionBadge permission={memo.currentUserPermission} compact />}
-                    </div>
-                    <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                      {memo.content || t("memo.noContent")}
-                    </div>
-                    <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span>{formatMemoDate(memo.updateTime)}</span>
-                      <span className="inline-flex items-center gap-1">
-                        <span
-                          className={cn(
-                            "h-1.5 w-1.5 rounded-full",
-                            memo.status === "todo"
-                              ? "bg-yellow-500"
-                              : memo.status === "done"
-                                ? "bg-blue-500"
-                                : "bg-emerald-500"
+                        <div className="flex items-center gap-2">
+                          {memo.isTop && <Pin className="h-3.5 w-3.5 fill-primary text-primary" />}
+                          <div
+                            className={cn(
+                              "min-w-0 flex-1 truncate text-sm font-medium",
+                              memo.title ? "text-foreground" : "text-muted-foreground"
+                            )}
+                          >
+                            {memo.title || t("memo.title.placeholder")}
+                          </div>
+                          {memo.isFavorite && <Star className="h-3.5 w-3.5 fill-primary text-primary" />}
+                          {memo.isShared && <Users className="h-3.5 w-3.5 text-primary" />}
+                          {memo.isShared && (
+                            <MemoPermissionBadge permission={memo.currentUserPermission} compact />
                           )}
-                        />
-                        {t(memoStatusKey(memo.status))}
-                      </span>
-                    </div>
-                  </Button>
-                </ContextMenuTrigger>
-                <ContextMenuContent className="min-w-36">
-                  <ContextMenuItem disabled={isSaving} onSelect={() => onToggleTop(memo)}>
-                    <Pin className={cn("mr-2 h-3.5 w-3.5", memo.isTop && "fill-primary text-primary")} />
-                    {memo.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
-                  </ContextMenuItem>
-                  <ContextMenuItem disabled={isSaving} onSelect={() => onToggleFavorite(memo)}>
-                    <Star className={cn("mr-2 h-3.5 w-3.5", memo.isFavorite && "fill-primary text-primary")} />
-                    {t("memo.action.favorite")}
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    disabled={isSaving || !memo.isOwner}
-                    onSelect={() => onRequestDelete(memo)}
-                    className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                  >
-                    <Trash2 className="mr-2 h-3.5 w-3.5" />
-                    {t("memo.action.delete")}
-                  </ContextMenuItem>
-                </ContextMenuContent>
-              </ContextMenu>
-            ))}
-            {(isLoadingMore || hasMoreMemos) && (
-              <div className="flex h-9 items-center justify-center border-b border-border text-[11px] text-muted-foreground">
-                {isLoadingMore ? t("memo.loading") : ""}
+                        </div>
+                        <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                          {memo.content || t("memo.noContent")}
+                        </div>
+                        <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
+                          <span>{formatMemoDate(memo.updateTime)}</span>
+                          <span className="inline-flex items-center gap-1">
+                            <span
+                              className={cn(
+                                "h-1.5 w-1.5 rounded-full",
+                                memo.status === "todo"
+                                  ? "bg-yellow-500"
+                                  : memo.status === "done"
+                                    ? "bg-blue-500"
+                                    : "bg-emerald-500"
+                              )}
+                            />
+                            {t(memoStatusKey(memo.status))}
+                          </span>
+                        </div>
+                      </Button>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="min-w-36">
+                      <ContextMenuItem disabled={isSaving} onSelect={() => onToggleTop(memo)}>
+                        <Pin className={cn("mr-2 h-3.5 w-3.5", memo.isTop && "fill-primary text-primary")} />
+                        {memo.isTop ? t("memo.action.unpin") : t("memo.action.pin")}
+                      </ContextMenuItem>
+                      <ContextMenuItem disabled={isSaving} onSelect={() => onToggleFavorite(memo)}>
+                        <Star className={cn("mr-2 h-3.5 w-3.5", memo.isFavorite && "fill-primary text-primary")} />
+                        {t("memo.action.favorite")}
+                      </ContextMenuItem>
+                      <ContextMenuItem
+                        disabled={isSaving || !memo.isOwner}
+                        onSelect={() => onRequestDelete(memo)}
+                        className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-3.5 w-3.5" />
+                        {t("memo.action.delete")}
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                </div>
+              );
+            })}
+            {isLoadingMore && (
+              <div
+                className="absolute left-0 flex h-9 w-full items-center justify-center border-b border-border text-[11px] text-muted-foreground"
+                style={{ transform: `translateY(${rowVirtualizer.getTotalSize()}px)` }}
+              >
+                {t("memo.loading")}
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
     </section>

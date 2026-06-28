@@ -86,7 +86,6 @@ class SessionStorageService implements SessionStorageServiceAPI {
     try {
       const sessionJson = JSON.stringify(data);
       localStorage.setItem(this.SESSION_KEY, sessionJson);
-      console.log('[SessionStorage] Session saved');
     } catch (error) {
       console.error('[SessionStorage] Failed to save session:', error);
       throw error;
@@ -100,7 +99,6 @@ class SessionStorageService implements SessionStorageServiceAPI {
     try {
       const sessionJson = localStorage.getItem(this.SESSION_KEY);
       if (!sessionJson) {
-        console.log('[SessionStorage] No session found');
         return null;
       }
 
@@ -108,12 +106,10 @@ class SessionStorageService implements SessionStorageServiceAPI {
 
       // 检查是否过期
       if (Date.now() > session.expiresAt) {
-        console.log('[SessionStorage] Session expired');
         await this.clearSession();
         return null;
       }
 
-      console.log('[SessionStorage] Session loaded');
       return session;
     } catch (error) {
       console.error('[SessionStorage] Failed to load session:', error);
@@ -127,7 +123,6 @@ class SessionStorageService implements SessionStorageServiceAPI {
   async clearSession(): Promise<void> {
     try {
       localStorage.removeItem(this.SESSION_KEY);
-      console.log('[SessionStorage] Session cleared');
     } catch (error) {
       console.error('[SessionStorage] Failed to clear session:', error);
     }

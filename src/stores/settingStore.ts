@@ -19,7 +19,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { detectDefaultLanguage, isSupportedLanguage } from '@/i18n';
 import type { Language } from '@/i18n';
-import type { ThemeMode } from '@/styles/themeManager';
+
+export type ThemeMode = 'light' | 'dark' | 'system';
 
 /**
  * 设置状态接口
@@ -27,6 +28,8 @@ import type { ThemeMode } from '@/styles/themeManager';
 interface SettingsState {
   // 主题设置
   themeMode: ThemeMode;
+  // 侧边栏折叠状态
+  sidebarCollapsed: boolean;
   // 语言设置
   language: Language;
   // 通知设置
@@ -50,6 +53,7 @@ interface SettingsState {
 
   // Actions
   setThemeMode: (mode: ThemeMode) => void;
+  toggleSidebar: () => void;
   setLanguage: (language: Language) => void;
   setNotifications: (notifications: Partial<SettingsState['notifications']>) => void;
   setWindowSettings: (window: Partial<SettingsState['window']>) => void;
@@ -61,6 +65,7 @@ interface SettingsState {
 type SettingsData = Omit<
   SettingsState,
   | 'setThemeMode'
+  | 'toggleSidebar'
   | 'setLanguage'
   | 'setNotifications'
   | 'setWindowSettings'
@@ -74,7 +79,8 @@ type SettingsData = Omit<
  */
 function createDefaultSettings(): SettingsData {
   return {
-    themeMode: 'system' as ThemeMode,
+    themeMode: 'system',
+    sidebarCollapsed: false,
     language: detectDefaultLanguage(),
     notifications: {
       enabled: true,
@@ -111,6 +117,7 @@ export const useSettingStore = create<SettingsState>()(
       ...defaultSettings,
 
       setThemeMode: (mode) => set({ themeMode: mode }),
+      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
       setLanguage: (language) => set({ language }),
 
@@ -153,6 +160,7 @@ export const useSettingStore = create<SettingsState>()(
       },
       partialize: (state) => ({
         themeMode: state.themeMode,
+        sidebarCollapsed: state.sidebarCollapsed,
         language: state.language,
         notifications: state.notifications,
         window: state.window,

@@ -289,7 +289,7 @@ export function MemoWorkspace() {
         onKeywordChange={setKeyword}
         onSearch={() => void search()}
         onCreateMemo={() => void createMemoAfterSaving()}
-        onLoadMore={() => void fetchNextMemos()}
+        onLoadMore={fetchNextMemos}
         onSelectMemo={(id) => void selectMemoAfterSaving(id)}
         onPrepareContextMenu={(memo) => void prepareMemoContextMenu(memo)}
         onToggleTop={(memo) => void toggleMemoTopFromMenu(memo)}

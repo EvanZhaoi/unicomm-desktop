@@ -29,8 +29,7 @@
  */
 
 import type { ReactNode } from "react";
-import { Bell, FileText, Inbox, Minus, Monitor, Moon, Settings, Share2, Square, Star, Sun, User, X } from "lucide-react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Bell, FileText, Inbox, Monitor, Moon, Settings, Share2, Star, Sun, User } from "lucide-react";
 import { Button } from "@/components/ui";
 import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/utils/cn";
@@ -41,8 +40,9 @@ import { MemoGroupIcon } from "@/features/memo/components/MemoGroupIcon";
 import { MemoGroupManager } from "@/features/memo/components/MemoGroupManager";
 import { saveMemoDraftBeforeLeave } from "@/features/memo/services/memoDraftGuard";
 import { useNotifyStore } from "@/features/notify/store/notifyStore";
-import { useSettingsStore } from "@/stores/settings.store";
+import { useSettingStore } from "@/stores/settingStore";
 import type { DesktopUserInfo } from "@/features/auth/types/auth.types";
+import { AppTitlebar } from "./AppTitlebar";
 
 export type AppView = "memo" | "notify" | "settings";
 
@@ -83,7 +83,7 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
     deleteGroup,
   } = useMemoStore();
   const unreadNotifyCount = useNotifyStore((state) => state.notifications.filter((item) => !item.read).length);
-  const { theme, setTheme } = useSettingsStore();
+  const { themeMode, setThemeMode } = useSettingStore();
   const totalMemoCount = groups.reduce((total, group) => total + group.memoCount, 0);
 
   const statusFilters: Array<{ label: string; value: Memo["status"] | null }> = [
@@ -283,11 +283,11 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
             <Button
               type="button"
               variant="ghost"
-              title="System"
-              onClick={() => setTheme("system")}
+              title={t("theme.system")}
+              onClick={() => setThemeMode("system")}
               className={cn(
                 "h-8 flex-1 rounded-sm p-0 text-muted-foreground hover:text-foreground",
-                theme === "system" && "bg-card text-foreground shadow-sm"
+                themeMode === "system" && "bg-card text-foreground shadow-sm"
               )}
             >
               <Monitor className="h-3.5 w-3.5" />
@@ -295,11 +295,11 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
             <Button
               type="button"
               variant="ghost"
-              title="Light"
-              onClick={() => setTheme("light")}
+              title={t("theme.light")}
+              onClick={() => setThemeMode("light")}
               className={cn(
                 "h-8 flex-1 rounded-sm p-0 text-muted-foreground hover:text-foreground",
-                theme === "light" && "bg-card text-foreground shadow-sm"
+                themeMode === "light" && "bg-card text-foreground shadow-sm"
               )}
             >
               <Sun className="h-3.5 w-3.5" />
@@ -307,11 +307,11 @@ export function Sidebar({ collapsed = false, activeView, onViewChange, currentUs
             <Button
               type="button"
               variant="ghost"
-              title="Dark"
-              onClick={() => setTheme("dark")}
+              title={t("theme.dark")}
+              onClick={() => setThemeMode("dark")}
               className={cn(
                 "h-8 flex-1 rounded-sm p-0 text-muted-foreground hover:text-foreground",
-                theme === "dark" && "bg-card text-foreground shadow-sm"
+                themeMode === "dark" && "bg-card text-foreground shadow-sm"
               )}
             >
               <Moon className="h-3.5 w-3.5" />
@@ -410,63 +410,6 @@ function NavItem({
 }
 
 /**
- * 无原生窗口装饰时使用的应用内标题栏。
- *
- * 主窗口在 `tauri.conf.json` 中关闭了系统标题栏，因此这里负责拖拽区域、
- * 最小化、最大化和关闭动作。背景使用 `bg-background`，保持和当前主题一致。
- */
-function Titlebar() {
-  const minimizeWindow = async () => {
-    try {
-      await getCurrentWindow().minimize();
-    } catch (error) {
-      console.error("Failed to minimize window", error);
-    }
-  };
-
-  const toggleMaximizeWindow = async () => {
-    try {
-      const currentWindow = getCurrentWindow();
-      if (await currentWindow.isMaximized()) {
-        await currentWindow.unmaximize();
-      } else {
-        await currentWindow.maximize();
-      }
-    } catch (error) {
-      console.error("Failed to toggle window maximize state", error);
-    }
-  };
-
-  const closeWindow = async () => {
-    try {
-      await getCurrentWindow().close();
-    } catch (error) {
-      console.error("Failed to close window", error);
-    }
-  };
-
-  return (
-    <div className="flex h-8 select-none items-center justify-between border-b border-border bg-background px-3 text-xs text-muted-foreground [-webkit-app-region:drag]">
-      <div className="flex items-center gap-2.5">
-        <span className="text-primary">●</span>
-        <span>UniComm - 企业桌面协作平台</span>
-      </div>
-      <div className="flex gap-1 [-webkit-app-region:no-drag]">
-        <Button variant="ghost" size="icon" onClick={minimizeWindow} className="h-7 w-9">
-          <Minus className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={toggleMaximizeWindow} className="h-7 w-9">
-          <Square className="h-3 w-3" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={closeWindow} className="h-7 w-9 hover:bg-destructive hover:text-destructive-foreground">
-          <X className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-/**
  * 应用布局组件属性
  */
 interface AppLayoutProps {
@@ -496,7 +439,7 @@ export function AppLayout({
 }: AppLayoutProps) {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
-      <Titlebar />
+      <AppTitlebar />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <Sidebar collapsed={sidebarCollapsed} activeView={activeView} onViewChange={onViewChange} currentUser={currentUser} />
         <main className="min-w-0 flex-1 overflow-hidden">{children}</main>

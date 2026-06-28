@@ -43,8 +43,6 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 // 认证状态管理
 import { useAuthStore } from "./features/auth/store/authStore";
-// 应用布局设置（当前主要使用侧边栏折叠状态）
-import { useSettingsStore } from "./stores/settings.store";
 
 // 布局组件
 import { AppLayout, type AppView } from "./components/layout";
@@ -75,9 +73,7 @@ function AppContent() {
   // 从 authStore 获取认证相关状态和方法
   const { currentUser, authStatus, initAuth } = useAuthStore();
   
-  // 从 settingsStore 获取侧边栏状态和方法
-  const { sidebarCollapsed } = useSettingsStore();
-  const { shortcuts, language } = useSettingStore();
+  const { shortcuts, language, themeMode, sidebarCollapsed } = useSettingStore();
   const { t } = useI18n();
   const [activeView, setActiveView] = useState<AppView>("memo");
   const [isQuickMemoWindow] = useState(() => {
@@ -195,6 +191,22 @@ function AppContent() {
     document.documentElement.lang = language;
     document.documentElement.dataset.language = language;
   }, [language]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const applyTheme = () => {
+      const useDarkTheme = themeMode === "dark" || (themeMode === "system" && mediaQuery.matches);
+      document.documentElement.classList.toggle("dark", useDarkTheme);
+    };
+
+    applyTheme();
+    if (themeMode !== "system") {
+      return;
+    }
+
+    mediaQuery.addEventListener("change", applyTheme);
+    return () => mediaQuery.removeEventListener("change", applyTheme);
+  }, [themeMode]);
 
   useEffect(() => {
     if (authStatus !== "verified") {

@@ -75,14 +75,14 @@ export function SettingsPanel() {
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4 px-2 py-2">
-      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
         <div className="flex h-12 items-center gap-2 border-b border-border bg-muted px-4">
           <Globe2 className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">{t("settings.language.title")}</h2>
         </div>
 
         <div className="p-4">
-          <label className="flex items-center justify-between gap-6">
+          <label className="grid grid-cols-[minmax(0,1fr)_10rem] items-center gap-6">
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium text-foreground">{t("settings.language.label")}</span>
               <span className="mt-1 block text-xs text-muted-foreground">
@@ -97,7 +97,7 @@ export function SettingsPanel() {
                 setError(null);
               }}
             >
-              <SelectTrigger className="w-40 shrink-0">
+              <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -109,14 +109,14 @@ export function SettingsPanel() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
         <div className="flex h-12 items-center gap-2 border-b border-border bg-muted px-4">
           <Keyboard className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">{t("settings.shortcuts.title")}</h2>
         </div>
 
         <div className="p-4">
-          <label className="flex items-center justify-between gap-6 border-b border-border pb-4">
+          <label className="grid grid-cols-[minmax(0,1fr)_11rem] items-center gap-6 border-b border-border pb-4">
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium text-foreground">{t("settings.shortcuts.showMain")}</span>
               <span className="mt-1 block text-xs text-muted-foreground">{t("settings.shortcuts.showMainHint")}</span>
@@ -124,12 +124,12 @@ export function SettingsPanel() {
             <Input
               value={showMain}
               onChange={(event) => setShowMain(event.target.value)}
-              className="w-44 shrink-0"
+              className="w-44"
               placeholder="Ctrl+Alt+M"
             />
           </label>
 
-          <label className="flex items-center justify-between gap-6 border-b border-border py-4">
+          <label className="grid grid-cols-[minmax(0,1fr)_11rem] items-center gap-6 border-b border-border py-4">
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium text-foreground">{t("settings.shortcuts.quickMemo")}</span>
               <span className="mt-1 block text-xs text-muted-foreground">{t("settings.shortcuts.quickMemoHint")}</span>
@@ -137,7 +137,7 @@ export function SettingsPanel() {
             <Input
               value={quickMemo}
               onChange={(event) => setQuickMemo(event.target.value)}
-              className="w-44 shrink-0"
+              className="w-44"
               placeholder="Ctrl+Alt+N"
             />
           </label>
